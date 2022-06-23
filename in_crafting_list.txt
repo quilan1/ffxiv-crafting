@@ -1,0 +1,60 @@
+##################################################
+
+= Level 90 Crafting Materials
+:rlevel 90, :cat Metal|Lumber|Leather|Stone|Cloth|Reagent
+
+= Basic Materials
+:rlevel 1|89, :cat Metal|Lumber|Leather|Stone|Cloth|Reagent
+
+##################################################
+
+= Cosmetic Items
+:rlevel 1|90, :ilevel 1, :cat Head|Body|Hands|Legs|Feet
+
+##################################################
+
+= Level 90 Classical Items
+:name ^Classical
+
+= Level 90 Crafting & Gathering Items
+:name ^Pactmaker's
+
+##################################################
+
+= Collectables
+:name ^Rarefied
+
+##################################################
+
+= Monster Weapons
+:name (^Mighty|M.* Moogle Mog|^Inferno|of the Vortex$)
+:name of the (Fiend|Round|Goddess)$
+:name ^(Dead Hive|Endless Expanse|Replica Allagan|Seeing Horde)
+:name ^(Shinryu|Tsukuyomi|Suzaku|Seiryu|Susano|Byakko)'s
+:name ^Augmented
+
+##################################################
+
+= Levequest Items, Materials
+:is_leve, :cat Metal|Lumber|Leather|Stone|Cloth|Reagent
+
+= Levequest Items, Equipment
+:is_leve, :cat Head|Body|Hands|Legs|Feet|Earrings|Necklace|Bracelets|Ring
+
+##################################################
+
+= Minions
+:cat Minion
+
+##################################################
+
+= Bardings
+:name Barding
+
+##################################################
+
+= Housing Interior
+:cat Ceiling Light|Door|Flooring|Furnishing|Interior Wall|Placard|Rug|Table|Tabletop|Window
+
+= Housing Exterior
+:cat Exterior Wall|Exterior Wall Decoration|Fence|Outdoor Furnishing|Roof|Roof Decoration|Wall-mounted

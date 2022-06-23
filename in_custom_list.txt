@@ -1,0 +1,48 @@
+##################################################
+= Custom
+#:name Classical Greatsword
+#:name Pactmaker's Halfgloves of Crafting
+#:name Pactmaker's Culinary Knife, :count 3
+#:name Classical Earrings of Fending
+#:name (^Mighty|M.* Moogle Mog|^Inferno|of the Vortex$)
+
+= Crafting
+#:name Pactmaker's Lapidary Hammer
+#:name Pactmaker's Grinding Wheel
+#:name Pactmaker's Pickaxe
+#:name Pactmaker's Sledgehammer
+#:name Pactmaker's Hatchet
+#:name Pactmaker's Garden Scythe
+
+#:name Pactmaker's Halfgloves of Crafting, :count 5
+:name Pactmaker's File, :count 5
+:name Pactmaker's Awl, :count 5
+
+= Materia
+#:name Gatherer's Guerdon Materia X, :count 1
+#:name Gatherer's Guerdon Materia VIII, :count 12
+#:name Gatherer's Grasp Materia IX, :count 20
+
+= Skybuilder's
+#:name Grade 4 Skybuilders' Bed, :count 20
+#:name Grade 4 Skybuilders' Oven, :count 20
+#:name Grade 4 Skybuilders' Lamppost, :count 20
+#:name Grade 4 Skybuilders' Brazier, :count 20
+#:name Grade 4 Skybuilders' Overalls, :count 20
+#:name Grade 4 Skybuilders' Awning, :count 20
+#:name Grade 4 Skybuilders' Growth Formula, :count 20
+#:name Grade 4 Skybuilders' Stew, :count 20
+
+= Housing
+#:name Bar Stool
+#:name Troupe Stage
+
+= Cosmetic
+#:name Ala Mhigan Gown
+
+= Scrips
+# White Scrips
+#:name Rarefied Star Quartz Choker, :count 20
+# Purple Scrips
+#:name Rarefied Chondrite Needle, :count 20
+

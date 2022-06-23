@@ -1,0 +1,20 @@
+[package]
+name = "ffxiv-crafting"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version="1.0.137", features=["derive"] }
+tokio = { version="1.18.2", features=["full"] }
+tokio-stream = { version="0.1.8", features=["time"] }
+reqwest = "0.11.10"
+serde_json = "1.0.81"
+itertools = "0.10.3"
+futures = "0.3.21"
+anyhow = "1.0.57"
+csv = "1.1.6"
+regex = "1.5.6"
+chrono = "0.4.19"
+stream_throttle = "0.4.0"
