@@ -5,8 +5,6 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use crate::Settings;
-
 use super::{ItemListing, MarketBoardInfo, UniversalisRequest};
 
 #[derive(Debug, Clone, Deserialize)]

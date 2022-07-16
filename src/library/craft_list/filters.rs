@@ -1,7 +1,7 @@
 use anyhow::Result;
 use regex::Regex;
 
-use crate::library::{ItemInfo, Library};
+use crate::library::{item_checked, ItemInfo, Library};
 
 type FilterOptions = Vec<String>;
 
@@ -229,14 +229,18 @@ impl Filter {
 
         items
             .into_iter()
-            .filter(|item| match library.all_recipes.get(&item.id) {
-                None => false,
-                Some(recipe) => recipe.inputs.iter().any(|input| {
-                    match library.all_items.items.get(&input.item_id) {
-                        None => false,
-                        Some(input_item) => re.is_match(&input_item.name),
-                    }
-                }),
+            .filter(|item| {
+                library
+                    .all_recipes
+                    .get(&item.id)
+                    .map(|recipe| {
+                        recipe.inputs.iter().any(|input| {
+                            item_checked(input)
+                                .map(|input_item| re.is_match(&input_item.name))
+                                .unwrap_or(false)
+                        })
+                    })
+                    .unwrap_or(false)
             })
             .collect::<Vec<_>>()
     }

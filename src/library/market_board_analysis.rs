@@ -1,7 +1,4 @@
-use std::{
-    collections::BTreeMap,
-    fmt::{Debug, Display},
-};
+use std::{collections::BTreeMap, fmt::Debug};
 
 use crate::{
     library::{AsIngredient, Ingredient, Library},

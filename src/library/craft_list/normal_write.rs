@@ -7,7 +7,7 @@ use std::{
 
 use super::{AnalysisFilters, CraftList};
 use crate::{
-    library::{Library, RecursiveMarketBoardAnalysis},
+    library::{item_name, Library, RecursiveMarketBoardAnalysis},
     universalis::Universalis,
     Settings,
 };
@@ -74,7 +74,7 @@ impl CraftList {
                 write!(
                     writer,
                     "{:<40}| {:<24}| {:<24}| {:<8}{:<8}{:<8}\n",
-                    library.all_items[&analysis.analysis.item_id].name,
+                    item_name(&analysis),
                     analysis.analysis.velocity_info_nq.to_string(),
                     analysis.analysis.velocity_info_hq.to_string(),
                     analysis.analysis.sell_price,

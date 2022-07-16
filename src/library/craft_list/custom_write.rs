@@ -8,7 +8,7 @@ use std::{
 
 use super::{AnalysisFilters, CraftList};
 use crate::{
-    library::{Ingredient, Library, RecursiveMarketBoardAnalysis},
+    library::{item, Ingredient, Library, RecursiveMarketBoardAnalysis},
     universalis::Universalis,
     Settings,
 };
@@ -105,7 +105,7 @@ impl RecursiveMarketBoardAnalysis {
         library: &Library,
         indent: String,
     ) -> Result<()> {
-        let item = &library.all_items[&self.ingredient.item_id];
+        let item = item(&self.ingredient);
         let name = format!(
             "{indent}{}x {} ({:.1})",
             self.ingredient.count,

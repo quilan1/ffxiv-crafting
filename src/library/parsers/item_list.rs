@@ -2,7 +2,7 @@ use anyhow::Result;
 use csv::ReaderBuilder;
 use std::{collections::BTreeMap, ops::Index, path::Path};
 
-use crate::library::Library;
+use crate::library::{ItemId, Library};
 
 #[derive(Default)]
 pub struct ItemList {
@@ -20,7 +20,7 @@ pub struct ItemInfo {
 }
 
 impl ItemList {
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
+    pub fn read_from_path<P: AsRef<Path>>(path: P) -> Result<()> {
         let mut items = BTreeMap::new();
         let mut name_to_id = BTreeMap::new();
 
@@ -45,7 +45,10 @@ impl ItemList {
             name_to_id.insert(name, id);
         });
 
-        Ok(Self { name_to_id, items })
+        unsafe {
+            ITEM_LIST = Some(Self { name_to_id, items });
+        }
+        Ok(())
     }
 
     pub fn all_craftable_items(&self, library: &Library) -> Vec<&ItemInfo> {
@@ -91,10 +94,6 @@ impl Index<&str> for ItemList {
 
 ///////////////////////////////////////////
 
-pub trait ItemId {
-    fn item_id(&self) -> u32;
-}
-
 static mut ITEM_LIST: Option<ItemList> = None;
 
 pub fn item_list() -> &'static ItemList {
@@ -111,14 +110,7 @@ pub fn item<I: ItemId>(obj: I) -> &'static ItemInfo {
     &item_list()[&id]
 }
 
-impl ItemId for u32 {
-    fn item_id(&self) -> u32 {
-        *self
-    }
-}
-
-impl ItemId for &u32 {
-    fn item_id(&self) -> u32 {
-        **self
-    }
+pub fn item_checked<I: ItemId>(obj: I) -> Option<&'static ItemInfo> {
+    let id = obj.item_id();
+    item_list().items.get(&id)
 }

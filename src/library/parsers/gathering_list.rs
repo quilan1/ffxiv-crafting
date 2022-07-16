@@ -9,7 +9,7 @@ use std::{
 };
 
 use crate::{
-    library::{craft_list::AnalysisFilters, Library, MarketBoardAnalysis},
+    library::{craft_list::AnalysisFilters, item, item_checked, Library, MarketBoardAnalysis},
     universalis::Universalis,
     Settings,
 };
@@ -37,13 +37,10 @@ impl GatheringList {
             level = U[1 + 1];
 
             let level = library.all_gathering_levels[&level];
-            if !library.all_items.items.contains_key(&item_id) {
-                continue;
-            }
-
-            if library.all_items[&item_id].name == "" {
-                continue;
-            }
+            match item_checked(item_id).map(|item| item.name == "") {
+                None | Some(true) => continue,
+                _ => {},
+            };
 
             gathering.insert(id, GatheringInfo { id, item_id, level });
 
@@ -63,7 +60,6 @@ impl GatheringList {
     pub fn write_to_file<P: AsRef<Path>>(
         &self,
         path: P,
-        library: &Library,
         universalis: &Universalis,
         settings: &Settings,
     ) -> Result<()> {
@@ -94,15 +90,13 @@ impl GatheringList {
         analyses.sort_by_key(|analysis| analysis.sell_price);
 
         for analysis in analyses {
-            if analysis.sell_price < settings.min_gathering_price {
+            if analysis.sell_price < settings.min_gathering_price
+                || analysis.velocity_info_nq.velocity < settings.min_gathering_velocity
+            {
                 continue;
             }
 
-            if analysis.velocity_info_nq.velocity < settings.min_gathering_velocity {
-                continue;
-            }
-
-            let item = &library.all_items[&analysis.item_id];
+            let item = item(&analysis);
             write!(
                 &mut writer,
                 "{:<40}| {:<30}| {:<10}\n",
