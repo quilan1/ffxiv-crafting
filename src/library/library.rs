@@ -13,7 +13,6 @@ use super::CraftList;
 
 #[derive(Default)]
 pub struct Library {
-    pub all_items: ItemList,
     pub all_ui_categories: UiCategoryList,
     pub all_recipe_levels: RecipeLevelTable,
     pub all_recipes: RecipeList,
@@ -27,10 +26,13 @@ pub struct Library {
 }
 
 impl Library {
-    pub fn new() -> Result<Self> {
+    pub async fn new() -> Result<Self> {
         let mut library = Self::default();
 
-        library.all_items = ItemList::from_path("./csv/Item.csv")?;
+        Self::download_files().await?;
+
+        ItemList::read_from_path("./csv/Item.csv")?;
+
         library.all_ui_categories = UiCategoryList::from_path("./csv/ItemUICategory.csv")?;
         library.all_recipe_levels = RecipeLevelTable::from_path("./csv/RecipeLevelTable.csv")?;
         library.all_recipes = RecipeList::from_path("./csv/Recipe.csv")?;
@@ -54,7 +56,9 @@ impl Library {
 
         async fn download_file(file_name: &str) -> Result<()> {
             let local_path = format!("./csv/{file_name}");
-            let url = &format!("https://raw.githubusercontent.com/xivapi/ffxiv-datamining/master/csv/{file_name}");
+            let url = &format!(
+                "https://raw.githubusercontent.com/xivapi/ffxiv-datamining/master/csv/{file_name}"
+            );
 
             if Path::exists(local_path.as_ref()) {
                 return Ok(());
@@ -83,17 +87,20 @@ impl Library {
         ];
 
         let results = join_all(files.into_iter().map(|file_name| download_file(file_name))).await;
-        results.into_iter().filter_map(|res| res.err()).for_each(|err| panic!("{}", err));
+        results
+            .into_iter()
+            .filter_map(|res| res.err())
+            .for_each(|err| panic!("{}", err));
 
         Ok(())
     }
 
     pub fn all_craftable_items(&self) -> Vec<&ItemInfo> {
-        self.all_items.all_craftable_items(self)
+        item_list().all_craftable_items(self)
     }
 
     pub fn all_gatherable_items(&self) -> Vec<&ItemInfo> {
-        self.all_items.all_gatherable_items(self)
+        item_list().all_gatherable_items(self)
     }
 
     pub fn all_market_board_ids(&self, settings: &Settings) -> Vec<u32> {
@@ -126,7 +133,7 @@ impl Library {
         }
         if [RunMode::OnlyGathering, RunMode::All].contains(&settings.run_mode) {
             self.all_gathering
-                .write_to_file("./out/gathering.txt", self, universalis, settings)?;
+                .write_to_file("./out/gathering.txt", universalis, settings)?;
         }
         self.write_outbid(universalis, settings, "./out/bids.txt")?;
         Ok(())
@@ -161,7 +168,7 @@ impl Library {
                 write!(
                     &mut writer,
                     "{:<40}| {:<30}| {:<10}{:<10}{:<10.1}\n",
-                    self.all_items[item_id].name,
+                    item_name(item_id),
                     listing.name,
                     listing.count,
                     listing.price,

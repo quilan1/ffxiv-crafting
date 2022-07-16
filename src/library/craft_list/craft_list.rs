@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::{collections::BTreeSet, fs::read_to_string, path::Path};
 
-use crate::library::Library;
+use crate::library::{item, item_list, Library};
 
 use super::Filter;
 
@@ -35,7 +35,7 @@ impl CraftList {
             .collect::<Vec<_>>();
 
         let item_list = if is_all_items {
-            library.all_items.items.values().collect::<Vec<_>>()
+            item_list().items.values().collect::<Vec<_>>()
         } else {
             library.all_craftable_items()
         };
@@ -111,7 +111,7 @@ impl CraftList {
                 item_ids
             })
             .flatten()
-            .filter(|item_id| !library.all_items[item_id].is_untradable)
+            .filter(|item_id| !item(item_id).is_untradable)
             .collect::<BTreeSet<_>>()
             .into_iter()
             .collect::<Vec<_>>()
