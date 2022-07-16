@@ -9,7 +9,8 @@ use std::{
 };
 
 use crate::{
-    library::Library, market_board_analysis::MarketBoardAnalysis, universalis::Universalis,
+    library::{craft_list::AnalysisFilters, Library, MarketBoardAnalysis},
+    universalis::Universalis,
     Settings,
 };
 
@@ -30,20 +31,12 @@ impl GatheringList {
         let mut gathering = BTreeMap::new();
         let mut by_item = BTreeMap::<u32, Vec<u32>>::new();
 
-        let mut reader = ReaderBuilder::new().from_path(path)?;
-        for (line, record) in reader.records().enumerate() {
-            if line < 2 {
-                continue;
-            }
+        csv_parse!(path => {
+            id = U[0];
+            item_id = U[0 + 1];
+            level = U[1 + 1];
 
-            let record = record?;
-            let info = record.into_iter().collect::<Vec<_>>();
-
-            let id = info[0].parse::<u32>()?;
-            let item_id = info[0 + 1].parse::<u32>()?;
-            let level = info[1 + 1].parse::<u32>()?;
             let level = library.all_gathering_levels[&level];
-
             if !library.all_items.items.contains_key(&item_id) {
                 continue;
             }
@@ -55,7 +48,7 @@ impl GatheringList {
             gathering.insert(id, GatheringInfo { id, item_id, level });
 
             by_item.entry(item_id).or_default().push(id);
-        }
+        });
 
         Ok(Self {
             by_item: by_item,
@@ -76,7 +69,11 @@ impl GatheringList {
     ) -> Result<()> {
         let mut writer = BufWriter::new(File::create(path.as_ref())?);
 
-        write!(&mut writer, "{:<40}| {:<30}| {:<10}\n", "Name", "Vel", "Sell")?;
+        write!(
+            &mut writer,
+            "{:<40}| {:<30}| {:<10}\n",
+            "Name", "Vel", "Sell"
+        )?;
         write!(
             &mut writer,
             "=========================================================================================\n"
@@ -86,7 +83,12 @@ impl GatheringList {
             .gathering
             .iter()
             .filter_map(|(_, item)| {
-                MarketBoardAnalysis::from_item(item.item_id, &universalis, &settings)
+                MarketBoardAnalysis::from_item(
+                    item.item_id,
+                    &universalis,
+                    &settings,
+                    &AnalysisFilters::default(),
+                )
             })
             .collect::<Vec<_>>();
         analyses.sort_by_key(|analysis| analysis.sell_price);
@@ -104,7 +106,9 @@ impl GatheringList {
             write!(
                 &mut writer,
                 "{:<40}| {:<30}| {:<10}\n",
-                item.name, analysis.velocity_info_nq.to_string(), analysis.sell_price
+                item.name,
+                analysis.velocity_info_nq.to_string(),
+                analysis.sell_price
             )?;
         }
         Ok(())

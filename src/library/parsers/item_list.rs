@@ -24,20 +24,13 @@ impl ItemList {
         let mut items = BTreeMap::new();
         let mut name_to_id = BTreeMap::new();
 
-        let mut reader = ReaderBuilder::new().from_path(path)?;
-        for (line, record) in reader.records().enumerate() {
-            if line < 2 {
-                continue;
-            }
-
-            let record = record?;
-            let info = record.into_iter().collect::<Vec<_>>();
-            let id = info[0].parse::<u32>()?;
-            let name = info[9 + 1].to_string();
-            let ilevel = info[11 + 1].parse::<u32>()?;
-            let ui_category = info[15 + 1].parse::<u32>()?;
-            let is_untradable = info[22 + 1] == "True";
-            let equip_level = info[40 + 1].parse::<u32>()?;
+        csv_parse!(path => {
+            id = U[0];
+            name = S[9 + 1];
+            ilevel = U[11 + 1];
+            ui_category = U[15 + 1];
+            is_untradable = B[22 + 1];
+            equip_level = U[40 + 1];
 
             let item = ItemInfo {
                 id,
@@ -50,7 +43,7 @@ impl ItemList {
 
             items.insert(id, item);
             name_to_id.insert(name, id);
-        }
+        });
 
         Ok(Self { name_to_id, items })
     }
@@ -93,5 +86,39 @@ impl Index<&str> for ItemList {
             None => panic!("Missing item name: {index}"),
             Some(value) => value,
         }
+    }
+}
+
+///////////////////////////////////////////
+
+pub trait ItemId {
+    fn item_id(&self) -> u32;
+}
+
+static mut ITEM_LIST: Option<ItemList> = None;
+
+pub fn item_list() -> &'static ItemList {
+    unsafe { ITEM_LIST.as_ref().expect("ITEM_LIST has not been set!") }
+}
+
+pub fn item_name<I: ItemId>(obj: I) -> &'static str {
+    let id = obj.item_id();
+    &item_list()[&id].name
+}
+
+pub fn item<I: ItemId>(obj: I) -> &'static ItemInfo {
+    let id = obj.item_id();
+    &item_list()[&id]
+}
+
+impl ItemId for u32 {
+    fn item_id(&self) -> u32 {
+        *self
+    }
+}
+
+impl ItemId for &u32 {
+    fn item_id(&self) -> u32 {
+        **self
     }
 }

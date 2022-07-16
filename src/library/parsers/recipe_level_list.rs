@@ -18,18 +18,12 @@ impl RecipeLevelTable {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         let mut level_table = BTreeMap::new();
 
-        let mut reader = ReaderBuilder::new().from_path(path)?;
-        for (line, record) in reader.records().enumerate() {
-            let record = record?;
-            if line < 2 {
-                continue;
-            }
-
-            let id = record[0].parse::<u32>()?;
-            let level = record[0 + 1].parse::<u32>()?;
-            let stars = record[1 + 1].parse::<u32>()?;
+        csv_parse!(path => {
+            id = U[0];
+            level = U[0 + 1];
+            stars = U[1 + 1];
             level_table.insert(id, RecipeLevel { id, level, stars });
-        }
+        });
 
         Ok(Self { level_table })
     }
