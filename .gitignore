@@ -1,2 +1,4 @@
-*.csv
-/target
+.vscode/
+csv/
+target/
+out/
