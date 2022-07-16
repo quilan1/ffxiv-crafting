@@ -11,6 +11,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let settings = process_cli();
 
     let start = Instant::now();
+    Library::download_files().await?;
     let library = Library::new()?;
     println!("Initialized in {} ms", start.elapsed().as_millis());
 

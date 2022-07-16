@@ -1,4 +1,8 @@
 use anyhow::Result;
+use futures::future::join_all;
+use std::fs::File;
+use std::io::BufWriter;
+use std::path::Path;
 use std::{collections::HashSet, fs::DirBuilder, io::Write};
 
 use crate::universalis::Universalis;
@@ -41,6 +45,47 @@ impl Library {
         library.all_custom_crafts = CraftList::from_path("./in_custom_list.txt", &library, true)?;
 
         Ok(library)
+    }
+
+    pub async fn download_files() -> Result<()> {
+        async fn download_url(url: &str) -> Result<String> {
+            Ok(reqwest::get(url).await?.text().await?)
+        }
+
+        async fn download_file(file_name: &str) -> Result<()> {
+            let local_path = format!("./csv/{file_name}");
+            let url = &format!("https://raw.githubusercontent.com/xivapi/ffxiv-datamining/master/csv/{file_name}");
+
+            if Path::exists(local_path.as_ref()) {
+                return Ok(());
+            }
+
+            DirBuilder::new().recursive(true).create("./csv")?;
+
+            println!("Downloading {}", local_path);
+            let content = download_url(url).await?;
+            let mut writer = BufWriter::new(File::create(local_path)?);
+            writer.write(content.as_ref())?;
+
+            Ok(())
+        }
+
+        let files = [
+            "ClassJobCategory.csv",
+            "CraftLeve.csv",
+            "GatheringItem.csv",
+            "GatheringItemLevelConvertTable.csv",
+            "Item.csv",
+            "ItemUICategory.csv",
+            "Leve.csv",
+            "Recipe.csv",
+            "RecipeLevelTable.csv",
+        ];
+
+        let results = join_all(files.into_iter().map(|file_name| download_file(file_name))).await;
+        results.into_iter().filter_map(|res| res.err()).for_each(|err| panic!("{}", err));
+
+        Ok(())
     }
 
     pub fn all_craftable_items(&self) -> Vec<&ItemInfo> {
