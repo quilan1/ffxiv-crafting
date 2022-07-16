@@ -19,6 +19,7 @@ pub struct CraftInfo {
 pub struct CraftGroup {
     pub heading: String,
     pub crafts: Vec<CraftInfo>,
+    pub filters: Vec<Filter>,
 }
 
 impl CraftList {
@@ -44,26 +45,31 @@ impl CraftList {
         let mut skip = false;
 
         for line in lines {
-            match &line[..1] {
-                "#" => continue,
-                "=" => {
-                    if let Some(group) = cur_group {
-                        craft_groups.push(group);
-                    }
-                    cur_group = Some(CraftGroup {
-                        heading: line[2..].into(),
-                        ..Default::default()
-                    });
-                    skip = false;
+            if &line[..1] == "=" {
+                if let Some(group) = cur_group {
+                    craft_groups.push(group);
                 }
+                cur_group = Some(CraftGroup {
+                    heading: line[2..].into(),
+                    ..Default::default()
+                });
+                skip = false;
+                continue;
+            }
+
+            if skip || &line[..1] == "#" {
+                continue;
+            }
+
+            let group = cur_group.get_or_insert(Default::default());
+            match &line[..1] {
                 "S" => skip = true,
                 "X" => break,
+                ">" => {
+                    let filters = Filter::new(&line[2..]);
+                    group.filters.extend(filters);
+                }
                 _ => {
-                    if skip {
-                        continue;
-                    }
-                    cur_group = cur_group.or(Default::default());
-                    let group = cur_group.as_mut().unwrap();
                     let (items, filters) = Filter::apply_filters(library, item_list.clone(), &line);
                     for item in items {
                         // println!("Adding filter match: {}", item.name);

@@ -1,14 +1,15 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use futures::{
     future::{ready, BoxFuture},
     FutureExt, Stream, StreamExt,
 };
 use std::{
+    cell::RefCell,
     collections::BTreeMap,
     fs::File,
     io::{BufWriter, Write},
     pin::Pin,
-    sync::{Arc, Mutex},
+    rc::Rc,
     task::{Context, Poll},
 };
 use tokio::time::Instant;
@@ -31,83 +32,105 @@ impl ProcessorStatus {
 }
 
 #[derive(Clone)]
-pub struct Processor {
-    data: Arc<Mutex<ProcessorData>>,
+pub struct ProcessorStream {
+    data: Rc<RefCell<ProcessorData>>,
 }
 
 struct ProcessorData {
     requests: Vec<UniversalisRequest>,
     status: Vec<ProcessorStatus>,
-    all_mb_info: BTreeMap<String, MarketBoardInfo>,
     log_writer: BufWriter<File>,
     start: Instant,
 }
 
-type ProcessorReturn = Result<(usize, String)>;
+type ProcessorReturn = (usize, String);
 type ProcessorFuture = BoxFuture<'static, ProcessorReturn>;
+type ProcessorOutput = BTreeMap<String, MarketBoardInfo>;
 
 /////////////////////////////////////////////////////////
 
-impl Processor {
-    pub fn new(
-        requests: Vec<UniversalisRequest>,
-        homeworld: &str,
-        data_center: &str,
-    ) -> Result<Self> {
-        let data = ProcessorData::new(requests, homeworld, data_center)?;
+impl ProcessorStream {
+    pub fn new(requests: Vec<UniversalisRequest>) -> Result<Self> {
+        let data = ProcessorData::new(requests)?;
 
         Ok(Self {
-            data: Arc::new(Mutex::new(data)),
+            // data: Arc::new(Mutex::new(data)),
+            data: Rc::new(RefCell::new(data)),
         })
     }
 
-    pub async fn process(self) -> Result<BTreeMap<String, MarketBoardInfo>> {
+    pub async fn process(
+        &self,
+        homeworld: &str,
+        data_centers: &Vec<&str>,
+    ) -> BTreeMap<String, MarketBoardInfo> {
         let mut last_update = Instant::now();
+
+        let mut mb_info = BTreeMap::<String, MarketBoardInfo>::new();
+        mb_info.insert(homeworld.into(), MarketBoardInfo::new());
+        for &data_center in data_centers {
+            mb_info.insert(data_center.into(), MarketBoardInfo::new());
+        }
+
         self.clone()
             .buffer_unordered(8)
             .for_each(|value| {
-                let mut stream = self.clone();
                 if last_update.elapsed().as_secs() > 10 {
-                    stream.update();
+                    self.with_inner(|data| data.update());
                     last_update = Instant::now();
                 }
-                stream.process_result(value);
+
+                self.with_inner(|data| data.process_result(&value, &mut mb_info));
                 ready(())
             })
             .await;
 
-        match Arc::try_unwrap(self.data) {
-            Err(_) => panic!(),
-            Ok(v) => match v.into_inner() {
-                Err(_) => panic!(),
-                Ok(v) => Ok(v.all_mb_info),
-            },
-        }
-    }
-
-    fn process_result(&mut self, result: ProcessorReturn) {
-        self.data.lock().unwrap().process_result(result)
-    }
-
-    fn update(&self) {
-        self.data.lock().unwrap().update()
+        mb_info
     }
 }
 
 /////////////////////////////////////////////////////////
 
-impl Stream for Processor {
+trait Inner {
+    type Type;
+    fn with_inner<T, F: FnMut(&mut Self::Type) -> T>(&self, func: F) -> T;
+    fn try_into_inner(self) -> Result<Self::Type>;
+    fn into_inner(self) -> Self::Type
+    where
+        Self: Sized,
+    {
+        self.try_into_inner().unwrap()
+    }
+}
+
+impl Inner for ProcessorStream {
+    type Type = ProcessorData;
+
+    fn with_inner<T, F: FnMut(&mut Self::Type) -> T>(&self, mut func: F) -> T {
+        let mut data = self.data.borrow_mut();
+        func(&mut data)
+    }
+
+    fn try_into_inner(self) -> Result<Self::Type> {
+        match Rc::try_unwrap(self.data) {
+            Err(_) => bail!("Couldn't unwrap rc"),
+            Ok(v) => Ok(v.into_inner()),
+        }
+    }
+}
+
+impl Stream for ProcessorStream {
     type Item = ProcessorFuture;
 
     fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let mut processor = self.data.lock().unwrap();
+        let mut processor = self.data.borrow_mut();
 
         if processor.finished() {
             return Poll::Ready(None);
         }
 
         async fn send_request(id: usize, url: String) -> ProcessorReturn {
-            Ok((id, reqwest::get(&url).await?.text().await?))
+            (id, reqwest::get(&url).await.unwrap().text().await.unwrap())
         }
 
         for (id, state) in processor.status.iter().enumerate() {
@@ -130,18 +153,13 @@ impl Stream for Processor {
 /////////////////////////////////////////////////////////
 
 impl ProcessorData {
-    fn new(requests: Vec<UniversalisRequest>, homeworld: &str, data_center: &str) -> Result<Self> {
+    fn new(requests: Vec<UniversalisRequest>) -> Result<Self> {
         let status = vec![ProcessorStatus::Ready; requests.len()];
         let log_writer = BufWriter::new(File::create("errors.txt")?);
-
-        let mut all_mb_info = BTreeMap::<String, MarketBoardInfo>::new();
-        all_mb_info.insert(homeworld.into(), MarketBoardInfo::new());
-        all_mb_info.insert(data_center.into(), MarketBoardInfo::new());
 
         Ok(Self {
             requests,
             status,
-            all_mb_info,
             log_writer,
             start: Instant::now(),
         })
@@ -163,20 +181,16 @@ impl ProcessorData {
             .all(|status| status == &ProcessorStatus::Done)
     }
 
-    fn process_result(&mut self, result: ProcessorReturn) {
-        match result {
-            Err(e) => panic!("{:?}", e),
-            Ok((id, response)) => {
-                match process_json(&self.requests[id], &response, &mut self.all_mb_info) {
-                    Err(_e) => {
-                        self.log(format!("[{id:<6}] ERROR: {_e:?}")).unwrap();
-                        self.status[id] = ProcessorStatus::Ready;
-                    }
-                    Ok(_) => {
-                        self.log(format!("[{id:<6}] DONE")).unwrap();
-                        self.status[id] = ProcessorStatus::Done;
-                    }
-                }
+    fn process_result(&mut self, data: &ProcessorReturn, out_data: &mut ProcessorOutput) {
+        let (id, response) = data;
+        self.status[*id] = match process_json(&self.requests[*id], &response, out_data) {
+            Err(_e) => {
+                self.log(format!("[{id:<6}] ERROR: {_e:?}")).unwrap();
+                ProcessorStatus::Ready
+            }
+            Ok(_) => {
+                self.log(format!("[{id:<6}] DONE")).unwrap();
+                ProcessorStatus::Done
             }
         }
     }
@@ -185,9 +199,10 @@ impl ProcessorData {
         let processed = self.status.iter().filter(|status| status.is_done()).count();
         let rate = processed as f32 / self.start.elapsed().as_secs_f32();
         println!(
-            "{:<6.1} {processed} processed (ETA {:.1}s)",
+            "{:<6.1} {processed} processed (ETA {:.1}s, {:.1}/s)",
             self.start.elapsed().as_secs_f32(),
-            self.requests.len() as f32 / rate
+            self.requests.len() as f32 / rate,
+            rate,
         );
     }
 }
