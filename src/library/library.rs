@@ -1,6 +1,5 @@
-use std::collections::HashSet;
-
 use anyhow::Result;
+use std::{collections::HashSet, fs::DirBuilder, io::Write};
 
 use crate::universalis::Universalis;
 use crate::{RunMode, Settings};
@@ -27,16 +26,17 @@ impl Library {
     pub fn new() -> Result<Self> {
         let mut library = Self::default();
 
-        library.all_items = ItemList::from_path("./Item.csv")?;
-        library.all_ui_categories = UiCategoryList::from_path("./ItemUICategory.csv")?;
-        library.all_recipe_levels = RecipeLevelTable::from_path("./RecipeLevelTable.csv")?;
-        library.all_recipes = RecipeList::from_path("./Recipe.csv")?;
+        library.all_items = ItemList::from_path("./csv/Item.csv")?;
+        library.all_ui_categories = UiCategoryList::from_path("./csv/ItemUICategory.csv")?;
+        library.all_recipe_levels = RecipeLevelTable::from_path("./csv/RecipeLevelTable.csv")?;
+        library.all_recipes = RecipeList::from_path("./csv/Recipe.csv")?;
         library.all_gathering_levels =
-            GatheringLevelList::from_path("./GatheringItemLevelConvertTable.csv")?;
-        library.all_gathering = GatheringList::from_path("./GatheringItem.csv", &library)?;
-        library.all_job_categories = JobCategoryList::from_path("./ClassJobCategory.csv")?;
-        library.all_crafting_leves = CraftLeveList::from_path("./CraftLeve.csv")?;
-        library.all_leves = LeveList::from_path("./Leve.csv", &library)?;
+            GatheringLevelList::from_path("./csv/GatheringItemLevelConvertTable.csv")?;
+        library.all_gathering = GatheringList::from_path("./csv/GatheringItem.csv", &library)?;
+        library.all_job_categories = JobCategoryList::from_path("./csv/ClassJobCategory.csv")?;
+        library.all_crafting_leves = CraftLeveList::from_path("./csv/CraftLeve.csv")?;
+        library.all_leves = LeveList::from_path("./csv/Leve.csv", &library)?;
+
         library.all_crafts = CraftList::from_path("./in_crafting_list.txt", &library, false)?;
         library.all_custom_crafts = CraftList::from_path("./in_custom_list.txt", &library, true)?;
 
@@ -66,13 +66,14 @@ impl Library {
     }
 
     pub fn write_files(&self, universalis: &Universalis, settings: &Settings) -> Result<()> {
+        DirBuilder::new().recursive(true).create("./out")?;
         if [RunMode::OnlyCrafting, RunMode::All].contains(&settings.run_mode) {
             self.all_crafts
-                .write_to_file("./out_crafts.txt", self, universalis, settings)?;
+                .write_to_file("./out/crafts.txt", self, universalis, settings)?;
         }
         if [RunMode::OnlyCustom, RunMode::All].contains(&settings.run_mode) {
             self.all_custom_crafts.write_custom_to_file(
-                "./out_custom.txt",
+                "./out/custom.txt",
                 self,
                 universalis,
                 settings,
@@ -80,8 +81,59 @@ impl Library {
         }
         if [RunMode::OnlyGathering, RunMode::All].contains(&settings.run_mode) {
             self.all_gathering
-                .write_to_file("./out_gathering.txt", self, universalis, settings)?;
+                .write_to_file("./out/gathering.txt", self, universalis, settings)?;
         }
+        self.write_outbid(universalis, settings, "./out/bids.txt")?;
+        Ok(())
+    }
+
+    fn write_outbid<P: AsRef<std::path::Path>>(
+        &self,
+        universalis: &Universalis,
+        settings: &Settings,
+        path: P,
+    ) -> Result<()> {
+        let mut writer = std::io::BufWriter::new(std::fs::File::create(path.as_ref())?);
+
+        write!(
+            &mut writer,
+            "{:<40}| {:<30}| {:<10}{:<10}\n",
+            "Name", "Seller", "Count", "Price"
+        )?;
+
+        for (item_id, mb_info) in &universalis.homeworld {
+            if !mb_info
+                .listings
+                .iter()
+                .any(|listing| settings.characters.contains(&listing.name))
+            {
+                continue;
+            }
+
+            for listing in &mb_info.listings {
+                let time = std::time::SystemTime::UNIX_EPOCH
+                    + std::time::Duration::from_secs(listing.posting);
+                write!(
+                    &mut writer,
+                    "{:<40}| {:<30}| {:<10}{:<10}{:<10.1}\n",
+                    self.all_items[item_id].name,
+                    listing.name,
+                    listing.count,
+                    listing.price,
+                    time.elapsed()
+                        .unwrap_or(std::time::Duration::from_secs(0))
+                        .as_secs_f32()
+                        / (3600.0 * 24.0),
+                )?;
+
+                if settings.characters.contains(&listing.name) {
+                    break;
+                }
+            }
+
+            write!(&mut writer, "\n")?;
+        }
+
         Ok(())
     }
 }

@@ -1,5 +1,7 @@
-use anyhow::Result;
-use std::io::Write;
+use std::{
+    collections::BTreeMap,
+    fmt::{Debug, Display},
+};
 
 use crate::{
     library::{AsIngredient, Ingredient, Library},
@@ -7,10 +9,19 @@ use crate::{
     Settings,
 };
 
+use super::craft_list::{AnalysisFilters, QualityFilter};
+
 #[derive(Default)]
 pub struct VelocityAnalysis {
     pub velocity: f32,
     pub count: u32,
+}
+
+#[derive(Default)]
+pub struct WorldInfo {
+    pub world: String,
+    pub count: u32,
+    pub price: u32,
 }
 
 #[derive(Default)]
@@ -22,7 +33,7 @@ pub struct MarketBoardAnalysis {
     pub profit_margin: f32,
     pub velocity_info_nq: VelocityAnalysis,
     pub velocity_info_hq: VelocityAnalysis,
-    pub buy_worlds: Vec<(String, u32, u32)>,
+    pub buy_worlds: Vec<WorldInfo>,
 }
 
 impl MarketBoardAnalysis {
@@ -30,41 +41,72 @@ impl MarketBoardAnalysis {
         ingredient: I,
         universalis: &Universalis,
         settings: &Settings,
+        analysis_filters: &AnalysisFilters,
     ) -> Option<Self> {
         let ingredient = ingredient.as_ingredient();
         let item_id = ingredient.item_id;
 
-        if !universalis.homeworld.contains_key(&item_id)
-            || !universalis.data_center.contains_key(&item_id)
-        {
+        let valid_data_centers = universalis
+            .data_centers
+            .iter()
+            .filter(|mb| mb.contains_key(&item_id))
+            .collect::<Vec<_>>();
+
+        if !universalis.homeworld.contains_key(&item_id) || valid_data_centers.is_empty() {
             return None;
         }
 
         let item_mb_homeworld = &universalis.homeworld[&item_id];
-        let item_mb_data_center = &universalis.data_center[&item_id];
+        let item_mb_data_centers = valid_data_centers
+            .into_iter()
+            .map(|data_center| &data_center[&item_id])
+            .collect::<Vec<_>>();
 
-        let velocity_info_nq = Self::velocity_info(item_mb_homeworld, settings, false);
-        let velocity_info_hq = Self::velocity_info(item_mb_homeworld, settings, true);
+        let velocity_info_nq =
+            Self::velocity_info(item_mb_homeworld, settings, analysis_filters, false);
+        let velocity_info_hq =
+            Self::velocity_info(item_mb_homeworld, settings, analysis_filters, true);
 
-        let sell_price = (f32::max(item_mb_homeworld.price, item_mb_homeworld.price_hq)
+        let sell_price = (f32::max(item_mb_homeworld.price_nq, item_mb_homeworld.price_hq)
             * ingredient.count as f32) as u32;
 
-        let mut listings = item_mb_data_center.listings.clone();
+        let mut listings = item_mb_data_centers
+            .iter()
+            .map(|mb| mb.listings.clone())
+            .flatten()
+            .collect::<Vec<_>>();
         listings.sort_by_key(|listing| listing.price);
 
-        let mut buy_worlds = Vec::new();
+        let mut buy_worlds = BTreeMap::<String, (u32, u32)>::new();
         let mut rem_count = ingredient.count;
         let mut buy_price = 0;
         for listing in listings {
             let used_count = u32::min(listing.count, rem_count);
             buy_price += used_count * listing.price;
             rem_count -= used_count;
-            buy_worlds.push((listing.world, listing.count, listing.price));
+            let mut entry = buy_worlds.entry(listing.world).or_default();
+            entry.0 += listing.count;
+            entry.1 = u32::max(entry.1, listing.price);
             if rem_count == 0 {
                 break;
             }
         }
-        buy_price += (rem_count as f32 * item_mb_data_center.price.ceil()) as u32;
+        let ceil_price = item_mb_data_centers
+            .iter()
+            .map(|mb| mb.price_nq.ceil() as i32)
+            .max()
+            .unwrap() as f32;
+        buy_price += (rem_count as f32 * ceil_price) as u32;
+
+        let mut buy_worlds = buy_worlds
+            .into_iter()
+            .map(|(world, (count, price))| WorldInfo {
+                world,
+                count,
+                price,
+            })
+            .collect::<Vec<_>>();
+        buy_worlds.sort_by_key(|info| info.price);
 
         let profit = sell_price as i32 - buy_price as i32;
         let profit_margin = profit as f32 / buy_price as f32;
@@ -83,20 +125,28 @@ impl MarketBoardAnalysis {
     fn velocity_info(
         mb_item_info: &MarketBoardItemInfo,
         settings: &Settings,
+        analysis_filters: &AnalysisFilters,
         is_hq: bool,
     ) -> VelocityAnalysis {
-        let price = if is_hq {
+        if is_hq && analysis_filters.quality == QualityFilter::NQ {
+            return VelocityAnalysis::default();
+        }
+
+        let is_nq_filter = analysis_filters.quality == QualityFilter::NQ;
+        let price = if is_nq_filter {
+            mb_item_info.price_avg
+        } else if is_hq {
             f32::max(
-                f32::max(mb_item_info.price, mb_item_info.price_hq),
+                f32::max(mb_item_info.price_nq, mb_item_info.price_hq),
                 mb_item_info.min_price_hq as f32,
             )
         } else {
-            mb_item_info.price
+            mb_item_info.price_nq
         };
 
         let listing_threshold = (price as f32 * settings.listings_ratio) as u32;
         let is_lower_listing = |listing: &ItemListing| listing.price <= listing_threshold;
-        let is_quality_listing = |listing: &ItemListing| listing.is_hq == is_hq;
+        let is_quality_listing = |listing: &ItemListing| listing.is_hq == is_hq || is_nq_filter;
 
         let count = mb_item_info
             .listings
@@ -108,10 +158,12 @@ impl MarketBoardAnalysis {
             .sum::<u32>();
 
         VelocityAnalysis {
-            velocity: if is_hq {
+            velocity: if is_nq_filter {
+                mb_item_info.velocity_nq + mb_item_info.velocity_hq
+            } else if is_hq {
                 mb_item_info.velocity_hq
             } else {
-                mb_item_info.velocity
+                mb_item_info.velocity_nq
             },
             count,
         }
@@ -157,6 +209,7 @@ impl RecursiveMarketBoardAnalysis {
         settings: &Settings,
         multiplier: u32,
         is_top: bool,
+        analysis_filters: &AnalysisFilters,
     ) -> Option<Self> {
         let ingredient = ingredient.as_ingredient();
         let multiplier = ingredient.count * multiplier;
@@ -165,11 +218,19 @@ impl RecursiveMarketBoardAnalysis {
             count: multiplier,
         };
 
-        let analysis = match MarketBoardAnalysis::from_item(&ingredient, universalis, settings) {
+        let analysis = match MarketBoardAnalysis::from_item(
+            &ingredient,
+            universalis,
+            settings,
+            analysis_filters,
+        ) {
             Some(analysis) => analysis,
             None => MarketBoardAnalysis {
                 item_id: ingredient.item_id,
-                buy_worlds: vec![("--Not on MB--".into(), 0, 0)],
+                buy_worlds: vec![WorldInfo {
+                    world: "--Not on MB--".into(),
+                    ..Default::default()
+                }],
                 ..Default::default()
             },
         };
@@ -194,6 +255,7 @@ impl RecursiveMarketBoardAnalysis {
                         settings,
                         (multiplier + recipe.output.count - 1) / recipe.output.count,
                         false,
+                        analysis_filters,
                     ) {
                         None => continue,
                         Some(v) => v,
@@ -225,43 +287,10 @@ impl RecursiveMarketBoardAnalysis {
 
         leaf_nodes
     }
+}
 
-    pub fn write<W: Write>(&self, writer: &mut W, library: &Library) -> Result<()> {
-        self.write_depth(writer, library, "".into())
-    }
-
-    fn write_depth<W: Write>(
-        &self,
-        writer: &mut W,
-        library: &Library,
-        indent: String,
-    ) -> Result<()> {
-        let item = &library.all_items[&self.ingredient.item_id];
-        let name = format!(
-            "{indent}{}x {} ({:.1})",
-            self.ingredient.count,
-            item.name,
-            self.analysis.velocity_info_hq.velocity + self.analysis.velocity_info_nq.velocity
-        );
-
-        if !self.children.is_empty() {
-            let new_indent = format!("{indent}  ");
-            write!(
-                writer,
-                "{name:<40}| {:<8}{:<8}| {}\n",
-                self.analysis.buy_price, self.best_buy_price, ""
-            )?;
-            for child in &self.children {
-                child.write_depth(writer, library, new_indent.clone())?;
-            }
-        } else {
-            write!(
-                writer,
-                "{name:<40}| {:<8}{:<8}| {:?}\n",
-                self.best_buy_price, self.best_buy_price, self.analysis.buy_worlds
-            )?;
-        }
-
-        Ok(())
+impl Debug for WorldInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}x <{}", self.world, self.count, self.price)
     }
 }

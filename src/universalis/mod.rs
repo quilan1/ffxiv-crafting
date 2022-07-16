@@ -3,6 +3,6 @@ mod processor;
 mod universalis;
 
 use json::process_json;
-use processor::Processor;
+use processor::ProcessorStream;
 use universalis::UniversalisRequest;
 pub use universalis::{ItemListing, MarketBoardInfo, MarketBoardItemInfo, Universalis};

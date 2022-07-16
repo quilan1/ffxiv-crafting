@@ -1,8 +1,54 @@
+use anyhow::Result;
 use regex::Regex;
 
 use crate::library::{ItemInfo, Library};
 
 type FilterOptions = Vec<String>;
+
+#[derive(PartialEq)]
+pub enum QualityFilter {
+    Any,
+    NQ,
+    HQ,
+}
+
+impl Default for QualityFilter {
+    fn default() -> Self {
+        Self::Any
+    }
+}
+
+#[derive(Default)]
+pub struct AnalysisFilters {
+    pub quality: QualityFilter,
+    pub count: Option<u32>,
+    pub limit: Option<u32>,
+    pub min_velocity: Option<f32>,
+}
+
+impl AnalysisFilters {
+    pub fn new(group_filters: &Vec<Filter>, item_filters: &Vec<Filter>) -> Result<Self> {
+        let mut all_filters = group_filters.clone();
+        all_filters.extend(item_filters.clone());
+        Self::from_filters(&all_filters)
+    }
+
+    pub fn from_filters(all_filters: &Vec<Filter>) -> Result<Self> {
+        let mut filters = AnalysisFilters::default();
+        for Filter { ftype, options } in all_filters {
+            match &ftype[..] {
+                ":count" => filters.count = Some(options.join("").parse::<u32>()?),
+                ":limit" => filters.limit = Some(options.join("").parse::<u32>()?),
+                ":min_velocity" => filters.min_velocity = Some(options.join("").parse::<f32>()?),
+                ":only_hq" => filters.quality = QualityFilter::HQ,
+                ":as_nq" => filters.quality = QualityFilter::NQ,
+                _ => {}
+            }
+        }
+
+        Ok(filters)
+    }
+}
 
 #[derive(Clone)]
 pub struct Filter {
@@ -11,12 +57,37 @@ pub struct Filter {
 }
 
 impl Filter {
+    pub fn new(filters: &str) -> Vec<Filter> {
+        filters
+            .split(",")
+            .map(|filter| {
+                let filter = filter.trim();
+                let contents = filter.split(" ").collect::<Vec<_>>();
+                let (ftype, options) = if contents.len() > 1 {
+                    (
+                        contents[0].to_string(),
+                        contents[1..]
+                            .join(" ")
+                            .split("|")
+                            .map(|filter| filter.trim())
+                            .filter(|filter| filter.len() > 0)
+                            .map(|filter| filter.to_string())
+                            .collect::<Vec<_>>(),
+                    )
+                } else {
+                    (contents[0].to_string(), Vec::new())
+                };
+                Filter { ftype, options }
+            })
+            .collect::<Vec<_>>()
+    }
+
     pub fn apply_filters<'a>(
         library: &Library,
         mut items: Vec<&'a ItemInfo>,
         filters: &str,
     ) -> (Vec<&'a ItemInfo>, Vec<Filter>) {
-        let filters = Self::filters(filters);
+        let filters = Self::new(filters);
         let mut result_filters = Vec::new();
         for Filter { ftype, options } in filters {
             items = match &ftype[..] {
@@ -69,9 +140,12 @@ impl Filter {
         items
             .into_iter()
             .filter(|item| {
-                let recipe = &library.all_recipes[&item.id];
-                let recipe_level = &library.all_recipe_levels[&recipe.level_id];
-                recipe_level.level >= min_level && recipe_level.level <= max_level
+                if let Some(recipe) = library.all_recipes.get(&item.id) {
+                    let recipe_level = &library.all_recipe_levels[&recipe.level_id];
+                    recipe_level.level >= min_level && recipe_level.level <= max_level
+                } else {
+                    false
+                }
             })
             .collect::<Vec<_>>()
     }
@@ -130,10 +204,7 @@ impl Filter {
         options: FilterOptions,
         items: Vec<&'a ItemInfo>,
     ) -> Vec<&'a ItemInfo> {
-        let categories = options
-            .iter()
-            .map(|cat| cat.as_str())
-            .collect::<Vec<_>>();
+        let categories = options.iter().map(|cat| cat.as_str()).collect::<Vec<_>>();
         let all_leve_items = library.all_leves.all_item_ids();
 
         items
@@ -158,42 +229,14 @@ impl Filter {
 
         items
             .into_iter()
-            .filter(|item| {
-                match library.all_recipes.get(&item.id) {
-                    None => false,
-                    Some(recipe) => {
-                        recipe.inputs.iter().any(|input| {
-                            match library.all_items.items.get(&input.item_id) {
-                                None => false,
-                                Some(input_item) => re.is_match(&input_item.name)
-                            }
-                        })
+            .filter(|item| match library.all_recipes.get(&item.id) {
+                None => false,
+                Some(recipe) => recipe.inputs.iter().any(|input| {
+                    match library.all_items.items.get(&input.item_id) {
+                        None => false,
+                        Some(input_item) => re.is_match(&input_item.name),
                     }
-                }
-            }).collect::<Vec<_>>()
-    }
-
-    fn filters(filters: &str) -> Vec<Filter> {
-        filters
-            .split(",")
-            .map(|filter| {
-                let filter = filter.trim();
-                let contents = filter.split(" ").collect::<Vec<_>>();
-                let (ftype, options) = if contents.len() > 1 {
-                    (
-                        contents[0].to_string(),
-                        contents[1..]
-                            .join(" ")
-                            .split("|")
-                            .map(|filter| filter.trim())
-                            .filter(|filter| filter.len() > 0)
-                            .map(|filter| filter.to_string())
-                            .collect::<Vec<_>>(),
-                    )
-                } else {
-                    (contents[0].to_string(), Vec::new())
-                };
-                Filter { ftype, options }
+                }),
             })
             .collect::<Vec<_>>()
     }

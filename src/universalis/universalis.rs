@@ -2,15 +2,16 @@ use anyhow::Result;
 use std::collections::BTreeMap;
 use std::time::Instant;
 
-use crate::universalis::Processor;
+use crate::universalis::ProcessorStream;
 use crate::{library::Library, Settings};
 
 #[derive(Debug, Clone, Default)]
 pub struct MarketBoardItemInfo {
-    pub price: f32,
+    pub price_nq: f32,
     pub price_hq: f32,
+    pub price_avg: f32,
     pub min_price_hq: u32,
-    pub velocity: f32,
+    pub velocity_nq: f32,
     pub velocity_hq: f32,
     pub listings: Vec<ItemListing>,
 }
@@ -20,14 +21,16 @@ pub struct ItemListing {
     pub price: u32,
     pub is_hq: bool,
     pub count: u32,
+    pub posting: u64,
     pub world: String,
+    pub name: String,
 }
 
 pub type MarketBoardInfo = BTreeMap<u32, MarketBoardItemInfo>;
 
 pub struct Universalis {
     pub homeworld: MarketBoardInfo,
-    pub data_center: MarketBoardInfo,
+    pub data_centers: Vec<MarketBoardInfo>,
 }
 
 #[derive(Clone)]
@@ -38,14 +41,11 @@ pub struct UniversalisRequest {
 }
 
 impl Universalis {
-    pub async fn get_mb_info(
-        library: &Library,
-        settings: &Settings,
-        homeworld: &str,
-        data_center: &str,
-    ) -> Result<Self> {
+    pub async fn get_mb_info(library: &Library, settings: &Settings) -> Result<Self> {
+        let homeworld = settings.homeworld.as_str();
+        let data_centers = settings.data_centers.iter().map(|v| v.as_str()).collect();
         let ids = library.all_market_board_ids(settings);
-        let requests = Self::create_mb_requests(&ids, homeworld, data_center);
+        let requests = Self::create_mb_requests(&ids, homeworld, &data_centers);
         println!(
             "Creating {} requests for {} items",
             requests.len(),
@@ -53,24 +53,25 @@ impl Universalis {
         );
 
         let start = Instant::now();
-        let processor = Processor::new(requests, homeworld, data_center)?;
-        let mb_info = processor.process().await?;
+        let processor = ProcessorStream::new(requests)?;
+        let mb_info = processor.process(homeworld, &data_centers).await;
 
-        println!(
-            "Total time taken: {}s",
-            start.elapsed().as_secs()
-        );
+        println!("Total time taken: {}s", start.elapsed().as_secs());
 
+        let data_center_info = data_centers
+            .iter()
+            .map(|&data_center| mb_info[data_center].clone())
+            .collect::<Vec<_>>();
         Ok(Self {
             homeworld: mb_info[homeworld].clone(),
-            data_center: mb_info[data_center].clone(),
+            data_centers: data_center_info,
         })
     }
 
     fn create_mb_requests(
         ids: &Vec<u32>,
         homeworld: &str,
-        data_center: &str,
+        data_centers: &Vec<&str>,
     ) -> Vec<UniversalisRequest> {
         let mut requests = Vec::new();
         for (chunk, ids) in ids.chunks(100).enumerate() {
@@ -80,7 +81,10 @@ impl Universalis {
                 .collect::<Vec<_>>()
                 .join(",");
 
-            for world in [homeworld, data_center] {
+            let mut worlds = data_centers.clone();
+            worlds.push(homeworld);
+
+            for world in worlds {
                 requests.push(UniversalisRequest {
                     world: world.into(),
                     url: get_listing_url(world, &ids),
