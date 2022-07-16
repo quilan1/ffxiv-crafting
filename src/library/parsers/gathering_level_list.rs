@@ -11,27 +11,13 @@ impl GatheringLevelList {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         let mut gathering_levels = BTreeMap::new();
 
-        let mut reader = ReaderBuilder::new().from_path(path)?;
-        for (line, record) in reader.records().enumerate() {
-            if line < 2 {
-                continue;
-            }
+        csv_parse!(path => {
+            id = U[0];
+            level = U[0 + 1];
+            gathering_levels.insert(id, level);
+        });
 
-            let record = record?;
-            let info = record.into_iter().collect::<Vec<_>>();
-
-            let id = info[0].parse::<u32>()?;
-            let level = info[0 + 1].parse::<u32>()?;
-
-            gathering_levels.insert(
-                id,
-                level,
-            );
-        }
-
-        Ok(Self {
-            gathering_levels,
-        })
+        Ok(Self { gathering_levels })
     }
 }
 

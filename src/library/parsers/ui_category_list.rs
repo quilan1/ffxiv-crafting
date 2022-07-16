@@ -14,18 +14,12 @@ impl UiCategoryList {
         let mut categories = BTreeMap::new();
         let mut name_to_id = BTreeMap::new();
 
-        let mut reader = ReaderBuilder::new().from_path(path)?;
-        for (line, record) in reader.records().enumerate() {
-            let record = record?;
-            if line < 2 {
-                continue;
-            }
-
-            let id = record[0].parse::<u32>()?;
-            let name = &record[0 + 1];
+        csv_parse!(path => {
+            id = U[0];
+            name = S[0 + 1];
             categories.insert(id, name.to_string());
             name_to_id.insert(name.to_string(), id);
-        }
+        });
 
         Ok(Self {
             categories,

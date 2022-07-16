@@ -22,24 +22,16 @@ impl LeveList {
         let mut leves = BTreeMap::new();
         let mut leves_by_item = BTreeMap::<u32, Vec<u32>>::new();
 
-        let mut reader = ReaderBuilder::new().from_path(path)?;
-        for (line, record) in reader.records().enumerate() {
-            if line < 2 {
-                continue;
-            }
+        csv_parse!(path => {
+            id = U[0];
+            level = U[6 + 1];
+            jobs = U[15 + 1];
 
-            let record = record?;
-            let info = record.into_iter().collect::<Vec<_>>();
-
-            let id = info[0].parse::<u32>()?;
             if !library.all_crafting_leves.leves.contains_key(&id) {
                 continue;
             }
 
             let item = library.all_crafting_leves[id];
-            let level = info[6 + 1].parse::<u32>()?;
-            let jobs = info[15 + 1].parse::<u32>()?;
-
             leves.insert(
                 id,
                 LeveInfo {
@@ -51,7 +43,7 @@ impl LeveList {
             );
 
             leves_by_item.entry(item).or_default().push(id);
-        }
+        });
 
         Ok(Self {
             leves_by_item,
