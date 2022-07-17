@@ -2,7 +2,7 @@ use anyhow::Result;
 use csv::ReaderBuilder;
 use std::{collections::BTreeMap, ops::Index, path::Path};
 
-use crate::Library;
+use crate::util::library;
 
 #[derive(Default)]
 pub struct LeveList {
@@ -18,7 +18,7 @@ pub struct LeveInfo {
 }
 
 impl LeveList {
-    pub fn from_path<P: AsRef<Path>>(path: P, library: &Library) -> Result<Self> {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         let mut leves = BTreeMap::new();
         let mut leves_by_item = BTreeMap::<u32, Vec<u32>>::new();
 
@@ -27,11 +27,11 @@ impl LeveList {
             level = U[6 + 1];
             jobs = U[15 + 1];
 
-            if !library.all_crafting_leves.leves.contains_key(&id) {
+            if !library().all_crafting_leves.leves.contains_key(&id) {
                 continue;
             }
 
-            let item = library.all_crafting_leves[id];
+            let item = library().all_crafting_leves[id];
             leves.insert(
                 id,
                 LeveInfo {

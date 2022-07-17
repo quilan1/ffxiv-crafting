@@ -2,7 +2,7 @@ use anyhow::Result;
 use csv::ReaderBuilder;
 use std::{collections::BTreeMap, ops::Index, path::Path};
 
-use crate::library::{ItemId, Library};
+use crate::util::library;
 
 #[derive(Default)]
 pub struct ItemList {
@@ -20,7 +20,7 @@ pub struct ItemInfo {
 }
 
 impl ItemList {
-    pub fn read_from_path<P: AsRef<Path>>(path: P) -> Result<()> {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         let mut items = BTreeMap::new();
         let mut name_to_id = BTreeMap::new();
 
@@ -45,26 +45,23 @@ impl ItemList {
             name_to_id.insert(name, id);
         });
 
-        unsafe {
-            ITEM_LIST = Some(Self { name_to_id, items });
-        }
-        Ok(())
+        Ok(Self { name_to_id, items })
     }
 
-    pub fn all_craftable_items(&self, library: &Library) -> Vec<&ItemInfo> {
+    pub fn all_craftable_items(&self) -> Vec<&ItemInfo> {
         self.items
             .iter()
             .filter_map(|(_, v)| {
-                Some(v).filter(|item| library.all_recipes.contains_item_id(item.id))
+                Some(v).filter(|item| library().all_recipes.contains_item_id(item.id))
             })
             .collect::<Vec<_>>()
     }
 
-    pub fn all_gatherable_items(&self, library: &Library) -> Vec<&ItemInfo> {
+    pub fn all_gatherable_items(&self) -> Vec<&ItemInfo> {
         self.items
             .iter()
             .filter_map(|(_, v)| {
-                Some(v).filter(|item| library.all_gathering.contains_item_id(&item.id))
+                Some(v).filter(|item| library().all_gathering.contains_item_id(&item.id))
             })
             .collect::<Vec<_>>()
     }
@@ -90,27 +87,4 @@ impl Index<&str> for ItemList {
             Some(value) => value,
         }
     }
-}
-
-///////////////////////////////////////////
-
-static mut ITEM_LIST: Option<ItemList> = None;
-
-pub fn item_list() -> &'static ItemList {
-    unsafe { ITEM_LIST.as_ref().expect("ITEM_LIST has not been set!") }
-}
-
-pub fn item_name<I: ItemId>(obj: I) -> &'static str {
-    let id = obj.item_id();
-    &item_list()[&id].name
-}
-
-pub fn item<I: ItemId>(obj: I) -> &'static ItemInfo {
-    let id = obj.item_id();
-    &item_list()[&id]
-}
-
-pub fn item_checked<I: ItemId>(obj: I) -> Option<&'static ItemInfo> {
-    let id = obj.item_id();
-    item_list().items.get(&id)
 }

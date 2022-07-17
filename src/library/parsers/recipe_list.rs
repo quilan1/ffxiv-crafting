@@ -42,26 +42,15 @@ pub struct RecipeList {
 impl RecipeList {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         let mut recipes = BTreeMap::new();
-        let mut reader = ReaderBuilder::new().from_path(path)?;
-        for (line, record) in reader.records().enumerate() {
-            let record = record?;
-            if line < 2 {
-                continue;
-            }
 
-            if record.len() < 18 {
-                continue;
-            }
-
-            let level_id = record[2 + 1].parse::<u32>().unwrap();
-            let arr = (4..18).map(|ind| &record[ind]).collect::<Vec<_>>();
+        csv_parse!(path => {
+            level_id = U[2 + 1];
+            arr = U[4..24];
 
             let mut ingredients = Vec::new();
-            for (id, count) in arr.into_iter().tuples() {
-                let id = id.parse::<u32>()?;
-                let count = count.parse::<u32>()?;
+            for (item_id, count) in arr.into_iter().tuples() {
                 if count > 0 {
-                    ingredients.push((id, count));
+                    ingredients.push(Ingredient { item_id, count });
                 }
             }
 
@@ -69,19 +58,17 @@ impl RecipeList {
                 continue;
             }
 
-            let (id, count) = ingredients[0];
+            let (output, inputs) = ingredients.split_first().unwrap();
+            let inputs = inputs.to_vec();
             recipes.insert(
-                id,
+                output.item_id,
                 Recipe {
-                    output: Ingredient { item_id: id, count },
-                    inputs: ingredients[1..]
-                        .into_iter()
-                        .map(|&(id, count)| Ingredient { item_id: id, count })
-                        .collect::<Vec<_>>(),
+                    output: output.clone(),
+                    inputs: inputs.to_vec(),
                     level_id,
                 },
             );
-        }
+        });
 
         Ok(Self { recipes })
     }

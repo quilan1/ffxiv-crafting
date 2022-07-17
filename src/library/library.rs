@@ -6,6 +6,7 @@ use std::path::Path;
 use std::{collections::HashSet, fs::DirBuilder, io::Write};
 
 use crate::universalis::Universalis;
+use crate::util::item_name;
 use crate::{RunMode, Settings};
 
 use super::parsers::*;
@@ -13,6 +14,7 @@ use super::CraftList;
 
 #[derive(Default)]
 pub struct Library {
+    pub all_items: ItemList,
     pub all_ui_categories: UiCategoryList,
     pub all_recipe_levels: RecipeLevelTable,
     pub all_recipes: RecipeList,
@@ -25,28 +27,41 @@ pub struct Library {
     pub all_job_categories: JobCategoryList,
 }
 
+static mut LIBRARY: Option<Library> = None;
+
+pub fn library() -> &'static Library {
+    unsafe { LIBRARY.as_ref().expect("LIBRARY has not been set!") }
+}
+
+fn library_mut() -> &'static mut Library {
+    unsafe { LIBRARY.as_mut().expect("LIBRARY has not been set!") }
+}
+
 impl Library {
-    pub async fn new() -> Result<Self> {
-        let mut library = Self::default();
+    pub async fn create() -> Result<()> {
+        unsafe {
+            LIBRARY = Some(Library::default());
+        }
+
+        let library = library_mut();
 
         Self::download_files().await?;
 
-        ItemList::read_from_path("./csv/Item.csv")?;
-
+        library.all_items = ItemList::from_path("./csv/Item.csv")?;
         library.all_ui_categories = UiCategoryList::from_path("./csv/ItemUICategory.csv")?;
         library.all_recipe_levels = RecipeLevelTable::from_path("./csv/RecipeLevelTable.csv")?;
         library.all_recipes = RecipeList::from_path("./csv/Recipe.csv")?;
         library.all_gathering_levels =
             GatheringLevelList::from_path("./csv/GatheringItemLevelConvertTable.csv")?;
-        library.all_gathering = GatheringList::from_path("./csv/GatheringItem.csv", &library)?;
+        library.all_gathering = GatheringList::from_path("./csv/GatheringItem.csv")?;
         library.all_job_categories = JobCategoryList::from_path("./csv/ClassJobCategory.csv")?;
         library.all_crafting_leves = CraftLeveList::from_path("./csv/CraftLeve.csv")?;
-        library.all_leves = LeveList::from_path("./csv/Leve.csv", &library)?;
+        library.all_leves = LeveList::from_path("./csv/Leve.csv")?;
 
-        library.all_crafts = CraftList::from_path("./in_crafting_list.txt", &library, false)?;
-        library.all_custom_crafts = CraftList::from_path("./in_custom_list.txt", &library, true)?;
+        library.all_crafts = CraftList::from_path("./in_crafting_list.txt", false)?;
+        library.all_custom_crafts = CraftList::from_path("./in_custom_list.txt", true)?;
 
-        Ok(library)
+        Ok(())
     }
 
     pub async fn download_files() -> Result<()> {
@@ -96,20 +111,20 @@ impl Library {
     }
 
     pub fn all_craftable_items(&self) -> Vec<&ItemInfo> {
-        item_list().all_craftable_items(self)
+        library().all_items.all_craftable_items()
     }
 
     pub fn all_gatherable_items(&self) -> Vec<&ItemInfo> {
-        item_list().all_gatherable_items(self)
+        library().all_items.all_gatherable_items()
     }
 
     pub fn all_market_board_ids(&self, settings: &Settings) -> Vec<u32> {
         let mut ids = HashSet::new();
         if [RunMode::OnlyCrafting, RunMode::All].contains(&settings.run_mode) {
-            ids.extend(self.all_crafts.all_craft_item_ids(self));
+            ids.extend(self.all_crafts.all_craft_item_ids());
         }
         if [RunMode::OnlyCustom, RunMode::All].contains(&settings.run_mode) {
-            ids.extend(self.all_custom_crafts.all_craft_item_ids(self));
+            ids.extend(self.all_custom_crafts.all_craft_item_ids());
         }
         if [RunMode::OnlyGathering, RunMode::All].contains(&settings.run_mode) {
             ids.extend(self.all_gatherable_items().iter().map(|item| item.id));
@@ -121,12 +136,11 @@ impl Library {
         DirBuilder::new().recursive(true).create("./out")?;
         if [RunMode::OnlyCrafting, RunMode::All].contains(&settings.run_mode) {
             self.all_crafts
-                .write_to_file("./out/crafts.txt", self, universalis, settings)?;
+                .write_to_file("./out/crafts.txt", universalis, settings)?;
         }
         if [RunMode::OnlyCustom, RunMode::All].contains(&settings.run_mode) {
             self.all_custom_crafts.write_custom_to_file(
                 "./out/custom.txt",
-                self,
                 universalis,
                 settings,
             )?;

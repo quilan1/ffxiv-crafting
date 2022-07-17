@@ -47,6 +47,8 @@ type ProcessorReturn = (usize, String);
 type ProcessorFuture = BoxFuture<'static, ProcessorReturn>;
 type ProcessorOutput = BTreeMap<String, MarketBoardInfo>;
 
+const NUM_SIMULTANEOUS_STREAMS: usize = 8;
+
 /////////////////////////////////////////////////////////
 
 impl ProcessorStream {
@@ -54,7 +56,6 @@ impl ProcessorStream {
         let data = ProcessorData::new(requests)?;
 
         Ok(Self {
-            // data: Arc::new(Mutex::new(data)),
             data: Rc::new(RefCell::new(data)),
         })
     }
@@ -73,7 +74,7 @@ impl ProcessorStream {
         }
 
         self.clone()
-            .buffer_unordered(8)
+            .buffer_unordered(NUM_SIMULTANEOUS_STREAMS)
             .for_each(|value| {
                 if last_update.elapsed().as_secs() > 10 {
                     self.with_inner(|data| data.update());

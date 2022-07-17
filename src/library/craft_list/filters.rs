@@ -1,7 +1,8 @@
 use anyhow::Result;
 use regex::Regex;
 
-use crate::library::{item_checked, ItemInfo, Library};
+use crate::library::ItemInfo;
+use crate::util::{item_checked, library};
 
 type FilterOptions = Vec<String>;
 
@@ -83,7 +84,6 @@ impl Filter {
     }
 
     pub fn apply_filters<'a>(
-        library: &Library,
         mut items: Vec<&'a ItemInfo>,
         filters: &str,
     ) -> (Vec<&'a ItemInfo>, Vec<Filter>) {
@@ -91,13 +91,13 @@ impl Filter {
         let mut result_filters = Vec::new();
         for Filter { ftype, options } in filters {
             items = match &ftype[..] {
-                ":name" => Self::filter_name(library, options, items),
-                ":rlevel" => Self::filter_recipe_level(library, options, items),
-                ":elevel" => Self::filter_equip_level(library, options, items),
-                ":ilevel" => Self::filter_ilevel(library, options, items),
-                ":cat" => Self::filter_ui_category(library, options, items),
-                ":is_leve" => Self::filter_leve(library, options, items),
-                ":contains" => Self::filter_contains(library, options, items),
+                ":name" => Self::filter_name(options, items),
+                ":rlevel" => Self::filter_recipe_level(options, items),
+                ":elevel" => Self::filter_equip_level(options, items),
+                ":ilevel" => Self::filter_ilevel(options, items),
+                ":cat" => Self::filter_ui_category(options, items),
+                ":is_leve" => Self::filter_leve(options, items),
+                ":contains" => Self::filter_contains(options, items),
                 ":count" => {
                     result_filters.push(Filter { ftype, options });
                     continue;
@@ -112,11 +112,7 @@ impl Filter {
         (items, result_filters)
     }
 
-    fn filter_name<'a>(
-        _: &Library,
-        options: FilterOptions,
-        items: Vec<&'a ItemInfo>,
-    ) -> Vec<&'a ItemInfo> {
+    fn filter_name<'a>(options: FilterOptions, items: Vec<&'a ItemInfo>) -> Vec<&'a ItemInfo> {
         let re = Regex::new(&options.join("|")).unwrap();
 
         items
@@ -126,7 +122,6 @@ impl Filter {
     }
 
     fn filter_recipe_level<'a>(
-        library: &Library,
         options: FilterOptions,
         items: Vec<&'a ItemInfo>,
     ) -> Vec<&'a ItemInfo> {
@@ -140,8 +135,8 @@ impl Filter {
         items
             .into_iter()
             .filter(|item| {
-                if let Some(recipe) = library.all_recipes.get(&item.id) {
-                    let recipe_level = &library.all_recipe_levels[&recipe.level_id];
+                if let Some(recipe) = library().all_recipes.get(&item.id) {
+                    let recipe_level = &library().all_recipe_levels[&recipe.level_id];
                     recipe_level.level >= min_level && recipe_level.level <= max_level
                 } else {
                     false
@@ -151,7 +146,6 @@ impl Filter {
     }
 
     fn filter_equip_level<'a>(
-        _: &Library,
         options: FilterOptions,
         items: Vec<&'a ItemInfo>,
     ) -> Vec<&'a ItemInfo> {
@@ -168,11 +162,7 @@ impl Filter {
             .collect::<Vec<_>>()
     }
 
-    fn filter_ilevel<'a>(
-        _: &Library,
-        options: FilterOptions,
-        items: Vec<&'a ItemInfo>,
-    ) -> Vec<&'a ItemInfo> {
+    fn filter_ilevel<'a>(options: FilterOptions, items: Vec<&'a ItemInfo>) -> Vec<&'a ItemInfo> {
         let levels = options
             .into_iter()
             .map(|level| level.parse::<u32>().unwrap())
@@ -187,7 +177,6 @@ impl Filter {
     }
 
     fn filter_ui_category<'a>(
-        library: &Library,
         options: FilterOptions,
         items: Vec<&'a ItemInfo>,
     ) -> Vec<&'a ItemInfo> {
@@ -195,42 +184,34 @@ impl Filter {
 
         items
             .into_iter()
-            .filter(|item| categories.contains(&library.all_ui_categories[&item.ui_category]))
+            .filter(|item| categories.contains(&library().all_ui_categories[&item.ui_category]))
             .collect::<Vec<_>>()
     }
 
-    fn filter_leve<'a>(
-        library: &Library,
-        options: FilterOptions,
-        items: Vec<&'a ItemInfo>,
-    ) -> Vec<&'a ItemInfo> {
+    fn filter_leve<'a>(options: FilterOptions, items: Vec<&'a ItemInfo>) -> Vec<&'a ItemInfo> {
         let categories = options.iter().map(|cat| cat.as_str()).collect::<Vec<_>>();
-        let all_leve_items = library.all_leves.all_item_ids();
+        let all_leve_items = library().all_leves.all_item_ids();
 
         items
             .into_iter()
             .filter(|item| all_leve_items.contains(&item.id))
             .filter(|item| {
-                let leve_ids = library.all_leves.get_by_item_id(&item.id).unwrap();
+                let leve_ids = library().all_leves.get_by_item_id(&item.id).unwrap();
                 leve_ids
                     .iter()
-                    .map(|leve_id| &library.all_leves[&leve_id].jobs)
-                    .any(|jobs| library.all_job_categories[&jobs].matches_any(&categories))
+                    .map(|leve_id| &library().all_leves[&leve_id].jobs)
+                    .any(|jobs| library().all_job_categories[&jobs].matches_any(&categories))
             })
             .collect::<Vec<_>>()
     }
 
-    fn filter_contains<'a>(
-        library: &Library,
-        options: FilterOptions,
-        items: Vec<&'a ItemInfo>,
-    ) -> Vec<&'a ItemInfo> {
+    fn filter_contains<'a>(options: FilterOptions, items: Vec<&'a ItemInfo>) -> Vec<&'a ItemInfo> {
         let re = Regex::new(&options.join("|")).unwrap();
 
         items
             .into_iter()
             .filter(|item| {
-                library
+                library()
                     .all_recipes
                     .get(&item.id)
                     .map(|recipe| {

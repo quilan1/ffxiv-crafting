@@ -9,8 +9,9 @@ use std::{
 };
 
 use crate::{
-    library::{craft_list::AnalysisFilters, item, item_checked, Library, MarketBoardAnalysis},
+    library::{craft_list::AnalysisFilters, MarketBoardAnalysis},
     universalis::Universalis,
+    util::{item, item_checked, library},
     Settings,
 };
 
@@ -27,7 +28,7 @@ pub struct GatheringInfo {
 }
 
 impl GatheringList {
-    pub fn from_path<P: AsRef<Path>>(path: P, library: &Library) -> Result<Self> {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         let mut gathering = BTreeMap::new();
         let mut by_item = BTreeMap::<u32, Vec<u32>>::new();
 
@@ -36,7 +37,7 @@ impl GatheringList {
             item_id = U[0 + 1];
             level = U[1 + 1];
 
-            let level = library.all_gathering_levels[&level];
+            let level = library().all_gathering_levels[&level];
             match item_checked(item_id).map(|item| item.name == "") {
                 None | Some(true) => continue,
                 _ => {},

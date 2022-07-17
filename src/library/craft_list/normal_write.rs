@@ -7,16 +7,13 @@ use std::{
 
 use super::{AnalysisFilters, CraftList};
 use crate::{
-    library::{item_name, Library, RecursiveMarketBoardAnalysis},
-    universalis::Universalis,
-    Settings,
+    library::RecursiveMarketBoardAnalysis, universalis::Universalis, util::item_name, Settings,
 };
 
 impl CraftList {
     pub fn write_to_file<P: AsRef<Path>>(
         &self,
         path: P,
-        library: &Library,
         universalis: &Universalis,
         settings: &Settings,
     ) -> Result<()> {
@@ -32,7 +29,6 @@ impl CraftList {
                 .filter_map(|craft| {
                     match RecursiveMarketBoardAnalysis::analyze(
                         craft.item_id,
-                        library,
                         universalis,
                         settings,
                         1,

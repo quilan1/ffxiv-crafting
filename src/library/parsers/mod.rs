@@ -1,8 +1,8 @@
 macro_rules! parse {
-    // (@ $info:tt $id:ident = R[$start:expr,$end:expr]; $($tail:tt)*) => {
-    //     let $id = $info[$start..$end].into_iter().map(|v| v.parse::<u32>().unwrap());
-    //     parse!(@ $info $($tail)*)
-    // };
+    (@ $info:tt $id:ident = U[$start:literal .. $end:literal]; $($tail:tt)*) => {
+        let $id = $info[$start..$end].into_iter().map(|v| v.parse::<u32>().unwrap_or_default()).collect::<Vec<_>>();
+        parse!(@ $info $($tail)*)
+    };
 
     (@ $info:tt $id:ident = U[$index:expr]; $($tail:tt)*) => {
         let $id = $info[$index].parse::<u32>()?;
@@ -19,7 +19,9 @@ macro_rules! parse {
         parse!(@ $info $($tail)*)
     };
 
-    (@ $info:tt $($tail:tt)*) => { $($tail)* };
+    (@ $info:tt $($tail:tt)+) => { $($tail)+ };
+
+    (@ $info:tt ) => {}
 }
 
 #[macro_export]
