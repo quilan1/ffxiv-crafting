@@ -73,7 +73,7 @@ impl MarketBoardAnalysis {
 
         let mut listings = item_mb_data_centers
             .iter()
-            .map(|mb| mb.listings.clone())
+            .map(|mb| &mb.listings)
             .flatten()
             .collect::<Vec<_>>();
         listings.sort_by_key(|listing| listing.price);
@@ -85,7 +85,7 @@ impl MarketBoardAnalysis {
             let used_count = u32::min(listing.count, rem_count);
             buy_price += used_count * listing.price;
             rem_count -= used_count;
-            let mut entry = buy_worlds.entry(listing.world).or_default();
+            let mut entry = buy_worlds.entry(listing.world.clone()).or_default();
             entry.0 += listing.count;
             entry.1 = u32::max(entry.1, listing.price);
             if rem_count == 0 {
@@ -146,13 +146,12 @@ impl MarketBoardAnalysis {
         };
 
         let listing_threshold = (price as f32 * settings.listings_ratio) as u32;
-        let is_lower_listing = |listing: &ItemListing| listing.price <= listing_threshold;
-        let is_quality_listing = |listing: &ItemListing| listing.is_hq == is_hq || is_nq_filter;
+        let is_lower_listing = |listing: &&ItemListing| listing.price <= listing_threshold;
+        let is_quality_listing = |listing: &&ItemListing| listing.is_hq == is_hq || is_nq_filter;
 
         let count = mb_item_info
             .listings
             .iter()
-            .cloned()
             .filter(is_lower_listing)
             .filter(is_quality_listing)
             .map(|listing| listing.count)
