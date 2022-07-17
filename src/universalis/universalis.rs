@@ -6,7 +6,7 @@ use crate::universalis::ProcessorStream;
 use crate::util::library;
 use crate::Settings;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct MarketBoardItemInfo {
     pub price_nq: f32,
     pub price_hq: f32,
@@ -17,7 +17,7 @@ pub struct MarketBoardItemInfo {
     pub listings: Vec<ItemListing>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct ItemListing {
     pub price: u32,
     pub is_hq: bool,
@@ -53,18 +53,16 @@ impl Universalis {
             ids.len()
         );
 
-        let start = Instant::now();
         let processor = ProcessorStream::new(requests)?;
-        let mb_info = processor.process(homeworld, &data_centers).await;
+        let mut mb_info = processor.process(homeworld, &data_centers).await;
 
-        println!("Total time taken: {}s", start.elapsed().as_secs());
-
+        let homeworld = mb_info.remove(homeworld).unwrap();
         let data_center_info = data_centers
             .iter()
-            .map(|&data_center| mb_info[data_center].clone())
+            .map(|&data_center| mb_info.remove(data_center).unwrap())
             .collect::<Vec<_>>();
         Ok(Self {
-            homeworld: mb_info[homeworld].clone(),
+            homeworld: homeworld,
             data_centers: data_center_info,
         })
     }
