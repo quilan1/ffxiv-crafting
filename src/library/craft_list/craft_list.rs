@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::{collections::BTreeSet, fs::read_to_string, path::Path};
 
-use crate::library::{item, item_list, Library};
+use crate::util::{item, library};
 
 use super::Filter;
 
@@ -23,11 +23,7 @@ pub struct CraftGroup {
 }
 
 impl CraftList {
-    pub fn from_path<P: AsRef<Path>>(
-        path: P,
-        library: &Library,
-        is_all_items: bool,
-    ) -> Result<Self> {
+    pub fn from_path<P: AsRef<Path>>(path: P, is_all_items: bool) -> Result<Self> {
         let contents = read_to_string(path.as_ref())?;
         let lines = contents
             .split("\r\n")
@@ -35,9 +31,9 @@ impl CraftList {
             .collect::<Vec<_>>();
 
         let item_list = if is_all_items {
-            item_list().items.values().collect::<Vec<_>>()
+            library().all_items.items.values().collect::<Vec<_>>()
         } else {
-            library.all_craftable_items()
+            library().all_craftable_items()
         };
 
         let mut craft_groups = Vec::new();
@@ -70,7 +66,7 @@ impl CraftList {
                     group.filters.extend(filters);
                 }
                 _ => {
-                    let (items, filters) = Filter::apply_filters(library, item_list.clone(), &line);
+                    let (items, filters) = Filter::apply_filters(item_list.clone(), &line);
                     for item in items {
                         // println!("Adding filter match: {}", item.name);
                         group.crafts.push(CraftInfo {
@@ -89,15 +85,15 @@ impl CraftList {
         Ok(Self { craft_groups })
     }
 
-    pub fn all_craft_item_ids(&self, library: &Library) -> Vec<u32> {
-        fn push_ids(ids: &mut Vec<u32>, item_id: u32, library: &Library) {
+    pub fn all_craft_item_ids(&self) -> Vec<u32> {
+        fn push_ids(ids: &mut Vec<u32>, item_id: u32) {
             ids.push(item_id);
-            if !library.all_recipes.contains_item_id(item_id) {
+            if !library().all_recipes.contains_item_id(item_id) {
                 return;
             }
 
-            for input in &library.all_recipes[&item_id].inputs {
-                push_ids(ids, input.item_id, library);
+            for input in &library().all_recipes[&item_id].inputs {
+                push_ids(ids, input.item_id);
             }
         }
 
@@ -107,7 +103,7 @@ impl CraftList {
             .flatten()
             .map(|craft| {
                 let mut item_ids = Vec::new();
-                push_ids(&mut item_ids, craft.item_id, library);
+                push_ids(&mut item_ids, craft.item_id);
                 item_ids
             })
             .flatten()
@@ -116,4 +112,6 @@ impl CraftList {
             .into_iter()
             .collect::<Vec<_>>()
     }
+
+    pub fn perform_filtering() {}
 }

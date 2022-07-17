@@ -3,7 +3,8 @@ use std::collections::BTreeMap;
 use std::time::Instant;
 
 use crate::universalis::ProcessorStream;
-use crate::{library::Library, Settings};
+use crate::util::library;
+use crate::Settings;
 
 #[derive(Debug, Clone, Default)]
 pub struct MarketBoardItemInfo {
@@ -41,10 +42,10 @@ pub struct UniversalisRequest {
 }
 
 impl Universalis {
-    pub async fn get_mb_info(library: &Library, settings: &Settings) -> Result<Self> {
+    pub async fn get_mb_info(settings: &Settings) -> Result<Self> {
         let homeworld = settings.homeworld.as_str();
         let data_centers = settings.data_centers.iter().map(|v| v.as_str()).collect();
-        let ids = library.all_market_board_ids(settings);
+        let ids = library().all_market_board_ids(settings);
         let requests = Self::create_mb_requests(&ids, homeworld, &data_centers);
         println!(
             "Creating {} requests for {} items",

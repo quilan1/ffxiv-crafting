@@ -1,12 +1,15 @@
 use std::{collections::BTreeMap, fmt::Debug};
 
 use crate::{
-    library::{AsIngredient, Ingredient, Library},
+    library::{AsIngredient, Ingredient},
     universalis::{ItemListing, MarketBoardItemInfo, Universalis},
     Settings,
 };
 
-use super::craft_list::{AnalysisFilters, QualityFilter};
+use super::{
+    craft_list::{AnalysisFilters, QualityFilter},
+    library,
+};
 
 #[derive(Default)]
 pub struct VelocityAnalysis {
@@ -65,7 +68,8 @@ impl MarketBoardAnalysis {
             Self::velocity_info(item_mb_homeworld, settings, analysis_filters, true);
 
         let sell_price = (f32::max(item_mb_homeworld.price_nq, item_mb_homeworld.price_hq)
-            * ingredient.count as f32) as u32;
+            * ingredient.count as f32
+            / 1.05) as u32;
 
         let mut listings = item_mb_data_centers
             .iter()
@@ -201,7 +205,6 @@ pub struct RecursiveMarketBoardAnalysis {
 impl RecursiveMarketBoardAnalysis {
     pub fn analyze<I: AsIngredient>(
         ingredient: I,
-        library: &Library,
         universalis: &Universalis,
         settings: &Settings,
         multiplier: u32,
@@ -239,7 +242,7 @@ impl RecursiveMarketBoardAnalysis {
             children: Vec::new(),
         };
 
-        match library.all_recipes.get(&ingredient.item_id) {
+        match library().all_recipes.get(&ingredient.item_id) {
             None => {}
             Some(recipe) => {
                 let mut total_child_cost = 0;
@@ -247,7 +250,6 @@ impl RecursiveMarketBoardAnalysis {
                 for input in &recipe.inputs {
                     let analysis = match Self::analyze(
                         input,
-                        library,
                         universalis,
                         settings,
                         (multiplier + recipe.output.count - 1) / recipe.output.count,
