@@ -9,10 +9,10 @@ use std::{
 };
 
 use crate::{
+    cli::settings,
     library::{craft_list::AnalysisFilters, MarketBoardAnalysis},
     universalis::Universalis,
     util::{item, item_checked, library},
-    Settings,
 };
 
 #[derive(Default)]
@@ -58,12 +58,7 @@ impl GatheringList {
         self.by_item.contains_key(item_id)
     }
 
-    pub fn write_to_file<P: AsRef<Path>>(
-        &self,
-        path: P,
-        universalis: &Universalis,
-        settings: &Settings,
-    ) -> Result<()> {
+    pub fn write_to_file<P: AsRef<Path>>(&self, path: P, universalis: &Universalis) -> Result<()> {
         let mut writer = BufWriter::new(File::create(path.as_ref())?);
 
         write!(
@@ -83,7 +78,6 @@ impl GatheringList {
                 MarketBoardAnalysis::from_item(
                     item.item_id,
                     &universalis,
-                    &settings,
                     &AnalysisFilters::default(),
                 )
             })
@@ -91,8 +85,8 @@ impl GatheringList {
         analyses.sort_by_key(|analysis| analysis.sell_price);
 
         for analysis in analyses {
-            if analysis.sell_price < settings.min_gathering_price
-                || analysis.velocity_info_nq.velocity < settings.min_gathering_velocity
+            if analysis.sell_price < settings().min_gathering_price
+                || analysis.velocity_info_nq.velocity < settings().min_gathering_velocity
             {
                 continue;
             }

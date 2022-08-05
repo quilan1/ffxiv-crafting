@@ -7,16 +7,11 @@ use std::{
 
 use super::{AnalysisFilters, CraftList};
 use crate::{
-    library::RecursiveMarketBoardAnalysis, universalis::Universalis, util::item_name, Settings,
+    cli::settings, library::RecursiveMarketBoardAnalysis, universalis::Universalis, util::item_name,
 };
 
 impl CraftList {
-    pub fn write_to_file<P: AsRef<Path>>(
-        &self,
-        path: P,
-        universalis: &Universalis,
-        settings: &Settings,
-    ) -> Result<()> {
+    pub fn write_to_file<P: AsRef<Path>>(&self, path: P, universalis: &Universalis) -> Result<()> {
         let writer = &mut BufWriter::new(File::create(path.as_ref())?);
 
         for group in &self.craft_groups {
@@ -30,7 +25,6 @@ impl CraftList {
                     match RecursiveMarketBoardAnalysis::analyze(
                         craft.item_id,
                         universalis,
-                        settings,
                         1,
                         true,
                         &analysis_filters,
@@ -47,12 +41,12 @@ impl CraftList {
 
             let min_crafting_velocity = analysis_filters
                 .min_velocity
-                .unwrap_or(settings.min_crafting_velocity);
+                .unwrap_or(settings().min_crafting_velocity);
 
             let mut analyses = analyses
                 .into_iter()
                 .filter(|analysis| {
-                    analysis.analysis.profit >= settings.min_crafting_profit
+                    analysis.analysis.profit >= settings().min_crafting_profit
                         && analysis.analysis.velocity_info_nq.velocity
                             + analysis.analysis.velocity_info_hq.velocity
                             >= min_crafting_velocity

@@ -4,29 +4,33 @@
 :rlevel 90, :cat Metal|Lumber|Leather|Stone|Cloth|Reagent
 
 = Basic Materials
+> :limit 15
 :rlevel 1|89, :cat Metal|Lumber|Leather|Stone|Cloth|Reagent
+
+= Materials, High Velocity
+> :limit 10, :min_velocity 20.0
+:rlevel 1|90, :cat Metal|Lumber|Leather|Stone|Cloth|Reagent
 
 ##################################################
 
 = Cosmetic Items
+> :as_nq, :limit 10
 :rlevel 1|90, :ilevel 1, :cat Head|Body|Hands|Legs|Feet
 
 ##################################################
 
 = Level 90 Classical Items
+> :limit 15
 :name ^Classical
 
 = Level 90 Crafting & Gathering Items
+> :limit 15
 :name ^Pactmaker's
 
 ##################################################
 
-= Collectables
-:name ^Rarefied
-
-##################################################
-
 = Monster Weapons
+> :limit 10, :min_velocity 1.0
 :name (^Mighty|M.* Moogle Mog|^Inferno|of the Vortex$)
 :name of the (Fiend|Round|Goddess)$
 :name ^(Dead Hive|Endless Expanse|Replica Allagan|Seeing Horde)
@@ -36,25 +40,37 @@
 ##################################################
 
 = Levequest Items, Materials
+> :limit 10
 :is_leve, :cat Metal|Lumber|Leather|Stone|Cloth|Reagent
 
 = Levequest Items, Equipment
+> :limit 10
 :is_leve, :cat Head|Body|Hands|Legs|Feet|Earrings|Necklace|Bracelets|Ring
 
 ##################################################
 
 = Minions
+> :limit 5
 :cat Minion
 
 ##################################################
 
 = Bardings
+> :limit 5, :min_velocity 1.0
 :name Barding
 
 ##################################################
 
 = Housing Interior
+> :limit 10
 :cat Ceiling Light|Door|Flooring|Furnishing|Interior Wall|Placard|Rug|Table|Tabletop|Window
 
 = Housing Exterior
+> :limit 10
 :cat Exterior Wall|Exterior Wall Decoration|Fence|Outdoor Furnishing|Roof|Roof Decoration|Wall-mounted
+
+= Housing Popular
+> :limit 20, :min_velocity 10.0
+:cat Ceiling Light|Door|Flooring|Furnishing|Interior Wall|Placard|Rug|Table|Tabletop|Window
+:cat Exterior Wall|Exterior Wall Decoration|Fence|Outdoor Furnishing|Roof|Roof Decoration|Wall-mounted
+

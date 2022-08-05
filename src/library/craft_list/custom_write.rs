@@ -8,10 +8,9 @@ use std::{
 
 use super::{AnalysisFilters, CraftList};
 use crate::{
-    library::{Ingredient, RecursiveMarketBoardAnalysis},
+    library::{market_board_analysis::WorldInfo, Ingredient, RecursiveMarketBoardAnalysis},
     universalis::Universalis,
-    util::item,
-    Settings,
+    util::{item, item_name},
 };
 
 impl CraftList {
@@ -19,7 +18,6 @@ impl CraftList {
         &self,
         path: P,
         universalis: &Universalis,
-        settings: &Settings,
     ) -> Result<()> {
         let writer = &mut BufWriter::new(File::create(path.as_ref())?);
 
@@ -35,7 +33,6 @@ impl CraftList {
                 let rec_analysis = match RecursiveMarketBoardAnalysis::analyze(
                     recipe.item_id,
                     universalis,
-                    settings,
                     multiplier,
                     true,
                     &analysis_filters,
@@ -61,37 +58,68 @@ impl CraftList {
             }
 
             write!(writer, "=== ALL ITEMS ===\n")?;
-
-            let mut purchase_items = BTreeMap::<u32, u32>::new();
-            purchases.into_iter().for_each(|ingredient| {
-                let entry = purchase_items.entry(ingredient.item_id).or_default();
-                *entry += ingredient.count;
-            });
-
-            let analyses = purchase_items
-                .into_iter()
-                .map(|(item_id, count)| Ingredient { count, item_id })
-                .filter_map(|ingredient| {
-                    RecursiveMarketBoardAnalysis::analyze(
-                        &ingredient,
-                        universalis,
-                        settings,
-                        1,
-                        false,
-                        &AnalysisFilters::default(),
-                    )
-                })
-                .collect::<Vec<_>>();
-
-            for analysis in analyses {
-                analysis.write(writer)?;
-            }
-
+            write_sorted_analyses(writer, purchases, universalis)?;
             write!(writer, "\n")?;
         }
 
         Ok(())
     }
+}
+
+fn write_sorted_analyses<W: Write>(
+    writer: &mut W,
+    purchases: Vec<Ingredient>,
+    universalis: &Universalis,
+) -> Result<()> {
+    let mut purchase_items = BTreeMap::<u32, u32>::new();
+    purchases.into_iter().for_each(|ingredient| {
+        let entry = purchase_items.entry(ingredient.item_id).or_default();
+        *entry += ingredient.count;
+    });
+
+    let analyses = purchase_items
+        .into_iter()
+        .map(|(item_id, count)| Ingredient { count, item_id })
+        .filter_map(|ingredient| {
+            RecursiveMarketBoardAnalysis::analyze(
+                &ingredient,
+                universalis,
+                1,
+                false,
+                &AnalysisFilters::default(),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    struct Info<'a> {
+        item_id: u32,
+        world_info: &'a WorldInfo,
+    }
+
+    let mut world_items = BTreeMap::<String, Vec<Info>>::new();
+
+    for analysis in &analyses {
+        for world_info in &analysis.analysis.buy_worlds {
+            let entry = world_items.entry(world_info.world.clone()).or_default();
+            entry.push(Info {
+                item_id: analysis.ingredient.item_id,
+                world_info: &world_info,
+            });
+        }
+    }
+
+    for (world, items) in world_items {
+        write!(writer, "{world}:\n")?;
+        for Info {
+            item_id,
+            world_info: WorldInfo { count, price, .. },
+        } in items
+        {
+            write!(writer, "\t{:40}| {count:8} <{price}\n", item_name(item_id))?;
+        }
+    }
+
+    Ok(())
 }
 
 impl RecursiveMarketBoardAnalysis {

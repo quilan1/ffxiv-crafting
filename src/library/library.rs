@@ -5,9 +5,9 @@ use std::io::BufWriter;
 use std::path::Path;
 use std::{collections::HashSet, fs::DirBuilder, io::Write};
 
+use crate::cli::{settings, RunMode};
 use crate::universalis::Universalis;
 use crate::util::item_name;
-use crate::{RunMode, Settings};
 
 use super::parsers::*;
 use super::CraftList;
@@ -118,45 +118,43 @@ impl Library {
         library().all_items.all_gatherable_items()
     }
 
-    pub fn all_market_board_ids(&self, settings: &Settings) -> Vec<u32> {
+    pub fn all_market_board_ids(&self) -> Vec<u32> {
+        let run_mode = &settings().run_mode;
         let mut ids = HashSet::new();
-        if [RunMode::OnlyCrafting, RunMode::All].contains(&settings.run_mode) {
+        if [RunMode::OnlyCrafting, RunMode::All].contains(run_mode) {
             ids.extend(self.all_crafts.all_craft_item_ids());
         }
-        if [RunMode::OnlyCustom, RunMode::All].contains(&settings.run_mode) {
+        if [RunMode::OnlyCustom, RunMode::All].contains(run_mode) {
             ids.extend(self.all_custom_crafts.all_craft_item_ids());
         }
-        if [RunMode::OnlyGathering, RunMode::All].contains(&settings.run_mode) {
+        if [RunMode::OnlyGathering, RunMode::All].contains(run_mode) {
             ids.extend(self.all_gatherable_items().iter().map(|item| item.id));
         }
         ids.into_iter().collect::<Vec<_>>()
     }
 
-    pub fn write_files(&self, universalis: &Universalis, settings: &Settings) -> Result<()> {
+    pub fn write_files(&self, universalis: &Universalis) -> Result<()> {
+        let run_mode = &settings().run_mode;
         DirBuilder::new().recursive(true).create("./out")?;
-        if [RunMode::OnlyCrafting, RunMode::All].contains(&settings.run_mode) {
+        if [RunMode::OnlyCrafting, RunMode::All].contains(run_mode) {
             self.all_crafts
-                .write_to_file("./out/crafts.txt", universalis, settings)?;
+                .write_to_file("./out/crafts.txt", universalis)?;
         }
-        if [RunMode::OnlyCustom, RunMode::All].contains(&settings.run_mode) {
-            self.all_custom_crafts.write_custom_to_file(
-                "./out/custom.txt",
-                universalis,
-                settings,
-            )?;
+        if [RunMode::OnlyCustom, RunMode::All].contains(run_mode) {
+            self.all_custom_crafts
+                .write_custom_to_file("./out/custom.txt", universalis)?;
         }
-        if [RunMode::OnlyGathering, RunMode::All].contains(&settings.run_mode) {
+        if [RunMode::OnlyGathering, RunMode::All].contains(run_mode) {
             self.all_gathering
-                .write_to_file("./out/gathering.txt", universalis, settings)?;
+                .write_to_file("./out/gathering.txt", universalis)?;
         }
-        self.write_outbid(universalis, settings, "./out/bids.txt")?;
+        self.write_outbid(universalis, "./out/bids.txt")?;
         Ok(())
     }
 
     fn write_outbid<P: AsRef<std::path::Path>>(
         &self,
         universalis: &Universalis,
-        settings: &Settings,
         path: P,
     ) -> Result<()> {
         let mut writer = std::io::BufWriter::new(std::fs::File::create(path.as_ref())?);
@@ -171,7 +169,7 @@ impl Library {
             if !mb_info
                 .listings
                 .iter()
-                .any(|listing| settings.characters.contains(&listing.name))
+                .any(|listing| settings().characters.contains(&listing.name))
             {
                 continue;
             }
@@ -192,7 +190,7 @@ impl Library {
                         / (3600.0 * 24.0),
                 )?;
 
-                if settings.characters.contains(&listing.name) {
+                if settings().characters.contains(&listing.name) {
                     break;
                 }
             }

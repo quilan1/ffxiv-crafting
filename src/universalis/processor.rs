@@ -4,12 +4,11 @@ use futures::{
     FutureExt, Stream, StreamExt,
 };
 use std::{
-    cell::RefCell,
     collections::BTreeMap,
     fs::File,
     io::{BufWriter, Write},
     pin::Pin,
-    rc::Rc,
+    sync::{Arc, Mutex},
     task::{Context, Poll},
 };
 use tokio::time::Instant;
@@ -33,7 +32,7 @@ impl ProcessorStatus {
 
 #[derive(Clone)]
 pub struct ProcessorStream {
-    data: Rc<RefCell<ProcessorData>>,
+    data: Arc<Mutex<ProcessorData>>,
 }
 
 struct ProcessorData {
@@ -56,7 +55,7 @@ impl ProcessorStream {
         let data = ProcessorData::new(requests)?;
 
         Ok(Self {
-            data: Rc::new(RefCell::new(data)),
+            data: Arc::new(Mutex::new(data)),
         })
     }
 
@@ -108,14 +107,14 @@ impl Inner for ProcessorStream {
     type Type = ProcessorData;
 
     fn with_inner<T, F: FnMut(&mut Self::Type) -> T>(&self, mut func: F) -> T {
-        let mut data = self.data.borrow_mut();
+        let mut data = self.data.lock().unwrap();
         func(&mut data)
     }
 
     fn try_into_inner(self) -> Result<Self::Type> {
-        match Rc::try_unwrap(self.data) {
+        match Arc::try_unwrap(self.data) {
             Err(_) => bail!("Couldn't unwrap rc"),
-            Ok(v) => Ok(v.into_inner()),
+            Ok(v) => Ok(v.into_inner().unwrap()),
         }
     }
 }
@@ -124,7 +123,7 @@ impl Stream for ProcessorStream {
     type Item = ProcessorFuture;
 
     fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let mut processor = self.data.borrow_mut();
+        let mut processor = self.data.lock().unwrap();
 
         if processor.finished() {
             return Poll::Ready(None);
@@ -186,7 +185,11 @@ impl ProcessorData {
         let (id, response) = data;
         self.status[*id] = match process_json(&self.requests[*id], &response, out_data) {
             Err(_e) => {
-                self.log(format!("[{id:<6}] ERROR: {_e:?}")).unwrap();
+                self.log(format!(
+                    "[{id:<6}] ERROR: {_e:?}\n{}",
+                    self.requests[*id].url
+                ))
+                .unwrap();
                 ProcessorStatus::Ready
             }
             Ok(_) => {

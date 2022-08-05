@@ -25,6 +25,7 @@ pub struct AnalysisFilters {
     pub count: Option<u32>,
     pub limit: Option<u32>,
     pub min_velocity: Option<f32>,
+    pub always_top: bool,
 }
 
 impl AnalysisFilters {
@@ -43,6 +44,7 @@ impl AnalysisFilters {
                 ":min_velocity" => filters.min_velocity = Some(options.join("").parse::<f32>()?),
                 ":only_hq" => filters.quality = QualityFilter::HQ,
                 ":as_nq" => filters.quality = QualityFilter::NQ,
+                ":always_top" => filters.always_top = true,
                 _ => {}
             }
         }
