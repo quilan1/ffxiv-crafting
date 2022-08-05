@@ -1,10 +1,9 @@
 use anyhow::Result;
 use std::collections::BTreeMap;
-use std::time::Instant;
 
+use crate::cli::settings;
 use crate::universalis::ProcessorStream;
 use crate::util::library;
-use crate::Settings;
 
 #[derive(Debug, Default)]
 pub struct MarketBoardItemInfo {
@@ -39,13 +38,23 @@ pub struct UniversalisRequest {
     pub world: String,
     pub url: String,
     pub chunk: usize,
+    pub kind: UniversalisRequestType,
+}
+
+#[derive(Clone)]
+pub enum UniversalisRequestType {
+    Listings,
+    History,
 }
 
 impl Universalis {
-    pub async fn get_mb_info(settings: &Settings) -> Result<Self> {
-        let homeworld = settings.homeworld.as_str();
-        let data_centers = settings.data_centers.iter().map(|v| v.as_str()).collect();
-        let ids = library().all_market_board_ids(settings);
+    pub async fn get_mb_info() -> Result<Self> {
+        Ok(Self::get_mb_info_ids(library().all_market_board_ids()).await?)
+    }
+
+    pub async fn get_mb_info_ids(ids: Vec<u32>) -> Result<Self> {
+        let homeworld = settings().homeworld.as_str();
+        let data_centers = settings().data_centers.iter().map(|v| v.as_str()).collect();
         let requests = Self::create_mb_requests(&ids, homeworld, &data_centers);
         println!(
             "Creating {} requests for {} items",
@@ -88,7 +97,17 @@ impl Universalis {
                     world: world.into(),
                     url: get_listing_url(world, &ids),
                     chunk,
+                    kind: UniversalisRequestType::Listings,
                 });
+
+                if world == homeworld {
+                    requests.push(UniversalisRequest {
+                        world: world.into(),
+                        url: get_history_url(world, &ids),
+                        chunk,
+                        kind: UniversalisRequestType::History,
+                    });
+                }
             }
         }
         requests
@@ -96,5 +115,9 @@ impl Universalis {
 }
 
 fn get_listing_url(world: &str, ids: &str) -> String {
-    format!("https://universalis.app/api/v2/{world}/{ids}?entries=1000")
+    format!("https://universalis.app/api/v2/{world}/{ids}?entries=0")
+}
+
+fn get_history_url(world: &str, ids: &str) -> String {
+    format!("https://universalis.app/api/v2/history/{world}/{ids}")
 }

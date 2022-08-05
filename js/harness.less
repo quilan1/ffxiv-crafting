@@ -1,0 +1,333 @@
+@max-width: 1000px;
+
+html, body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100vh;
+}
+
+.content-container {
+    display: flex;
+    flex-direction: column;
+    width: min(100vw, @max-width);
+    height: 100vh;
+}
+
+/*
+=========================================================
+Header
+=========================================================
+*/
+
+.header {
+    flex: 0;
+    display: flex;
+    flex-direction: row;
+
+    > div {
+        flex: 50%;
+        background-color: lightgray;
+        border: 1px solid black;
+        text-align: center;
+        font-size: large;
+    }
+
+    > div:not([selected]) {
+        border-bottom: 2px solid black;
+    }
+
+    > div[selected] {
+        border-bottom: unset;
+    }
+}
+
+/*
+=========================================================
+Craft Container
+=========================================================
+*/
+/* 
+.craft-container {
+    border: 1px solid black;
+    display: flex;
+    flex-direction: row;
+    height: 95%;
+}
+
+.craft-container > #craft-group-list {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+    height: 100%;
+    width: 30%;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-right: 2px solid gray;
+}
+
+.craft-container > .craft-group-info {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+.craft-container > .craft-group-info > .craft-filters {
+    display: flex;
+    flex-direction: row;
+    padding: 10px;
+    border-bottom: 2px solid gray;
+}
+
+.craft-container > .craft-group-info > .craft-filters .filter {
+    height: 10%;
+}
+
+.craft-container > .craft-group-info > .craft-table {
+    width: 100%;
+    height: 50%;
+}
+
+.craft-container > .craft-group-info > #craft-info-div {
+    width: 100%;
+    height: 40%;
+} */
+
+/*
+=========================================================
+Custom stuff
+=========================================================
+*/
+
+.container-custom {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+
+    > .custom-filters {
+        flex: 0;
+        display: flex;
+        padding: 10px;
+        border: 1px solid black;
+        border-top: unset;
+
+        > * {
+            margin-left: 10px;
+            flex: 0;
+        }
+
+        > :nth-child(1) {
+            margin-left: 0px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        > :nth-child(2) {
+            flex: 1;
+
+            > div {
+                display: flex;
+                > select, input {
+                    flex: 1;
+                }
+            }
+        }
+
+        > :last-child {
+            margin-right: 10px;
+        }
+    }
+
+    > .recipe-info {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid black;
+    }
+
+    > .recipe-world-info {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid black;
+    }
+}
+
+#custom-table-cur {
+    width: 100%;
+    border: 1px solid black;
+
+    > tbody > tr {
+        > td {
+            border: unset;
+            border-bottom: 1px solid black;
+        }
+
+        > td:last-child {
+            border-left: 1px solid black;
+        }
+    }
+}
+
+#custom-world-cur > div {
+    display: flex;
+    flex-direction: column;
+
+    > div:nth-child(2) {
+        margin: 10px;
+        border: 1px solid black;
+
+        > div {
+            display: flex;
+            flex-direction: row;
+            margin: 10px;
+
+            > div:nth-child(1) {
+                width: 50px;
+            }
+
+            > div:nth-child(2) {
+                width: 100px;
+            }
+        }
+    }
+}
+
+/*
+=========================================================
+Table wrapper stuff
+=========================================================
+*/
+
+.table-scroll {
+    overflow: auto;
+    max-height: 100%;
+
+    table {
+        border-collapse: collapse;
+
+        > thead {
+            background-color: gray;
+            position: sticky;
+            top: 0;
+
+            th {
+                border: 1px solid black;
+            }
+        }
+
+        > tbody > tr {
+            text-align: center;
+
+            > td {
+                border: 1px solid black;
+            }
+        }
+    }
+}
+
+/*
+=========================================================
+Velocity Table Stuff
+=========================================================
+*/
+
+.velocity {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+
+    > div {
+        flex: 50%;
+    }
+}
+
+/*
+=========================================================
+Craft / Item Profit
+=========================================================
+*/
+
+.profit {
+    &-negative {
+        background-color: lightcoral;
+    }
+
+    &-positive {
+        background-color: lightgreen;
+    }
+}
+
+
+/*
+=========================================================
+Collapsable Table Rows
+=========================================================
+*/
+
+.collapsed {
+    visibility: collapse;
+    height: 0% !important;
+}
+
+.collapsed-children {
+    font-weight: bold;
+}
+
+.collapsable {
+    cursor: pointer;
+}
+
+/*
+=========================================================
+World Info
+=========================================================
+*/
+
+.world-purchase-list {
+    display: flex;
+    flex-direction: column;
+    margin-left: 10px;
+    margin-right: 10px;
+
+    > .world-info {
+        display: flex;
+        flex-direction: row;
+
+        > div {
+            flex: 0;
+        }
+
+        > div:nth-child(2) {
+            flex: 1;
+        }
+    }
+}
+
+/*
+=========================================================
+Misc Classes
+=========================================================
+*/
+
+.table-name {
+    font-size: large;
+    text-align: center;
+    border: 1px solid black;
+    background-color: lightgray;
+    cursor: pointer;
+}
+
+.item-name {
+    text-align: left;
+}
+
+.max-width {
+    max-width: @max-width;
+    width: calc(100% - var(--padding-left) - var(--padding-right) - var(--border-left) - var(--border-right));
+}
+
+.overflow-hidden {
+    overflow: hidden;
+}
+

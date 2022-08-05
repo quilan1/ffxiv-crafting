@@ -1,9 +1,11 @@
 use std::{collections::BTreeMap, fmt::Debug};
 
+use serde::Serialize;
+
 use crate::{
+    cli::settings,
     library::{AsIngredient, Ingredient},
     universalis::{ItemListing, MarketBoardItemInfo, Universalis},
-    Settings,
 };
 
 use super::{
@@ -17,7 +19,7 @@ pub struct VelocityAnalysis {
     pub count: u32,
 }
 
-#[derive(Default)]
+#[derive(Serialize, Default, Clone)]
 pub struct WorldInfo {
     pub world: String,
     pub count: u32,
@@ -40,7 +42,6 @@ impl MarketBoardAnalysis {
     pub fn from_item<I: AsIngredient>(
         ingredient: I,
         universalis: &Universalis,
-        settings: &Settings,
         analysis_filters: &AnalysisFilters,
     ) -> Option<Self> {
         let ingredient = ingredient.as_ingredient();
@@ -62,10 +63,8 @@ impl MarketBoardAnalysis {
             .map(|data_center| &data_center[&item_id])
             .collect::<Vec<_>>();
 
-        let velocity_info_nq =
-            Self::velocity_info(item_mb_homeworld, settings, analysis_filters, false);
-        let velocity_info_hq =
-            Self::velocity_info(item_mb_homeworld, settings, analysis_filters, true);
+        let velocity_info_nq = Self::velocity_info(item_mb_homeworld, analysis_filters, false);
+        let velocity_info_hq = Self::velocity_info(item_mb_homeworld, analysis_filters, true);
 
         let sell_price = (f32::max(item_mb_homeworld.price_nq, item_mb_homeworld.price_hq)
             * ingredient.count as f32
@@ -125,7 +124,6 @@ impl MarketBoardAnalysis {
 
     fn velocity_info(
         mb_item_info: &MarketBoardItemInfo,
-        settings: &Settings,
         analysis_filters: &AnalysisFilters,
         is_hq: bool,
     ) -> VelocityAnalysis {
@@ -145,7 +143,7 @@ impl MarketBoardAnalysis {
             mb_item_info.price_nq
         };
 
-        let listing_threshold = (price as f32 * settings.listings_ratio) as u32;
+        let listing_threshold = (price as f32 * settings().listings_ratio) as u32;
         let is_lower_listing = |listing: &&ItemListing| listing.price <= listing_threshold;
         let is_quality_listing = |listing: &&ItemListing| listing.is_hq == is_hq || is_nq_filter;
 
@@ -205,7 +203,6 @@ impl RecursiveMarketBoardAnalysis {
     pub fn analyze<I: AsIngredient>(
         ingredient: I,
         universalis: &Universalis,
-        settings: &Settings,
         multiplier: u32,
         is_top: bool,
         analysis_filters: &AnalysisFilters,
@@ -217,22 +214,18 @@ impl RecursiveMarketBoardAnalysis {
             count: multiplier,
         };
 
-        let analysis = match MarketBoardAnalysis::from_item(
-            &ingredient,
-            universalis,
-            settings,
-            analysis_filters,
-        ) {
-            Some(analysis) => analysis,
-            None => MarketBoardAnalysis {
-                item_id: ingredient.item_id,
-                buy_worlds: vec![WorldInfo {
-                    world: "--Not on MB--".into(),
+        let analysis =
+            match MarketBoardAnalysis::from_item(&ingredient, universalis, analysis_filters) {
+                Some(analysis) => analysis,
+                None => MarketBoardAnalysis {
+                    item_id: ingredient.item_id,
+                    buy_worlds: vec![WorldInfo {
+                        world: "--Not on MB--".into(),
+                        ..Default::default()
+                    }],
                     ..Default::default()
-                }],
-                ..Default::default()
-            },
-        };
+                },
+            };
 
         let mut rec_analysis = Self {
             ingredient: ingredient.clone(),
@@ -250,7 +243,6 @@ impl RecursiveMarketBoardAnalysis {
                     let analysis = match Self::analyze(
                         input,
                         universalis,
-                        settings,
                         (multiplier + recipe.output.count - 1) / recipe.output.count,
                         false,
                         analysis_filters,
@@ -258,14 +250,20 @@ impl RecursiveMarketBoardAnalysis {
                         None => continue,
                         Some(v) => v,
                     };
-                    total_child_cost += analysis.best_buy_price;
+                    total_child_cost +=
+                        u32::min(analysis.best_buy_price, analysis.analysis.buy_price);
                     children.push(analysis);
                 }
 
-                if is_top || total_child_cost < rec_analysis.best_buy_price {
+                if is_top
+                    || analysis_filters.always_top
+                    || total_child_cost < rec_analysis.best_buy_price
+                {
                     rec_analysis.best_buy_price = total_child_cost;
                     rec_analysis.children = children;
-                    rec_analysis.analysis.buy_worlds = Vec::new();
+                    if !analysis_filters.always_top {
+                        rec_analysis.analysis.buy_worlds = Vec::new();
+                    }
                 }
             }
         }

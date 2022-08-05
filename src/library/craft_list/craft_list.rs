@@ -112,6 +112,4 @@ impl CraftList {
             .into_iter()
             .collect::<Vec<_>>()
     }
-
-    pub fn perform_filtering() {}
 }

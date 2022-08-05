@@ -7,10 +7,11 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'ffxiv-crafting'",
+            "name": "All Items",
             "cargo": {
                 "args": [
                     "build",
+                    "--release",
                     "--bin=ffxiv-crafting",
                     "--package=ffxiv-crafting"
                 ],
@@ -25,11 +26,95 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'ffxiv-crafting'",
+            "name": "All Items, Homeworld Only",
             "cargo": {
                 "args": [
-                    "test",
-                    "--no-run",
+                    "build",
+                    "--release",
+                    "--bin=ffxiv-crafting",
+                    "--package=ffxiv-crafting"
+                ],
+                "filter": {
+                    "name": "ffxiv-crafting",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "--homeworld=Siren",
+                "--data_centers=Siren",
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Only Custom",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--release",
+                    "--bin=ffxiv-crafting",
+                    "--package=ffxiv-crafting"
+                ],
+                "filter": {
+                    "name": "ffxiv-crafting",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "--only_custom"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Only Crafts",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--release",
+                    "--bin=ffxiv-crafting",
+                    "--package=ffxiv-crafting"
+                ],
+                "filter": {
+                    "name": "ffxiv-crafting",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "--only_crafting"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Only Gathering",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--release",
+                    "--bin=ffxiv-crafting",
+                    "--package=ffxiv-crafting"
+                ],
+                "filter": {
+                    "name": "ffxiv-crafting",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "--only_gathering"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug",
+            "cargo": {
+                "args": [
+                    "build",
                     "--bin=ffxiv-crafting",
                     "--package=ffxiv-crafting"
                 ],

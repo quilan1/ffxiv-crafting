@@ -11,6 +11,7 @@ pub enum RunMode {
 #[allow(dead_code)]
 pub struct Settings {
     pub listings_ratio: f32,
+    pub max_crafting_allowed_recursive_loss: u32,
     pub min_crafting_profit_margin: f32,
     pub min_crafting_velocity: f32,
     pub min_crafting_profit: i32,
@@ -22,7 +23,9 @@ pub struct Settings {
     pub characters: Vec<String>,
 }
 
-pub fn process_cli() -> Settings {
+static mut SETTINGS: Option<Settings> = None;
+
+pub fn process_cli() {
     let matches = command!()
         .arg(arg!(--homeworld [VALUE] "Homeworld server"))
         .arg(arg!(--data_centers [VALUES] "Data Centers, comma-separated"))
@@ -41,15 +44,16 @@ pub fn process_cli() -> Settings {
 
     let mut settings = Settings {
         listings_ratio: 1.1,
+        max_crafting_allowed_recursive_loss: 1000,
         min_crafting_profit_margin: 0.0,
         min_crafting_profit: 1000,
         min_crafting_velocity: 3.0,
-        min_gathering_price: 1000,
+        min_gathering_price: 400,
         min_gathering_velocity: 3.0,
         run_mode: RunMode::All,
         homeworld: "Siren".into(),
         data_centers: vec!["Aether".into()],
-        characters: vec!["Quilan", "Vernox", "Veronixia"] //"Pierrarobert", "Graviti", "Chibimaruko"]//]
+        characters: vec!["Quilan", "Vernox", "Veronixia"]
             .into_iter()
             .map(|c| c.into())
             .collect::<Vec<_>>(),
@@ -83,5 +87,11 @@ pub fn process_cli() -> Settings {
         settings.run_mode = RunMode::OnlyCustom;
     }
 
-    settings
+    unsafe {
+        SETTINGS = Some(settings);
+    }
+}
+
+pub fn settings() -> &'static Settings {
+    unsafe { SETTINGS.as_ref().expect("SETTINGS value not yet set!") }
 }
