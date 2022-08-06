@@ -17,11 +17,9 @@ var craftInfo = (() => {
         const _craftGroupsTable = document.getElementById("craft-group-list");
 
         for (const group of craftInfo.groups) {
-            const _div = document.createElement("div");
-            _div.className = "table-name";
-            _div.appendChild(document.createTextNode(group.name));
-            _div.onclick = _ => _showCraftTable(group);
-            _craftGroupsTable.appendChild(_div);
+            const div = util.makeElem({ tag: 'div', className: 'table-name', innerText: group.name });
+            div.onclick = _ => _showCraftTable(group);
+            _craftGroupsTable.appendChild(div);
         }
     }
 
