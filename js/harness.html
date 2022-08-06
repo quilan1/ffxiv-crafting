@@ -42,22 +42,42 @@
                 <label>Filters:</label>
                 <div>
                     <div>
-                        <input id="custom-filters" type="text" value=":count 100, :name Grade 4 Skybuilders' Spinning Wheel">
+                        <input id="custom-filters" type="text"
+                            value=":count 100, :name Grade 4 Skybuilders' Spinning Wheel">
                     </div>
                     <div>
-                        <select id="custom-filter-list"></select>
-                        <button id="custom-filters-new">New</button>
+                        <select id="custom-filters-list">
+                            <option value=":name Item Name, :count 1, :rlevel 1|90">&lt;New&gt;</option>
+                        </select>
+                        <button id="custom-filters-load">Load</button>
                         <button id="custom-filters-save">Save</button>
+                        <button id="custom-filters-save-as">Save As</button>
                         <button id="custom-filters-delete">Delete</button>
                     </div>
                 </div>
                 <button id="custom-filters-refresh" type="button">Refresh</button>
             </div>
             <div class="recipe-info max-width overflow-hidden">
-                <div id="custom-table-div" class="table-scroll max-width"></div>
+                <div id="custom-table-div" class="table-scroll max-width">
+                    <table id="custom-table-cur">
+                        <thead>
+                            <tr>
+                                <th>☑</th>
+                                <th>-</th>
+                                <th>Name</th>
+                                <th>Best Price</th>
+                                <th>Best Child Price</th>
+                                <th>Worlds</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
             </div>
             <div class="recipe-world-info max-width overflow-hidden">
-                <div id="custom-world-div" class="table-scroll max-width"></div>
+                <div id="custom-world-div" class="table-scroll max-width">
+                    <div id="custom-world-cur"></div>
+                </div>
             </div>
         </div>
         <!-- </div> -->
@@ -65,7 +85,9 @@
 </body>
 
 <script type="text/javascript">
-    craftInfo.setupEvents();
+    // console.log('Setting up craftInfo');
+    // craftInfo.setupEvents();
+    console.log('Setting up customInfo');
     customInfo.setupEvents();
 
     craftInfo.fetchData().then(() => {
