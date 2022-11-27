@@ -1,17 +1,16 @@
 mod cli;
 mod library;
-mod new_universalis;
 mod server;
 mod universalis;
 mod util;
 
 use std::{error::Error, time::Instant};
 
-#[tokio::main(flavor = "current_thread")]
+// #[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     use cli::process_cli;
-    use library::{library, JsWriter, Library};
-    use universalis::Universalis;
+    use library::Library;
 
     setup()?;
     process_cli();
@@ -20,19 +19,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Library::create().await?;
     println!("Initialized in {} ms", start.elapsed().as_millis());
 
-    // let start = Instant::now();
-    // let universalis = Universalis::get_mb_info().await?;
-    // println!("Pulled mb data in {} ms", start.elapsed().as_millis());
-    // println!();
-
-    // let start = Instant::now();
-    // library().write_files(&universalis)?;
-    // JsWriter::write_all(&universalis)?;
-    // println!("Wrote data in {} ms", start.elapsed().as_millis());
-
-    {
-        server::Server::run().await;
-    }
+    server::Server::run().await?;
 
     Ok(())
 }

@@ -6,8 +6,6 @@ use std::path::Path;
 use std::{collections::HashSet, fs::DirBuilder, io::Write};
 
 use crate::cli::{settings, RunMode};
-use crate::universalis::Universalis;
-use crate::util::item_name;
 
 use super::parsers::*;
 use super::CraftList;
@@ -131,73 +129,5 @@ impl Library {
             ids.extend(self.all_gatherable_items().iter().map(|item| item.id));
         }
         ids.into_iter().collect::<Vec<_>>()
-    }
-
-    pub fn write_files(&self, universalis: &Universalis) -> Result<()> {
-        let run_mode = &settings().run_mode;
-        DirBuilder::new().recursive(true).create("./out")?;
-        if [RunMode::OnlyCrafting, RunMode::All].contains(run_mode) {
-            self.all_crafts
-                .write_to_file("./out/crafts.txt", universalis)?;
-        }
-        if [RunMode::OnlyCustom, RunMode::All].contains(run_mode) {
-            self.all_custom_crafts
-                .write_custom_to_file("./out/custom.txt", universalis)?;
-        }
-        if [RunMode::OnlyGathering, RunMode::All].contains(run_mode) {
-            self.all_gathering
-                .write_to_file("./out/gathering.txt", universalis)?;
-        }
-        self.write_outbid(universalis, "./out/bids.txt")?;
-        Ok(())
-    }
-
-    fn write_outbid<P: AsRef<std::path::Path>>(
-        &self,
-        universalis: &Universalis,
-        path: P,
-    ) -> Result<()> {
-        let mut writer = std::io::BufWriter::new(std::fs::File::create(path.as_ref())?);
-
-        write!(
-            &mut writer,
-            "{:<40}| {:<30}| {:<10}{:<10}\n",
-            "Name", "Seller", "Count", "Price"
-        )?;
-
-        for (item_id, mb_info) in &universalis.homeworld {
-            if !mb_info
-                .listings
-                .iter()
-                .any(|listing| settings().characters.contains(&listing.name))
-            {
-                continue;
-            }
-
-            for listing in &mb_info.listings {
-                let time = std::time::SystemTime::UNIX_EPOCH
-                    + std::time::Duration::from_secs(listing.posting);
-                write!(
-                    &mut writer,
-                    "{:<40}| {:<30}| {:<10}{:<10}{:<10.1}\n",
-                    item_name(item_id),
-                    listing.name,
-                    listing.count,
-                    listing.price,
-                    time.elapsed()
-                        .unwrap_or(std::time::Duration::from_secs(0))
-                        .as_secs_f32()
-                        / (3600.0 * 24.0),
-                )?;
-
-                if settings().characters.contains(&listing.name) {
-                    break;
-                }
-            }
-
-            write!(&mut writer, "\n")?;
-        }
-
-        Ok(())
     }
 }

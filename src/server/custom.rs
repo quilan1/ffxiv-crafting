@@ -1,7 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     sync::Arc,
-    time::Duration,
 };
 
 use axum::{
@@ -9,23 +8,16 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
-use axum_macros::debug_handler;
-use futures::FutureExt;
 use log::info;
 use serde::{Deserialize, Serialize};
-use tokio::time::sleep;
 
 use crate::{
-    library::{
-        AnalysisFilters, Filter, Ingredient, RecursiveMarketBoardAnalysis, VelocityAnalysis,
-        WorldInfo,
-    },
-    new_universalis::{
+    library::Filter,
+    server::server::ServerState,
+    universalis::{
         ItemListing, MarketItemInfo, MarketItemInfoMap, UniversalisBuilder, UniversalisProcessor,
     },
-    server::server::ServerState,
-    // universalis::{Universalis, AsyncProcessor, UniversalisProcessor, UniversalisBuilder, UniversalisData},
-    util::{item, item_name, library},
+    util::{item_name, library},
 };
 
 #[derive(Deserialize, Debug)]
@@ -90,7 +82,6 @@ impl Custom {
             }
         };
 
-        // println!("ids: {ids:?}, top_ids: {top_ids:?}");
         let mb_info_map =
             UniversalisProcessor::process_ids(state.processor.clone(), &builder, ids.clone()).await;
 

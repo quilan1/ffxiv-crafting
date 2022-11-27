@@ -52,9 +52,7 @@ export class RecStatisticsCollection {
     }
 
     allChains(history?: number[]): number[][] {
-        if (history === undefined) {
-            history = [];
-        }
+        history ??= [];
 
         let list: number[][] = [];
         for (const [id, input] of this.entries) {

@@ -116,7 +116,7 @@ where
         let mut data = self.data.lock();
 
         // self.log(format!(
-        //     "== [Poll] Start (active={}, queue={}) ==",
+        //     "[Poll] Start (active={}, queue={})",
         //     data.active.len(),
         //     data.queue.len()
         // ));
@@ -141,7 +141,7 @@ where
         // Set the waker, so it can be re-polled
         data.waker = Some(cx.waker().clone());
         // self.log(format!(
-        //     "== [Poll] Done (active={}, queue={}) ==",
+        //     "[Poll] Done (active={}, queue={})",
         //     data.active.len(),
         //     data.queue.len()
         // ));
