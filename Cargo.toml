@@ -11,6 +11,7 @@ tokio = { version="1.18.2", features=["full"] }
 tokio-stream = { version="0.1.8", features=["time"] }
 tower-http = { version = "0.3.4", features = ["cors"] }
 clap = { version="3.1.18", features=["cargo"] }
+async-std = { version="1.12.0", features=["unstable"] }
 reqwest = "0.11.10"
 serde_json = "1.0.82"
 itertools = "0.10.3"
@@ -19,9 +20,15 @@ anyhow = "1.0.57"
 csv = "1.1.6"
 regex = "1.5.6"
 chrono = "0.4.19"
-axum = "0.5.13"
 mime_guess = "2.0.4"
 axum-macros = "0.2.3"
+axum = "0.6.0-rc.4"
+parking_lot = "0.12.1"
+console-subscriber = "0.1.8"
+env_logger = "0.10.0"
+pretty_env_logger = "0.4.0"
+log = "0.4.17"
+log4rs = "1.2.0"
 
 [profile.release]
 debug = true

@@ -17,6 +17,7 @@ pub struct Settings {
     pub min_crafting_profit: i32,
     pub min_gathering_price: u32,
     pub min_gathering_velocity: f32,
+    pub history_length: f32,
     pub homeworld: String,
     pub data_centers: Vec<String>,
     pub run_mode: RunMode,
@@ -50,9 +51,10 @@ pub fn process_cli() {
         min_crafting_velocity: 3.0,
         min_gathering_price: 400,
         min_gathering_velocity: 3.0,
+        history_length: 2.0,
         run_mode: RunMode::All,
-        homeworld: "Siren".into(),
-        data_centers: vec!["Aether".into()],
+        homeworld: "Seraph".into(),
+        data_centers: vec!["Dynamis".into()],
         characters: vec!["Quilan", "Vernox", "Veronixia"]
             .into_iter()
             .map(|c| c.into())

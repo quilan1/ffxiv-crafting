@@ -5,6 +5,8 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+use crate::cli::settings;
+
 use super::{
     universalis::UniversalisRequestType, ItemListing, MarketBoardInfo, UniversalisRequest,
 };
@@ -63,7 +65,7 @@ pub fn process_json(
     Ok(())
 }
 
-fn parse_listings(response: &str, mb_entry: &mut MarketBoardInfo) -> Result<()> {
+pub fn parse_listings(response: &str, mb_entry: &mut MarketBoardInfo) -> Result<()> {
     let listing = serde_json::from_str::<MultipleListingView>(&response)?;
     for (id, info) in &listing.items {
         let id = id.parse::<u32>()?;
@@ -89,7 +91,7 @@ fn parse_listings(response: &str, mb_entry: &mut MarketBoardInfo) -> Result<()> 
     Ok(())
 }
 
-fn parse_history(response: &str, mb_entry: &mut MarketBoardInfo) -> Result<()> {
+pub fn parse_history(response: &str, mb_entry: &mut MarketBoardInfo) -> Result<()> {
     let listing = serde_json::from_str::<MultipleHistoryView>(&response)?;
     for (id, info) in &listing.items {
         let id = id.parse::<u32>()?;
@@ -108,13 +110,14 @@ fn calculate_velocity(history: &Vec<ItemListingView>) -> (f32, f32) {
 
     let mut sold_nq = 0;
     let mut sold_hq = 0;
+    let history_length = settings().history_length;
 
     let mut max_days = 0.0;
     for item in history {
         let days = SystemTime::UNIX_EPOCH + Duration::from_secs(item.timestamp.unwrap());
         let days = days.elapsed().unwrap().as_secs_f32() / (3600.0 * 24.0);
         max_days = days;
-        if days > 7.0 {
+        if days > history_length {
             break;
         }
 
@@ -124,7 +127,7 @@ fn calculate_velocity(history: &Vec<ItemListingView>) -> (f32, f32) {
         }
     }
 
-    max_days = max_days.min(7.0);
+    max_days = max_days.min(history_length);
     (sold_nq as f32 / max_days, sold_hq as f32 / max_days)
 }
 
@@ -133,12 +136,13 @@ fn calculate_prices(history: &Vec<ItemListingView>) -> (f32, f32, f32) {
         return (0.0, 0.0, 0.0);
     }
 
+    let history_length = settings().history_length;
     let mut nq_cost = Vec::new();
     let mut hq_cost = Vec::new();
     for item in history {
         let days = SystemTime::UNIX_EPOCH + Duration::from_secs(item.timestamp.unwrap());
         let days = days.elapsed().unwrap().as_secs_f32() / (3600.0 * 24.0);
-        if days > 7.0 {
+        if days > history_length {
             break;
         }
 

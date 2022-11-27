@@ -70,6 +70,7 @@ impl Universalis {
             .iter()
             .map(|&data_center| mb_info.remove(data_center).unwrap())
             .collect::<Vec<_>>();
+
         Ok(Self {
             homeworld: homeworld,
             data_centers: data_center_info,
@@ -83,6 +84,14 @@ impl Universalis {
     ) -> Vec<UniversalisRequest> {
         let mut requests = Vec::new();
         for (chunk, ids) in ids.chunks(100).enumerate() {
+            let ids = if ids.len() != 1 {
+                ids.to_vec()
+            } else {
+                let mut new_ids = ids.to_vec();
+                new_ids.push(2);
+                new_ids
+            };
+
             let ids = ids
                 .into_iter()
                 .map(|id| id.to_string())

@@ -100,7 +100,7 @@ impl Filter {
                 ":cat" => Self::filter_ui_category(options, items),
                 ":is_leve" => Self::filter_leve(options, items),
                 ":contains" => Self::filter_contains(options, items),
-                ":count" => {
+                ":count" | ":limit" | ":min_velocity" => {
                     result_filters.push(Filter { ftype, options });
                     continue;
                 }
