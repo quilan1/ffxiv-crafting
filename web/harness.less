@@ -24,13 +24,20 @@ Header
     flex: 0;
     display: flex;
     flex-direction: row;
+    border: 1px solid black;
+    border-bottom: unset;
+    cursor: pointer;
 
     > div {
         flex: 50%;
         background-color: lightgray;
-        border: 1px solid black;
         text-align: center;
         font-size: large;
+        border-left: 2px solid black;
+    }
+
+    > div:first-child {
+        border-left: unset;
     }
 
     > div:not([selected]) {
@@ -157,6 +164,10 @@ Custom stuff
         > td {
             border: unset;
             border-bottom: 1px solid black;
+
+            > button {
+                width: 24px;
+            }
         }
 
         > td:last-child {
@@ -169,21 +180,81 @@ Custom stuff
     display: flex;
     flex-direction: column;
 
-    > div:nth-child(2) {
+    > div:first-child {
+        font-size: large;
+        font-weight: bold;
+    }
+
+    > div:nth-child(2) > div {
         margin: 10px;
-        border: 1px solid black;
+
+        > div:nth-child(2) {
+            margin: 10px;
+            border: 1px solid black;
+    
+            > div {
+                display: flex;
+                flex-direction: row;
+                margin: 10px;
+    
+                > div:nth-child(1) {
+                    width: 50px;
+                }
+    
+                > div:nth-child(2) {
+                    width: 100px;
+                }
+            }
+        }
+    }
+}
+
+/*
+=========================================================
+Exchange stuff
+=========================================================
+*/
+
+.container-exchange {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    border: 1px solid black;
+    border-top: unset;
+
+    > * {
+        padding: 10px;
+    }
+
+    > div:first-child {
+        border-bottom: 2px solid black;
+        flex: 0;
+    }
+
+    #exchange-cur {
+        flex: 1;
 
         > div {
-            display: flex;
-            flex-direction: row;
+            font-weight: bold;
+        }
+
+        > .exchange-profit-list {
             margin: 10px;
+            font-weight: unset;
+            border: 1px solid black;
 
-            > div:nth-child(1) {
-                width: 50px;
-            }
+            > .exchange-profit {
+                display: flex;
+                flex-direction: row;
 
-            > div:nth-child(2) {
-                width: 100px;
+                > div {
+                    width: 80px;
+                }
+
+                > div:last-child {
+                    width: unset;
+                    flex: 1;
+                }
             }
         }
     }
@@ -262,7 +333,8 @@ Collapsable Table Rows
 */
 
 .collapsed {
-    visibility: collapse;
+    flex: 0 1 auto !important;
+    visibility: collapse !important;
     height: 0% !important;
 }
 

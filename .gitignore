@@ -2,3 +2,5 @@
 csv/
 target/
 out/
+node_modules/
+web/js

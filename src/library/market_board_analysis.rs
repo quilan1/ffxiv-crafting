@@ -13,7 +13,7 @@ use super::{
     library,
 };
 
-#[derive(Default)]
+#[derive(Default, Debug, Serialize)]
 pub struct VelocityAnalysis {
     pub velocity: f32,
     pub count: u32,

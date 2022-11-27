@@ -19,9 +19,9 @@
 
 ##################################################
 
-= Level 90 Classical Items
+= Level 90 Rinascita Items
 > :limit 15
-:name ^Classical
+:name ^Rinascita
 
 = Level 90 Crafting & Gathering Items
 > :limit 15
@@ -35,7 +35,7 @@
 :name of the (Fiend|Round|Goddess)$
 :name ^(Dead Hive|Endless Expanse|Replica Allagan|Seeing Horde)
 :name ^(Shinryu|Tsukuyomi|Suzaku|Seiryu|Susano|Byakko)'s
-:name ^Augmented
+:name ^(Augmented|The Fae's Crown)
 
 ##################################################
 

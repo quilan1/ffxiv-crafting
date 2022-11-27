@@ -16,7 +16,7 @@ impl StaticFiles {
         let path = path.trim_start_matches('/');
         let mime_type = mime_guess::from_path(path).first_or_text_plain();
 
-        let path = Path::new("./js").join(path);
+        let path = Path::new("./web").join(path);
         println!("GET static {path:?}");
 
         match Path::exists(path.as_ref()) {

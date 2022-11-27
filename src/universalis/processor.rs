@@ -39,6 +39,7 @@ struct ProcessorData {
     requests: Vec<UniversalisRequest>,
     status: Vec<ProcessorStatus>,
     log_writer: BufWriter<File>,
+    // log_writer: BufWriter<Vec<u8>>,
     start: Instant,
 }
 
@@ -155,7 +156,8 @@ impl Stream for ProcessorStream {
 impl ProcessorData {
     fn new(requests: Vec<UniversalisRequest>) -> Result<Self> {
         let status = vec![ProcessorStatus::Ready; requests.len()];
-        let log_writer = BufWriter::new(File::create("errors.txt")?);
+        // let log_writer = BufWriter::new(Vec::new());
+        let log_writer = BufWriter::new(File::create("out/errors.txt")?);
 
         Ok(Self {
             requests,
