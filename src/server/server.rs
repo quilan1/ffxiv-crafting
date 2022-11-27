@@ -4,7 +4,7 @@ use futures::join;
 use std::{net::SocketAddr, sync::Arc};
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::new_universalis::UniversalisAsyncProcessor;
+use crate::universalis::UniversalisAsyncProcessor;
 
 use super::{custom::Custom, StaticFiles};
 

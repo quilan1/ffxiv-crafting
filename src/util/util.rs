@@ -1,5 +1,5 @@
 pub use crate::library::library;
-use crate::library::{Ingredient, ItemInfo, MarketBoardAnalysis, RecursiveMarketBoardAnalysis};
+use crate::library::{Ingredient, ItemInfo};
 
 //////////////////////////////////////////////////
 
@@ -16,30 +16,6 @@ impl ItemId for u32 {
 impl ItemId for &u32 {
     fn item_id(&self) -> u32 {
         **self
-    }
-}
-
-impl ItemId for MarketBoardAnalysis {
-    fn item_id(&self) -> u32 {
-        self.item_id
-    }
-}
-
-impl ItemId for &MarketBoardAnalysis {
-    fn item_id(&self) -> u32 {
-        self.item_id
-    }
-}
-
-impl ItemId for RecursiveMarketBoardAnalysis {
-    fn item_id(&self) -> u32 {
-        self.analysis.item_id
-    }
-}
-
-impl ItemId for &RecursiveMarketBoardAnalysis {
-    fn item_id(&self) -> u32 {
-        self.analysis.item_id
     }
 }
 

@@ -1,214 +1,193 @@
-use anyhow::{bail, Result};
-use futures::{
-    future::{ready, BoxFuture},
-    FutureExt, Stream, StreamExt,
-};
-use std::{
-    collections::BTreeMap,
-    fs::File,
-    io::{BufWriter, Write},
-    pin::Pin,
-    sync::{Arc, Mutex},
-    task::{Context, Poll},
-};
-use tokio::time::Instant;
+use super::{builder::UniversalisBuilder, json::UniversalisJson, MarketItemInfoMap};
+use crate::util::{AsyncProcessor, SharedFuture};
 
-use super::{process_json, MarketBoardInfo, UniversalisRequest};
+use futures::FutureExt;
+use log::{error, info, warn};
 
-/////////////////////////////////////////////////////////
-
-#[derive(Clone, PartialEq)]
-enum ProcessorStatus {
-    Ready,
-    Processing,
-    Done,
-}
-
-impl ProcessorStatus {
-    fn is_done(&self) -> bool {
-        *self == ProcessorStatus::Done
-    }
-}
+type UniversalisFutureOutput = Option<UniversalisRequest>;
+type UniversalisRequestFuture<'a> = SharedFuture<'a, UniversalisFutureOutput>;
+pub type UniversalisAsyncProcessor<'a> = AsyncProcessor<'a, UniversalisFutureOutput>;
 
 #[derive(Clone)]
-pub struct ProcessorStream {
-    data: Arc<Mutex<ProcessorData>>,
+pub struct UniversalisRequest {
+    listing: String,
+    listing_url: String,
+    history: String,
+    history_url: String,
+    world: String,
 }
 
-struct ProcessorData {
-    requests: Vec<UniversalisRequest>,
-    status: Vec<ProcessorStatus>,
-    log_writer: BufWriter<File>,
-    // log_writer: BufWriter<Vec<u8>>,
-    start: Instant,
-}
+pub struct UniversalisProcessor;
 
-type ProcessorReturn = (usize, String);
-type ProcessorFuture = BoxFuture<'static, ProcessorReturn>;
-type ProcessorOutput = BTreeMap<String, MarketBoardInfo>;
+impl UniversalisProcessor {
+    pub async fn process_ids(
+        processor: UniversalisAsyncProcessor<'_>,
+        builder: &UniversalisBuilder,
+        ids: Vec<u32>,
+    ) -> MarketItemInfoMap {
+        let worlds = builder.data_centers.clone();
 
-const NUM_SIMULTANEOUS_STREAMS: usize = 8;
+        let futures = Self::make_requests(&worlds, ids);
+        let outputs = processor.process(futures).await;
 
-/////////////////////////////////////////////////////////
+        let outputs = outputs
+            .into_iter()
+            .filter_map(|output| output)
+            .collect::<Vec<_>>();
 
-impl ProcessorStream {
-    pub fn new(requests: Vec<UniversalisRequest>) -> Result<Self> {
-        let data = ProcessorData::new(requests)?;
+        let mut mb_info_map = MarketItemInfoMap::new();
+        for output in outputs {
+            info!(
+                "[process_ids] world: {}, listing: {}, history: {}",
+                output.world,
+                output.listing.len(),
+                output.history.len()
+            );
 
-        Ok(Self {
-            data: Arc::new(Mutex::new(data)),
-        })
-    }
-
-    pub async fn process(
-        &self,
-        homeworld: &str,
-        data_centers: &Vec<&str>,
-    ) -> BTreeMap<String, MarketBoardInfo> {
-        let mut last_update = Instant::now();
-
-        let mut mb_info = BTreeMap::<String, MarketBoardInfo>::new();
-        mb_info.insert(homeworld.into(), MarketBoardInfo::new());
-        for &data_center in data_centers {
-            mb_info.insert(data_center.into(), MarketBoardInfo::new());
+            if let Err(_) =
+                UniversalisJson::parse(&output.listing, &output.history, &mut mb_info_map)
+            {
+                error!(
+                    "Error: Invalid json response for {} or {}",
+                    output.listing_url, output.history_url
+                );
+            }
         }
 
-        self.clone()
-            .buffer_unordered(NUM_SIMULTANEOUS_STREAMS)
-            .for_each(|value| {
-                if last_update.elapsed().as_secs() > 10 {
-                    self.with_inner(|data| data.update());
-                    last_update = Instant::now();
+        mb_info_map
+    }
+
+    fn make_requests<'a>(worlds: &Vec<String>, ids: Vec<u32>) -> Vec<UniversalisRequestFuture<'a>> {
+        let mut requests = Vec::new();
+
+        let max_chunks = ((ids.len() + 99) / 100) * worlds.len();
+        let mut chunk_id = 1;
+        for ids in ids.chunks(100) {
+            let ids = if ids.len() != 1 {
+                ids.to_vec()
+            } else {
+                let mut new_ids = ids.to_vec();
+                new_ids.push(2);
+                new_ids
+            };
+
+            let ids = ids
+                .into_iter()
+                .map(|id| id.to_string())
+                .collect::<Vec<_>>()
+                .join(",");
+
+            for world in worlds {
+                let future =
+                    UniversalisRequest::fetch(world.clone(), ids.clone(), chunk_id, max_chunks)
+                        .boxed()
+                        .shared();
+                requests.push(future);
+                chunk_id += 1;
+            }
+        }
+
+        requests
+    }
+}
+
+impl UniversalisRequest {
+    async fn fetch(world: String, ids: String, chunk_id: usize, max_chunks: usize) -> Option<Self> {
+        async fn get(url: &str) -> Option<String> {
+            Some(reqwest::get(url).await.ok()?.text().await.ok()?)
+        }
+
+        async fn fetch_listing(
+            num_attempts: usize,
+            world: &str,
+            ids: &str,
+            chunk_id: usize,
+            max_chunks: usize,
+        ) -> Option<(String, String)> {
+            let listing_url = get_listing_url(world, ids);
+            info!("[Fetch {chunk_id}/{max_chunks}] {listing_url}");
+
+            for attempt in 0..num_attempts {
+                let listing = get(&listing_url).await?;
+
+                if !is_valid_json(&listing) {
+                    warn!(
+                        "[Fetch {chunk_id}/{max_chunks}] [{attempt}] Invalid listing json: {listing_url}"
+                    );
+                    continue;
                 }
 
-                self.with_inner(|data| data.process_result(&value, &mut mb_info));
-                ready(())
-            })
-            .await;
+                return Some((listing_url, listing));
+            }
 
-        mb_info
-    }
-}
-
-/////////////////////////////////////////////////////////
-
-trait Inner {
-    type Type;
-    fn with_inner<T, F: FnMut(&mut Self::Type) -> T>(&self, func: F) -> T;
-    fn try_into_inner(self) -> Result<Self::Type>;
-    fn into_inner(self) -> Self::Type
-    where
-        Self: Sized,
-    {
-        self.try_into_inner().unwrap()
-    }
-}
-
-impl Inner for ProcessorStream {
-    type Type = ProcessorData;
-
-    fn with_inner<T, F: FnMut(&mut Self::Type) -> T>(&self, mut func: F) -> T {
-        let mut data = self.data.lock().unwrap();
-        func(&mut data)
-    }
-
-    fn try_into_inner(self) -> Result<Self::Type> {
-        match Arc::try_unwrap(self.data) {
-            Err(_) => bail!("Couldn't unwrap rc"),
-            Ok(v) => Ok(v.into_inner().unwrap()),
-        }
-    }
-}
-
-impl Stream for ProcessorStream {
-    type Item = ProcessorFuture;
-
-    fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let mut processor = self.data.lock().unwrap();
-
-        if processor.finished() {
-            return Poll::Ready(None);
+            error!("[Fetch {chunk_id}/{max_chunks}] Failed to fetch: {listing_url}");
+            return None;
         }
 
-        async fn send_request(id: usize, url: String) -> ProcessorReturn {
-            (id, reqwest::get(&url).await.unwrap().text().await.unwrap())
-        }
+        async fn fetch_history(
+            num_attempts: usize,
+            world: &str,
+            ids: &str,
+            chunk_id: usize,
+            max_chunks: usize,
+        ) -> Option<(String, String)> {
+            let history_url = get_history_url(world, ids);
+            info!("== [Fetch {chunk_id}/{max_chunks}] {history_url} ==");
 
-        for (id, state) in processor.status.iter().enumerate() {
-            match state {
-                ProcessorStatus::Ready => {
-                    processor.log(format!("[{id:<6}] PROCESSING")).unwrap();
+            for attempt in 0..num_attempts {
+                let history = get(&history_url).await?;
 
-                    processor.status[id] = ProcessorStatus::Processing;
-                    let url = processor.requests[id].url.clone();
-                    return Poll::Ready(Some(send_request(id, url).boxed()));
+                if !is_valid_json(&history) {
+                    warn!(
+                        "== [Fetch {chunk_id}/{max_chunks}] [{attempt}] Invalid history json: {history_url} =="
+                    );
+                    continue;
                 }
-                _ => {}
+
+                return Some((history_url, history));
+            }
+
+            error!("== [Fetch {chunk_id}/{max_chunks}] Failed to fetch: {history_url} ==");
+            return None;
+        }
+
+        if let Some((listing_url, listing)) =
+            fetch_listing(10, &world, &ids, chunk_id, max_chunks).await
+        {
+            if let Some((history_url, history)) =
+                fetch_history(10, &world, &ids, chunk_id, max_chunks).await
+            {
+                return Some(UniversalisRequest {
+                    listing,
+                    listing_url,
+                    history,
+                    history_url,
+                    world,
+                });
             }
         }
 
-        Poll::Pending
+        None
     }
 }
 
-/////////////////////////////////////////////////////////
+fn get_listing_url<S: AsRef<str>>(world: S, ids: S) -> String {
+    format!(
+        "https://universalis.app/api/v2/{}/{}?entries=0",
+        world.as_ref(),
+        ids.as_ref()
+    )
+}
 
-impl ProcessorData {
-    fn new(requests: Vec<UniversalisRequest>) -> Result<Self> {
-        let status = vec![ProcessorStatus::Ready; requests.len()];
-        // let log_writer = BufWriter::new(Vec::new());
-        let log_writer = BufWriter::new(File::create("out/errors.txt")?);
+fn get_history_url<S: AsRef<str>>(world: S, ids: S) -> String {
+    format!(
+        "https://universalis.app/api/v2/history/{}/{}",
+        world.as_ref(),
+        ids.as_ref()
+    )
+}
 
-        Ok(Self {
-            requests,
-            status,
-            log_writer,
-            start: Instant::now(),
-        })
-    }
-
-    fn log(&mut self, msg: String) -> Result<()> {
-        write!(
-            &mut self.log_writer,
-            "{:<10.3} {msg}\n",
-            self.start.elapsed().as_secs_f32()
-        )?;
-        self.log_writer.flush()?;
-        Ok(())
-    }
-
-    fn finished(&self) -> bool {
-        self.status
-            .iter()
-            .all(|status| status == &ProcessorStatus::Done)
-    }
-
-    fn process_result(&mut self, data: &ProcessorReturn, out_data: &mut ProcessorOutput) {
-        let (id, response) = data;
-        self.status[*id] = match process_json(&self.requests[*id], &response, out_data) {
-            Err(_e) => {
-                self.log(format!(
-                    "[{id:<6}] ERROR: {_e:?}\n{}",
-                    self.requests[*id].url
-                ))
-                .unwrap();
-                ProcessorStatus::Ready
-            }
-            Ok(_) => {
-                self.log(format!("[{id:<6}] DONE")).unwrap();
-                ProcessorStatus::Done
-            }
-        }
-    }
-
-    fn update(&self) {
-        let processed = self.status.iter().filter(|status| status.is_done()).count();
-        let rate = processed as f32 / self.start.elapsed().as_secs_f32();
-        println!(
-            "{:<6.1} {processed} processed (ETA {:.1}s, {:.1}/s)",
-            self.start.elapsed().as_secs_f32(),
-            self.requests.len() as f32 / rate,
-            rate,
-        );
-    }
+fn is_valid_json<S: AsRef<str>>(value: S) -> bool {
+    let value = value.as_ref();
+    value.starts_with("{") && value.ends_with("}") && value.len() > 50
 }

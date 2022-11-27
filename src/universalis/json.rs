@@ -5,11 +5,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use crate::cli::settings;
-
-use super::{
-    universalis::UniversalisRequestType, ItemListing, MarketBoardInfo, UniversalisRequest,
-};
+use super::{ItemListing, MarketItemInfoMap};
 
 #[derive(Debug, Clone, Deserialize)]
 struct MultipleListingView {
@@ -50,126 +46,62 @@ struct HistoryView {
     entries: Vec<ItemListingView>,
 }
 
-pub fn process_json(
-    request: &UniversalisRequest,
-    response: &str,
-    all_mb_info: &mut BTreeMap<String, MarketBoardInfo>,
-) -> Result<()> {
-    let mb_entry = all_mb_info.entry(request.world.clone()).or_default();
+pub struct UniversalisJson;
 
-    match request.kind {
-        UniversalisRequestType::Listings => parse_listings(response, mb_entry)?,
-        UniversalisRequestType::History => parse_history(response, mb_entry)?,
-    }
+impl UniversalisJson {
+    pub fn parse(
+        listings_json: &str,
+        history_json: &str,
+        mb_info_map: &mut MarketItemInfoMap,
+    ) -> Result<()> {
+        let MultipleListingView { items } =
+            serde_json::from_str::<MultipleListingView>(&listings_json)?;
+        for (id, info) in items.into_iter() {
+            let mut listings = parse_recent_listings(info.listings);
 
-    Ok(())
-}
-
-pub fn parse_listings(response: &str, mb_entry: &mut MarketBoardInfo) -> Result<()> {
-    let listing = serde_json::from_str::<MultipleListingView>(&response)?;
-    for (id, info) in &listing.items {
-        let id = id.parse::<u32>()?;
-        let entry = mb_entry.entry(id).or_default();
-        // entry.price_avg = info.averagePrice;
-        // entry.price_nq = info.averagePriceNQ;
-        // entry.price_hq = info.averagePriceHQ;
-        entry.min_price_hq = info.minPriceHQ;
-        entry.listings = info
-            .listings
-            .iter()
-            .map(|listing| ItemListing {
-                price: listing.pricePerUnit,
-                count: listing.quantity,
-                is_hq: listing.hq,
-                world: listing.worldName.clone().unwrap_or_default(),
-                name: listing.retainerName.clone().unwrap_or_default(),
-                posting: listing.lastReviewTime.unwrap(),
-            })
-            .collect::<Vec<_>>();
-    }
-
-    Ok(())
-}
-
-pub fn parse_history(response: &str, mb_entry: &mut MarketBoardInfo) -> Result<()> {
-    let listing = serde_json::from_str::<MultipleHistoryView>(&response)?;
-    for (id, info) in &listing.items {
-        let id = id.parse::<u32>()?;
-        let entry = mb_entry.entry(id).or_default();
-        (entry.velocity_nq, entry.velocity_hq) = calculate_velocity(&info.entries);
-        (entry.price_avg, entry.price_nq, entry.price_hq) = calculate_prices(&info.entries);
-        // println!("info: {info:?}");
-    }
-    Ok(())
-}
-
-fn calculate_velocity(history: &Vec<ItemListingView>) -> (f32, f32) {
-    if history.len() == 0 {
-        return (0.0, 0.0);
-    }
-
-    let mut sold_nq = 0;
-    let mut sold_hq = 0;
-    let history_length = settings().history_length;
-
-    let mut max_days = 0.0;
-    for item in history {
-        let days = SystemTime::UNIX_EPOCH + Duration::from_secs(item.timestamp.unwrap());
-        let days = days.elapsed().unwrap().as_secs_f32() / (3600.0 * 24.0);
-        max_days = days;
-        if days > history_length {
-            break;
+            let id = id.parse::<u32>()?;
+            let entry = mb_info_map.entry(id).or_default();
+            entry.listings.append(&mut listings);
+            entry.listings.sort_by(|a, b| a.price.cmp(&b.price));
         }
 
-        match item.hq {
-            false => sold_nq += item.quantity,
-            true => sold_hq += item.quantity,
-        }
-    }
+        let MultipleHistoryView { items } =
+            serde_json::from_str::<MultipleHistoryView>(&history_json)?;
+        for (id, info) in items.into_iter() {
+            let mut listings = parse_recent_listings(info.entries);
 
-    max_days = max_days.min(history_length);
-    (sold_nq as f32 / max_days, sold_hq as f32 / max_days)
+            let id = id.parse::<u32>()?;
+            let entry = mb_info_map.entry(id).or_default();
+            entry.history.append(&mut listings);
+            entry.history.sort_by(|a, b| a.price.cmp(&b.price));
+        }
+
+        Ok(())
+    }
 }
 
-fn calculate_prices(history: &Vec<ItemListingView>) -> (f32, f32, f32) {
-    if history.len() == 0 {
-        return (0.0, 0.0, 0.0);
-    }
-
-    let history_length = settings().history_length;
-    let mut nq_cost = Vec::new();
-    let mut hq_cost = Vec::new();
-    for item in history {
-        let days = SystemTime::UNIX_EPOCH + Duration::from_secs(item.timestamp.unwrap());
-        let days = days.elapsed().unwrap().as_secs_f32() / (3600.0 * 24.0);
-        if days > history_length {
-            break;
-        }
-
-        match item.hq {
-            false => nq_cost.push(item.pricePerUnit),
-            true => hq_cost.push(item.pricePerUnit),
-        }
-    }
-
-    let nq_median_price = if nq_cost.is_empty() {
-        0.0
-    } else {
-        nq_cost[nq_cost.len() / 2] as f32
-    };
-
-    let hq_median_price = if hq_cost.is_empty() {
-        0.0
-    } else {
-        hq_cost[hq_cost.len() / 2] as f32
-    };
-
-    hq_cost.extend(nq_cost);
-    let median_price = if hq_cost.is_empty() {
-        0.0
-    } else {
-        hq_cost[hq_cost.len() / 2] as f32
-    };
-
-    (median_price, nq_median_price, hq_median_price)
+fn parse_recent_listings(item_listing_view: Vec<ItemListingView>) -> Vec<ItemListing> {
+    item_listing_view
+        .into_iter()
+        .filter(|listing| {
+            // Only history listings have a timestamp, so limit those to the last week
+            if let Some(timestamp) = listing.timestamp {
+                let days = SystemTime::UNIX_EPOCH + Duration::from_secs(timestamp);
+                let days = days.elapsed().unwrap().as_secs_f32() / (3600.0 * 24.0);
+                days <= 7.0
+            } else {
+                true
+            }
+        })
+        .map(|listing| ItemListing {
+            price: listing.pricePerUnit,
+            count: listing.quantity,
+            is_hq: listing.hq,
+            world: listing.worldName.unwrap_or_default(),
+            name: listing.retainerName.unwrap_or_default(),
+            posting: listing
+                .lastReviewTime
+                .unwrap_or(listing.timestamp.unwrap_or_default()),
+        })
+        .collect::<Vec<_>>()
 }

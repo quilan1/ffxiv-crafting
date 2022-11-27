@@ -1,19 +1,8 @@
 use anyhow::Result;
 use csv::ReaderBuilder;
-use std::{
-    collections::BTreeMap,
-    fs::File,
-    io::{BufWriter, Write},
-    ops::Index,
-    path::Path,
-};
+use std::{collections::BTreeMap, ops::Index, path::Path};
 
-use crate::{
-    cli::settings,
-    library::{craft_list::AnalysisFilters, MarketBoardAnalysis},
-    universalis::Universalis,
-    util::{item, item_checked, library},
-};
+use crate::util::{item_checked, library};
 
 #[derive(Default)]
 pub struct GatheringList {
@@ -56,51 +45,6 @@ impl GatheringList {
 
     pub fn contains_item_id(&self, item_id: &u32) -> bool {
         self.by_item.contains_key(item_id)
-    }
-
-    pub fn write_to_file<P: AsRef<Path>>(&self, path: P, universalis: &Universalis) -> Result<()> {
-        let mut writer = BufWriter::new(File::create(path.as_ref())?);
-
-        write!(
-            &mut writer,
-            "{:<40}| {:<30}| {:<10}\n",
-            "Name", "Vel", "Sell"
-        )?;
-        write!(
-            &mut writer,
-            "=========================================================================================\n"
-        )?;
-
-        let mut analyses = self
-            .gathering
-            .iter()
-            .filter_map(|(_, item)| {
-                MarketBoardAnalysis::from_item(
-                    item.item_id,
-                    &universalis,
-                    &AnalysisFilters::default(),
-                )
-            })
-            .collect::<Vec<_>>();
-        analyses.sort_by_key(|analysis| analysis.sell_price);
-
-        for analysis in analyses {
-            if analysis.sell_price < settings().min_gathering_price
-                || analysis.velocity_info_nq.velocity < settings().min_gathering_velocity
-            {
-                continue;
-            }
-
-            let item = item(&analysis);
-            write!(
-                &mut writer,
-                "{:<40}| {:<30}| {:<10}\n",
-                item.name,
-                analysis.velocity_info_nq.to_string(),
-                analysis.sell_price
-            )?;
-        }
-        Ok(())
     }
 }
 
