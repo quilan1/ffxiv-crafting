@@ -9,5 +9,7 @@ pub use craft_list::{AnalysisFilters, Filter};
 
 pub use js_writers::JsWriter;
 pub use library::{library, Library};
-pub use market_board_analysis::{MarketBoardAnalysis, RecursiveMarketBoardAnalysis, WorldInfo, VelocityAnalysis};
+pub use market_board_analysis::{
+    MarketBoardAnalysis, RecursiveMarketBoardAnalysis, VelocityAnalysis, WorldInfo,
+};
 pub use parsers::{AsIngredient, Ingredient, ItemInfo};
