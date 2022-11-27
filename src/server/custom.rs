@@ -84,17 +84,15 @@ impl Custom {
             let builder = UniversalisBuilder::new();
             match payload.data_centers {
                 None => builder,
-                Some(data_centers) => builder.data_centers(data_centers.split(",").collect::<Vec<_>>()),
+                Some(data_centers) => {
+                    builder.data_centers(data_centers.split(",").collect::<Vec<_>>())
+                }
             }
         };
 
         // println!("ids: {ids:?}, top_ids: {top_ids:?}");
-        let mb_info_map = UniversalisProcessor::process_ids(
-            state.processor.clone(),
-            &builder,
-            ids.clone(),
-        )
-        .await;
+        let mb_info_map =
+            UniversalisProcessor::process_ids(state.processor.clone(), &builder, ids.clone()).await;
 
         let out = json_results(top_ids, filters, mb_info_map);
 
@@ -138,13 +136,16 @@ fn get_ids_from_filters(filters: String) -> (Vec<u32>, Vec<u32>, Vec<Filter>) {
 fn json_results(top_ids: Vec<u32>, filters: Vec<Filter>, mb_info: MarketItemInfoMap) -> CustomOut {
     let mut out_items = BTreeMap::new();
     for (id, MarketItemInfo { listings, history }) in mb_info {
-        out_items.insert(id, ItemInfo {
-            item_id: id,
-            name: item_name(id).to_string(),
-            listings,
-            history,
-            recipe: recipe_info(id),
-        });
+        out_items.insert(
+            id,
+            ItemInfo {
+                item_id: id,
+                name: item_name(id).to_string(),
+                listings,
+                history,
+                recipe: recipe_info(id),
+            },
+        );
     }
 
     for &id in &top_ids {
@@ -152,13 +153,16 @@ fn json_results(top_ids: Vec<u32>, filters: Vec<Filter>, mb_info: MarketItemInfo
             continue;
         }
 
-        out_items.insert(id, ItemInfo {
-            item_id: id,
-            name: item_name(id).to_string(),
-            listings: Vec::new(),
-            history: Vec::new(),
-            recipe: recipe_info(id),
-        });
+        out_items.insert(
+            id,
+            ItemInfo {
+                item_id: id,
+                name: item_name(id).to_string(),
+                listings: Vec::new(),
+                history: Vec::new(),
+                recipe: recipe_info(id),
+            },
+        );
     }
 
     CustomOut {

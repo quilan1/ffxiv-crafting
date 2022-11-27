@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
 
+mod builder;
 mod json;
 mod processor;
-mod builder;
 
 // use json::UniversalisJson;
 pub use builder::UniversalisBuilder;
-pub use processor::{UniversalisProcessor, UniversalisAsyncProcessor};
+pub use processor::{UniversalisAsyncProcessor, UniversalisProcessor};
 use serde::Serialize;
 
 //////////////////////////////////////////////////////
@@ -29,4 +29,3 @@ pub struct MarketItemInfo {
 }
 
 pub type MarketItemInfoMap = BTreeMap<u32, MarketItemInfo>;
-

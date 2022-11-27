@@ -1,9 +1,11 @@
 use std::{
     collections::VecDeque,
+    fs::File,
+    io::{BufWriter, Write},
     pin::Pin,
     sync::Arc,
     task::{Poll, Waker},
-    time::Instant, fs::File, io::{BufWriter, Write},
+    time::Instant,
 };
 
 use anyhow::{bail, Result};
@@ -61,7 +63,7 @@ impl<'a, O> AsyncProcessor<'a, O> {
                 active: Vec::new(),
                 queue: VecDeque::new(),
                 waker: None,
-            }))
+            })),
         }
     }
 
