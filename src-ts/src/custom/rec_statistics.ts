@@ -1,4 +1,4 @@
-import { ItemInfo, RecipeData } from "./custom_info";
+import { Id, IdChain, ItemInfo, RecipeData } from "./custom_info";
 import Util from "../util.js";
 import { Quality } from "./statistics";
 
@@ -15,8 +15,8 @@ export class RecStatisticsCollection {
         this._entries = entries ?? {};
     }
 
-    get entries(): [number, RecStatistics][] {
-        const list: [number, RecStatistics][] = [];
+    get entries(): [Id, RecStatistics][] {
+        const list: [Id, RecStatistics][] = [];
         for (const [idStr, value] of Object.entries(this._entries)) {
             const id = Number.parseInt(idStr);
             list.push([id, value]);
@@ -24,7 +24,7 @@ export class RecStatisticsCollection {
         return list;
     }
 
-    get keys(): number[] {
+    get keys(): Id[] {
         return this.entries.map(([id, _]) => id);
     }
 
@@ -32,7 +32,7 @@ export class RecStatisticsCollection {
         return this.entries.map(([_, stats]) => stats);
     }
 
-    get(index: number | number[]): RecStatistics | undefined {
+    get(index: Id | IdChain): RecStatistics | undefined {
         if (typeof index === 'number') {
             return this._entries[index];
         }
@@ -47,30 +47,30 @@ export class RecStatisticsCollection {
         return entry?.inputs?.get(tail);
     }
 
-    set(index: number, value: RecStatistics) {
+    set(index: Id, value: RecStatistics) {
         this._entries[index] = value;
     }
 
-    allChains(history?: number[]): number[][] {
-        history ??= [];
+    childChains(id?: IdChain): IdChain[] {
+        id ??= [];
 
-        let list: number[][] = [];
-        for (const [id, input] of this.entries) {
-            const childHistory = [...history, id];
+        let list: IdChain[] = [];
+        for (const [_id, input] of this.entries) {
+            const childHistory = [...id, _id];
             list.push(childHistory);
 
             if (input.inputs === undefined) {
                 continue;
             }
 
-            list = list.concat(input.inputs.allChains(childHistory));
+            list = list.concat(input.inputs.childChains(childHistory));
         }
 
         return list;
     }
 
-    allChainsOf(ids: number[]): number[][] {
-        let list: number[][] = [];
+    allChainsOf(ids: Id[]): IdChain[] {
+        let list: IdChain[] = [];
         for (const id of ids) {
             const childHistory = [id];
             list.push(childHistory);
@@ -80,15 +80,15 @@ export class RecStatisticsCollection {
                 continue;
             }
 
-            list = list.concat(input.inputs.allChains(childHistory));
+            list = list.concat(input.inputs.childChains(childHistory));
         }
 
         return list;
     }
 
-    static filterChains(idChains: number[][], filter: (idChain: number[]) => RecStatisticsSkip): number[][] {
+    static filterChains(idChains: IdChain[], filter: (idChain: IdChain) => RecStatisticsSkip): IdChain[] {
         let retIdChains = [];
-        let skipParent: number[] | undefined = undefined;
+        let skipParent: IdChain | undefined = undefined;
         for (const idChain of idChains) {
             if (skipParent !== undefined) {
                 const subArray = idChain.slice(0, skipParent.length);
@@ -121,7 +121,7 @@ export default class RecStatistics {
     readonly item: ItemInfo;
     readonly count: number;
 
-    private constructor(ingredient: RecipeData, allItems: Record<number, ItemInfo>, multiplier: number) {
+    private constructor(ingredient: RecipeData, allItems: Record<Id, ItemInfo>, multiplier: number) {
         this.item = allItems[ingredient.item_id];
         if (this.item === undefined) {
             throw new Error('Invalid item id');
@@ -171,7 +171,7 @@ export default class RecStatistics {
         this.minCraftPrice = minCraftPrice;
     }
 
-    static from(id: number, count: number, allItems: Record<number, ItemInfo>): RecStatistics | undefined {
+    static from(id: Id, count: number, allItems: Record<Id, ItemInfo>): RecStatistics | undefined {
         try {
             return new RecStatistics({ item_id: id, count }, allItems, 1);
         } catch(_) {

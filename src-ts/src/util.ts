@@ -51,6 +51,34 @@ export default class Util {
         }
     }
 
+    static equalsDeep(a: any, b: any): boolean {
+        if (typeof a !== typeof b) {
+            return false;
+        }
+
+        if (typeof a === 'string' || typeof a === 'number' || a === null || a === undefined) {
+            return a === b;
+        } else if (Array.isArray(a)) {
+            if (!Array.isArray(b)) {
+                return false;
+            }
+            return a.length === b.length && a.every((v, i) => this.equalsDeep(v, b[i]));
+        } else if (typeof a === 'object' && typeof b === 'object') {
+            let keysA = Object.keys(a);
+            let keysB = Object.keys(b);
+            keysA.sort();
+            keysB.sort();
+
+            if (!Util.equalsDeep(keysA, keysB)) {
+                return false;
+            }
+
+            return keysA.every(k => this.equalsDeep(a[k], b[k]));
+        }
+
+        return a == b;
+    }
+
     static dataCenter(world: string): string {
         return {
             'Halicarnassus': 'Dynamis',

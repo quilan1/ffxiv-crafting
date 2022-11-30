@@ -5,8 +5,11 @@ import Util from "../util.js";
 
 ////////////////////////////////////////////////////
 
+export type Id = number;
+export type IdChain = number[];
+
 export type RecipeData = {
-    item_id: number,
+    item_id: Id,
     count: number,
 }
 
@@ -35,14 +38,14 @@ export type ItemInfo = {
 }
 
 export type CustomInfoJson = {
-    item_info: Record<number, ItemInfo>,
+    item_info: Record<Id, ItemInfo>,
     top_ids: number[],
 }
 
 ////////////////////////////////////////////////////
 
 export default class CustomInfo {
-    readonly item_info: Record<number, ItemInfo>;
+    readonly item_info: Record<Id, ItemInfo>;
     readonly top_ids: number[];
     readonly rec_statistics: RecStatisticsCollection;
 
@@ -53,8 +56,14 @@ export default class CustomInfo {
         this.calcRecStatistics(count);
     }
 
-    static async fetch(searchFilter: string): Promise<CustomInfo> {
-        const info = await this.fetchRaw(searchFilter);
+    static async fetch(searchFilter: string, isDebug?: boolean): Promise<CustomInfo> {
+        let info;
+        if (isDebug === true) {
+            info = await this.fetchDebug();
+        } else {
+            info = await this.fetchRaw(searchFilter);
+        }
+
         const filters = new Filters(searchFilter);
         const count = filters.getOneAsInt(":count") ?? 1;
 
@@ -76,6 +85,17 @@ export default class CustomInfo {
         try {
             let dc = "&data_centers=Aether,Crystal,Dynamis,Primal";
             let request = await Util.fetch(`v1/custom-filter?filters=${encFilters}`);
+            let json = await request.json();
+            return json;
+        } catch (err) {
+            console.error(err);
+            throw err;
+        }
+    }
+
+    private static async fetchDebug(): Promise<CustomInfoJson> {
+        try {
+            let request = await Util.fetch(`web/crafting-mats.json`);
             let json = await request.json();
             return json;
         } catch (err) {
