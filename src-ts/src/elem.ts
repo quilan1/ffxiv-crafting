@@ -9,6 +9,7 @@ export type ElemOptionOpts = ElemBaseOpts & ElemInnerTextBaseOpts & ElemValueBas
 export type ElemButtonOpts = ElemBaseOpts & ElemInnerTextBaseOpts & ElemValueBaseOpts;
 export type ElemInputOpts = ElemBaseOpts & ElemTypeBaseOpts;
 export type ElemDivOpts = ElemBaseOpts & ElemInnerTextBaseOpts & ElemChildBaseOpts;
+export type ElemSpanOpts = ElemDivOpts;
 
 export type ElemAnyOpts = ElemTagBaseOpts & ElemBaseOpts & ElemChildBaseOpts & ElemOptionOpts & ElemButtonOpts & ElemInputOpts & ElemDivOpts;
 
@@ -68,6 +69,10 @@ class Elem {
 
     static makeDiv(opts?: ElemDivOpts): HTMLDivElement {
         return this.makeElem({ tag: 'div', ...opts }) as HTMLDivElement;
+    }
+
+    static makeSpan(opts?: ElemSpanOpts): HTMLSpanElement {
+        return this.makeElem({ tag: 'span', ...opts }) as HTMLDivElement;
     }
 
     private static parseElem(elem: any, inner: ElemAnyOpts): void {

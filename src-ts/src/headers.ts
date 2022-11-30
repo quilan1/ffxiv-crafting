@@ -1,6 +1,3 @@
-// import custom from "./custom.js";
-// import exchange from "./exchange.js";
-
 const selectors = {
     craftsHeader: document.querySelector('.header > div:nth-child(1)') as HTMLElement,
     customHeader: document.querySelector('.header > div:nth-child(2)') as HTMLElement,
