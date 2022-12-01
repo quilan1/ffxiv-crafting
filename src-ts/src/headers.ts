@@ -1,7 +1,6 @@
 const selectors = {
-    craftsHeader: document.querySelector('.header > div:nth-child(1)') as HTMLElement,
-    customHeader: document.querySelector('.header > div:nth-child(2)') as HTMLElement,
-    exchangeHeader: document.querySelector('.header > div:nth-child(3)') as HTMLElement,
+    customHeader: document.querySelector('.header > div:nth-child(1)') as HTMLElement,
+    exchangeHeader: document.querySelector('.header > div:nth-child(2)') as HTMLElement,
     customContainer: document.querySelector('.container-custom') as HTMLElement,
     exchangeContainer: document.querySelector('.container-exchange') as HTMLElement,
 }
@@ -15,7 +14,6 @@ export default {
 
 function clickHeader(event: MouseEvent) {
     const pairs = [
-        { header: selectors.craftsHeader, container: null },
         { header: selectors.customHeader, container: selectors.customContainer },
         { header: selectors.exchangeHeader, container: selectors.exchangeContainer },
     ]

@@ -23,7 +23,7 @@ use crate::{
 #[derive(Deserialize, Debug)]
 pub struct CustomFilter {
     filters: String,
-    data_centers: Option<String>,
+    data_center: Option<String>,
 }
 
 #[derive(Serialize, Debug)]
@@ -74,7 +74,7 @@ impl Custom {
 
         let builder = {
             let builder = UniversalisBuilder::new();
-            match payload.data_centers {
+            match payload.data_center {
                 None => builder,
                 Some(data_centers) => {
                     builder.data_centers(data_centers.split(",").collect::<Vec<_>>())
