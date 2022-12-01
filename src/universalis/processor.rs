@@ -1,34 +1,35 @@
 use super::{builder::UniversalisBuilder, json::UniversalisJson, MarketItemInfoMap};
 use crate::util::{AsyncProcessor, SharedFuture};
 
-use futures::FutureExt;
+use futures::{FutureExt};
 use log::{error, info, warn};
 
-type UniversalisFutureOutput = Option<UniversalisRequest>;
-type UniversalisRequestFuture<'a> = SharedFuture<'a, UniversalisFutureOutput>;
-pub type UniversalisAsyncProcessor<'a> = AsyncProcessor<'a, UniversalisFutureOutput>;
+type UniversalisRequestFutureOutput = Option<UniversalisRequest>;
+type UniversalisListingFutureOutput = Option<String>;
+type UniversalisRequestFuture<'a> = SharedFuture<'a, UniversalisRequestFutureOutput>;
+pub type UniversalisRequestAsyncProcessor<'a> = AsyncProcessor<'a, UniversalisRequestFutureOutput>;
+pub type UniversalisListingAsyncProcessor<'a> = AsyncProcessor<'a, UniversalisListingFutureOutput>;
 
 #[derive(Clone)]
 pub struct UniversalisRequest {
     listing: String,
-    listing_url: String,
     history: String,
-    history_url: String,
     world: String,
 }
 
 pub struct UniversalisProcessor;
 
 impl UniversalisProcessor {
-    pub async fn process_ids(
-        processor: UniversalisAsyncProcessor<'_>,
+    pub async fn process_ids<'a: 'b, 'b>(
+        listing_processor: UniversalisListingAsyncProcessor<'a>,
+        request_processor: UniversalisRequestAsyncProcessor<'b>,
         builder: &UniversalisBuilder,
         ids: Vec<u32>,
     ) -> MarketItemInfoMap {
         let worlds = builder.data_centers.clone();
 
-        let futures = Self::make_requests(&worlds, ids);
-        let outputs = processor.process(futures).await;
+        let futures = Self::make_requests(listing_processor, &worlds, ids);
+        let outputs = request_processor.process(futures).await;
 
         let outputs = outputs
             .into_iter()
@@ -54,7 +55,12 @@ impl UniversalisProcessor {
         mb_info_map
     }
 
-    fn make_requests<'a>(worlds: &Vec<String>, ids: Vec<u32>) -> Vec<UniversalisRequestFuture<'a>> {
+    fn make_requests<'a, 'b: 'a>(
+        processor: UniversalisListingAsyncProcessor<'b>,
+        worlds: &Vec<String>,
+        ids: Vec<u32>,
+    ) -> Vec<UniversalisRequestFuture<'a>>
+    {
         let mut requests = Vec::new();
 
         let max_chunks = ((ids.len() + 99) / 100) * worlds.len();
@@ -75,10 +81,15 @@ impl UniversalisProcessor {
                 .join(",");
 
             for world in worlds {
-                let future =
-                    UniversalisRequest::fetch(world.clone(), ids.clone(), chunk_id, max_chunks)
-                        .boxed()
-                        .shared();
+                let future = UniversalisRequest::fetch(
+                    processor.clone(),
+                    world.clone(),
+                    ids.clone(),
+                    chunk_id,
+                    max_chunks,
+                )
+                .boxed()
+                .shared();
                 requests.push(future);
                 chunk_id += 1;
             }
@@ -89,18 +100,24 @@ impl UniversalisProcessor {
 }
 
 impl UniversalisRequest {
-    async fn fetch(world: String, ids: String, chunk_id: usize, max_chunks: usize) -> Option<Self> {
+    async fn fetch(
+        processor: UniversalisListingAsyncProcessor<'_>,
+        world: String,
+        ids: String,
+        chunk_id: usize,
+        max_chunks: usize,
+    ) -> Option<Self> {
         async fn get(url: &str) -> Option<String> {
             Some(reqwest::get(url).await.ok()?.text().await.ok()?)
         }
 
         async fn fetch_listing(
             num_attempts: usize,
-            world: &str,
-            ids: &str,
+            world: String,
+            ids: String,
             chunk_id: usize,
             max_chunks: usize,
-        ) -> Option<(String, String)> {
+        ) -> Option<String> {
             let listing_url = get_listing_url(world, ids);
             info!("[Fetch {chunk_id}/{max_chunks}] {listing_url}");
 
@@ -114,7 +131,8 @@ impl UniversalisRequest {
                     continue;
                 }
 
-                return Some((listing_url, listing));
+                info!("[Fetch {chunk_id}/{max_chunks}] Listing done");
+                return Some(listing);
             }
 
             error!("[Fetch {chunk_id}/{max_chunks}] Failed to fetch: {listing_url}");
@@ -123,11 +141,11 @@ impl UniversalisRequest {
 
         async fn fetch_history(
             num_attempts: usize,
-            world: &str,
-            ids: &str,
+            world: String,
+            ids: String,
             chunk_id: usize,
             max_chunks: usize,
-        ) -> Option<(String, String)> {
+        ) -> Option<String> {
             let history_url = get_history_url(world, ids);
             info!("[Fetch {chunk_id}/{max_chunks}] {history_url}");
 
@@ -141,24 +159,35 @@ impl UniversalisRequest {
                     continue;
                 }
 
-                return Some((history_url, history));
+                info!("[Fetch {chunk_id}/{max_chunks}] History done");
+                return Some(history);
             }
 
             error!("[Fetch {chunk_id}/{max_chunks}] Failed to fetch: {history_url}");
             return None;
         }
 
-        if let Some((listing_url, listing)) =
-            fetch_listing(10, &world, &ids, chunk_id, max_chunks).await
-        {
-            if let Some((history_url, history)) =
-                fetch_history(10, &world, &ids, chunk_id, max_chunks).await
-            {
+        let mut requests = Vec::new();
+        requests.push(
+            fetch_listing(10, world.clone(), ids.clone(), chunk_id, max_chunks)
+                .boxed()
+                .shared(),
+        );
+        requests.push(
+            fetch_history(10, world.clone(), ids.clone(), chunk_id, max_chunks)
+                .boxed()
+                .shared(),
+        );
+
+        let mut results = processor.process(requests).await;
+        let listing_result = results.remove(0);
+        let history_result = results.remove(0);
+
+        if let Some(listing) = listing_result {
+            if let Some(history) = history_result {
                 return Some(UniversalisRequest {
-                    listing,
-                    listing_url,
-                    history,
-                    history_url,
+                    listing: listing,
+                    history: history,
                     world,
                 });
             }
