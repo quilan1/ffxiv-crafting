@@ -1,11 +1,8 @@
 use std::{
     collections::VecDeque,
-    fs::File,
-    io::{BufWriter, Write},
     pin::Pin,
     sync::Arc,
     task::{Poll, Waker},
-    time::Instant,
 };
 
 use anyhow::{bail, Result};
@@ -15,9 +12,10 @@ use futures::{
 };
 use parking_lot::Mutex;
 
-use crate::util::AsyncCounter;
+#[allow(unused_imports)]
+use log::info;
 
-const MAX_QUEUE_SIZE: usize = 8;
+use crate::util::AsyncCounter;
 
 #[derive(Clone)]
 pub struct AsyncProcessor<'a, O> {
@@ -31,10 +29,13 @@ struct NotifyFuture<'a, O> {
     counter: AsyncCounter,
 }
 
+#[allow(dead_code)]
 struct AsyncProcessorData<'a, O> {
     active: Vec<NotifyFuture<'a, O>>,
     queue: VecDeque<NotifyFuture<'a, O>>,
     waker: Option<Waker>,
+    name: String,
+    max_queue: usize,
 }
 
 trait Inner {
@@ -57,12 +58,14 @@ pub trait Notify {
 
 // Consumer side of the API
 impl<'a, O> AsyncProcessor<'a, O> {
-    pub fn new() -> Self {
+    pub fn new<S: Into<String>>(name: S, max_queue: usize) -> Self {
         Self {
             data: Arc::new(Mutex::new(AsyncProcessorData {
                 active: Vec::new(),
                 queue: VecDeque::new(),
                 waker: None,
+                name: name.into(),
+                max_queue,
             })),
         }
     }
@@ -98,13 +101,11 @@ impl<'a, O> AsyncProcessor<'a, O> {
         }
 
         // Poll processor again
-        data.waker.as_ref().unwrap().wake_by_ref();
+        if let Some(waker) = data.waker.as_ref() {
+            waker.wake_by_ref();
+        }
     }
 }
-
-// impl<'a, O> AsyncProcessorData<'a, O> {
-//     #[allow(dead_code, unused_variables)]
-// }
 
 impl<'a, O> Future for AsyncProcessor<'a, O>
 where
@@ -115,14 +116,15 @@ where
     fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
         let mut data = self.data.lock();
 
-        // self.log(format!(
-        //     "[Poll] Start (active={}, queue={})",
+        // info!(
+        //     "[Poll {}] Start (active={}, queue={})",
+        //     data.name,
         //     data.active.len(),
         //     data.queue.len()
-        // ));
+        // );
 
-        // Keep the queue limited to MAX_QUEUE_SIZE
-        while data.active.len() < MAX_QUEUE_SIZE {
+        // Keep the queue limited to max_queue
+        while data.active.len() < data.max_queue {
             match data.queue.pop_front() {
                 Some(future) => data.active.push(future),
                 None => break,
@@ -140,11 +142,12 @@ where
 
         // Set the waker, so it can be re-polled
         data.waker = Some(cx.waker().clone());
-        // self.log(format!(
-        //     "[Poll] Done (active={}, queue={})",
+        // info!(
+        //     "[Poll {}] Done (active={}, queue={})",
+        //     data.name,
         //     data.active.len(),
         //     data.queue.len()
-        // ));
+        // );
 
         // This future never ends
         Poll::Pending

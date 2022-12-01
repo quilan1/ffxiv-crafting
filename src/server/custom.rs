@@ -55,7 +55,7 @@ pub struct JsonFilter {
 
 #[derive(Serialize, Debug)]
 pub struct CustomOut {
-    filters: Vec<JsonFilter>,
+    // filters: Vec<JsonFilter>,
     item_info: BTreeMap<u32, ItemInfo>,
     top_ids: Vec<u32>,
 }
@@ -70,7 +70,7 @@ impl Custom {
     ) -> impl IntoResponse {
         info!("GET custom_filter: Payload {payload:?}");
 
-        let (top_ids, ids, filters) = get_ids_from_filters(payload.filters);
+        let (top_ids, ids) = get_ids_from_filters(payload.filters);
 
         let builder = {
             let builder = UniversalisBuilder::new();
@@ -82,18 +82,23 @@ impl Custom {
             }
         };
 
-        let mb_info_map =
-            UniversalisProcessor::process_ids(state.processor.clone(), &builder, ids.clone()).await;
+        let mb_info_map = UniversalisProcessor::process_ids(
+            state.listing_processor.clone(),
+            state.request_processor.clone(),
+            &builder,
+            ids.clone(),
+        )
+        .await;
 
-        let out = json_results(top_ids, filters, mb_info_map);
+        let out = json_results(top_ids, mb_info_map);
 
         (StatusCode::OK, Json(out))
     }
 }
 
-fn get_ids_from_filters(filters: String) -> (Vec<u32>, Vec<u32>, Vec<Filter>) {
+fn get_ids_from_filters(filters: String) -> (Vec<u32>, Vec<u32>) {
     let item_list = library().all_items.items.values().collect::<Vec<_>>();
-    let (items, filters) = Filter::apply_filters(item_list, &filters);
+    let (items, _) = Filter::apply_filters(item_list, &filters);
 
     fn push_ids(ids: &mut Vec<u32>, item_id: u32) {
         ids.push(item_id);
@@ -121,10 +126,10 @@ fn get_ids_from_filters(filters: String) -> (Vec<u32>, Vec<u32>, Vec<Filter>) {
 
     let items = items.into_iter().map(|item| item.id).collect::<Vec<_>>();
 
-    (items, ids, filters)
+    (items, ids)
 }
 
-fn json_results(top_ids: Vec<u32>, filters: Vec<Filter>, mb_info: MarketItemInfoMap) -> CustomOut {
+fn json_results(top_ids: Vec<u32>, mb_info: MarketItemInfoMap) -> CustomOut {
     let mut out_items = BTreeMap::new();
     for (id, MarketItemInfo { listings, history }) in mb_info {
         out_items.insert(
@@ -157,7 +162,6 @@ fn json_results(top_ids: Vec<u32>, filters: Vec<Filter>, mb_info: MarketItemInfo
     }
 
     CustomOut {
-        filters: filters.into_iter().map(|filter| filter.into()).collect(),
         top_ids,
         item_info: out_items,
     }

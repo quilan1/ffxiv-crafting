@@ -4,7 +4,7 @@ use futures::join;
 use std::{net::SocketAddr, sync::Arc};
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::universalis::UniversalisAsyncProcessor;
+use crate::universalis::{UniversalisListingAsyncProcessor, UniversalisRequestAsyncProcessor};
 
 use super::{custom::Custom, StaticFiles};
 
@@ -12,15 +12,19 @@ pub struct Server;
 
 #[derive(Clone)]
 pub struct ServerState<'a> {
-    pub processor: UniversalisAsyncProcessor<'a>,
+    pub listing_processor: UniversalisListingAsyncProcessor<'a>,
+    pub request_processor: UniversalisRequestAsyncProcessor<'a>,
 }
 
+#[allow(unused_must_use)]
 impl Server {
     pub async fn run() -> Result<()> {
-        let processor = UniversalisAsyncProcessor::new();
+        let listing_processor = UniversalisListingAsyncProcessor::new("Listings", 8);
+        let request_processor = UniversalisRequestAsyncProcessor::new("Request", 1000);
 
         let app_state = Arc::new(ServerState {
-            processor: processor.clone(),
+            listing_processor: listing_processor.clone(),
+            request_processor: request_processor.clone(),
         });
         let app = Router::with_state(app_state)
             .route("/web/*path", get(StaticFiles::static_path))
@@ -35,7 +39,8 @@ impl Server {
         println!("Server setup at http://127.0.0.1:3001");
 
         join!(
-            processor,
+            listing_processor,
+            request_processor,
             axum::Server::bind(&addr).serve(app.into_make_service())
         );
 
