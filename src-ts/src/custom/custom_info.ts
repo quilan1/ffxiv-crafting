@@ -56,16 +56,13 @@ export default class CustomInfo {
         this.calcRecStatistics(count);
     }
 
-    static async fetch(searchFilter: string, isDebug?: boolean): Promise<CustomInfo> {
+    static async fetch(searchFilter: string, count: number, dataCenter: string, isDebug?: boolean): Promise<CustomInfo> {
         let info;
         if (isDebug === true) {
             info = await this.fetchDebug();
         } else {
-            info = await this.fetchRaw(searchFilter);
+            info = await this.fetchRaw(searchFilter, dataCenter);
         }
-
-        const filters = new Filters(searchFilter);
-        const count = filters.getOneAsInt(":count") ?? 1;
 
         info.item_info = Object.fromEntries(Object.entries(info.item_info).map(([key, value]) => [Number.parseInt(key), value]));
 
@@ -79,12 +76,11 @@ export default class CustomInfo {
         return new CustomInfo(info, count);
     }
 
-    private static async fetchRaw(searchFilter: string): Promise<CustomInfoJson> {
+    private static async fetchRaw(searchFilter: string, dataCenter: string): Promise<CustomInfoJson> {
         const encFilters = encodeURIComponent(searchFilter);
 
         try {
-            let dc = "&data_centers=Aether,Crystal,Dynamis,Primal";
-            let request = await Util.fetch(`v1/custom-filter?filters=${encFilters}`);
+            let request = await Util.fetch(`v1/custom-filter?filters=${encFilters}&data_center=${dataCenter}`);
             let json = await request.json();
             return json;
         } catch (err) {

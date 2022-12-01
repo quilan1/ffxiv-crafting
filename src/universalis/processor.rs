@@ -47,10 +47,7 @@ impl UniversalisProcessor {
             if let Err(_) =
                 UniversalisJson::parse(&output.listing, &output.history, &mut mb_info_map)
             {
-                error!(
-                    "Error: Invalid json response for {} or {}",
-                    output.listing_url, output.history_url
-                );
+                error!("[process_ids] Error: Invalid json response");
             }
         }
 
@@ -132,14 +129,14 @@ impl UniversalisRequest {
             max_chunks: usize,
         ) -> Option<(String, String)> {
             let history_url = get_history_url(world, ids);
-            info!("== [Fetch {chunk_id}/{max_chunks}] {history_url} ==");
+            info!("[Fetch {chunk_id}/{max_chunks}] {history_url}");
 
             for attempt in 0..num_attempts {
                 let history = get(&history_url).await?;
 
                 if !is_valid_json(&history) {
                     warn!(
-                        "== [Fetch {chunk_id}/{max_chunks}] [{attempt}] Invalid history json: {history_url} =="
+                        "[Fetch {chunk_id}/{max_chunks}] [{attempt}] Invalid history json: {history_url}"
                     );
                     continue;
                 }
@@ -147,7 +144,7 @@ impl UniversalisRequest {
                 return Some((history_url, history));
             }
 
-            error!("== [Fetch {chunk_id}/{max_chunks}] Failed to fetch: {history_url} ==");
+            error!("[Fetch {chunk_id}/{max_chunks}] Failed to fetch: {history_url}");
             return None;
         }
 
@@ -189,5 +186,5 @@ fn get_history_url<S: AsRef<str>>(world: S, ids: S) -> String {
 
 fn is_valid_json<S: AsRef<str>>(value: S) -> bool {
     let value = value.as_ref();
-    value.starts_with("{") && value.ends_with("}") && value.len() > 50
+    value.starts_with("{") && value.ends_with("}") && value.len() > 100
 }

@@ -8,14 +8,22 @@ export default class Filters {
 
     constructor(filterString: string) {
         const splitFilter = (filter: string): Filter => {
-            const [name, opts] = filter.trim().split(" ");
+            const [name, ...opts] = filter.trim().split(" ");
             return {
                 name,
-                values: opts?.split("|") ?? [],
+                values: opts?.join(" ")?.split("|") ?? [],
             }
         }
 
         this.filters = filterString.split(",").map(splitFilter);
+    }
+
+    get value(): string {
+        const filteredNames = new Set([':count']);
+        return this.filters
+            .filter(filter => !filteredNames.has(filter.name))
+            .map(filter => `${filter.name} ${filter.values.join('|')}`)
+            .join(',');
     }
 
     get(name: string): string[] | undefined {

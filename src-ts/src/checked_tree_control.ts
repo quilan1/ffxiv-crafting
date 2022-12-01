@@ -6,8 +6,7 @@ export type CtcRowData = {
     id: string,
     children: string[],
     depth: number,
-    text: string,
-    extra: string[],
+    text: string[],
 };
 
 export default class CheckedTreeControl {
@@ -50,6 +49,18 @@ export default class CheckedTreeControl {
         }
     }
 
+    updateRows(data: CtcRowData[]) {
+        this.data = data;
+        for (const rowData of this.data) {
+            for (let index=0; index < rowData.text.length; ++index) {
+                const cell = this.selectors.cell(rowData.id, index);
+                if (cell !== undefined) {
+                    cell.innerText = rowData.text[index];
+                }
+            }
+        }
+    }
+
     get selectors() {
         const table = this.table;
         return {
@@ -61,6 +72,13 @@ export default class CheckedTreeControl {
             },
             plus(id: string): HTMLButtonElement | undefined {
                 return this.row(id)?.querySelector(':scope > td:nth-child(2) > button') as HTMLButtonElement | undefined;
+            },
+            cell(id: string, index: number): HTMLElement | undefined {
+                if (index === 0) {
+                    return this.row(id)?.querySelector(':scope > td:nth-child(2) > span') as HTMLElement | undefined;
+                } else {
+                    return this.row(id)?.querySelector(`:scope > td:nth-child(${index+2})`) as HTMLElement | undefined;
+                }
             }
         }
     }
@@ -96,13 +114,13 @@ export default class CheckedTreeControl {
                 const isCollapsed = this.collapsedIds.has(data.id);
                 td.append(Elem.makeButton({ innerText: ['-', '+'][Number(isCollapsed)], className: 'collapsable' }));
             }
-            td.append(Elem.makeSpan({ innerText: data.text }));
+            td.append(Elem.makeSpan({ innerText: data.text[0] }));
         }
 
         return [
             _check,
             _text,
-            ...data.extra
+            ...data.text.slice(1)
         ];
     }
 

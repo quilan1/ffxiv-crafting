@@ -52,7 +52,6 @@ function reduceListings<T, O>(name: string, listings: Listing[], filter_fns: ((i
         filteredListings.push(map_fn(listing));
     }
 
-    // console.log(`Filtered listings for ${name}:`, filteredListings);
     return (filteredListings.length > 0) ? reduce_fn(filteredListings) : undefined;
 }
 
@@ -62,8 +61,6 @@ function calculateVelocity(items: Listing[]): number {
     const minPosting = Math.min(...items.map(item => item.posting));
     const timeDiffMillis = Date.now() / 1000.0 - Math.min(minPosting);
     let timeDiffDays = timeDiffMillis / 3600.0 / 24.0;
-
-    // console.log(`Home history size: ${items.length}, totalCount: ${totalCount}, timeDiffDays: ${timeDiffDays}`);
 
     timeDiffDays = 7.0;
     return totalCount / timeDiffDays;

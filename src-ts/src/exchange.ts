@@ -1,6 +1,7 @@
 import RecStatistics from "./custom/rec_statistics.js";
 import CustomInfo from "./custom/custom_info.js";
 import Elem, { ElemAnyOpts } from "./elem.js";
+import Filters from "./filters.js";
 
 const exchangeCosts = [
     { type: 'purpleScrips', name: "Purple Crafting Scrips", search: ":name ^Rarefied, :rlevel 90, :count 20", exchange: 20*144 },
@@ -90,30 +91,25 @@ const exchangeProfits = [
     { tickets: 1200, name: "Skyworker's Boots" },
 ]
 
-const selectors = {
-    refresh: document.querySelector('#exchange-refresh') as HTMLButtonElement,
-    cur: () => document.querySelector('#exchange-cur') as HTMLElement,
-    status: document.querySelector('#exchange-refresh-status') as HTMLElement,
-}
-
 export default {
     setupEvents() {
-        selectors.refresh.onclick = _ => this._calculate();
+        this.selectors.refresh.onclick = _ => this._calculate();
     },
 
     _pricePromise(search: string): Promise<CustomInfo> {
-        return CustomInfo.fetch(search);
+        const filters = new Filters(search);
+        return CustomInfo.fetch(search, filters.getOneAsInt(':count') ?? 1, "Dynamis");
     },
 
     _profitPromise(type: string): Promise<CustomInfo> {
         const purchases = exchangeProfits.filter(item => (item as any)[type] !== undefined);
         const search = ":name (" + purchases.map(item => `^${item.name}\$`).join("|") + ")";
-        return CustomInfo.fetch(search);
+        return CustomInfo.fetch(search, 1, "Dynamis");
     },
 
     async _calculate() {
         try {
-            selectors.refresh.disabled = true;
+            this.selectors.refresh.disabled = true;
             const newDiv = Elem.makeDiv({ id: 'exchange-cur' });
 
             let exchangeCostInfo = [];
@@ -125,18 +121,18 @@ export default {
 
             const start = Date.now();
             for (const { name, type, exchange, pricePromise, profitPromise } of exchangeCostInfo) {
-                selectors.status.innerText = `Fetching ${name} prices`;
+                this.selectors.status.innerText = `Fetching ${name} prices`;
                 const result = await this._calculatePrice(type, pricePromise, exchange);
-                selectors.status.innerText = `Fetching ${name} exchange items`;
+                this.selectors.status.innerText = `Fetching ${name} exchange items`;
                 const profitResults = await this._calculateProfits(type, profitPromise, result.pricePer) as unknown as ElemAnyOpts[];
                 newDiv.appendChild(Elem.makeDiv({ innerText: name }));
                 newDiv.appendChild(Elem.makeDiv({ className: 'exchange-profit-list', children: profitResults }));
             }
-            selectors.status.innerText = '';
-            selectors.status.innerText = `Time taken: ${Date.now()-start}`;
-            selectors.cur().parentNode?.replaceChild(newDiv, selectors.cur());
+            this.selectors.status.innerText = '';
+            this.selectors.status.innerText = `Time taken: ${Date.now()-start}`;
+            this.selectors.cur.parentNode?.replaceChild(newDiv, this.selectors.cur);
         } finally {
-            selectors.refresh.disabled = false;
+            this.selectors.refresh.disabled = false;
         }
     },
 
@@ -182,5 +178,13 @@ export default {
         results.sort((a, b) => (a.children[2].innerText as number) - (b.children[2].innerText as number));
 
         return results;
+    },
+
+    get selectors() {
+        return {
+            refresh: document.querySelector('#exchange-refresh') as HTMLButtonElement,
+            cur: document.querySelector('#exchange-cur') as HTMLElement,
+            status: document.querySelector('#exchange-refresh-status') as HTMLElement,
+        }
     }
 };
