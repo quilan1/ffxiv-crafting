@@ -12,16 +12,16 @@ pub struct Server;
 
 #[derive(Clone)]
 pub struct ServerState {
-    pub listing_processor: AsyncProcessor,
+    pub async_processor: AsyncProcessor,
 }
 
 #[allow(unused_must_use)]
 impl Server {
     pub async fn run() -> Result<()> {
-        let listing_processor = AsyncProcessor::new("Listings", 8);
+        let async_processor = AsyncProcessor::new(8);
 
         let app_state = Arc::new(ServerState {
-            listing_processor: listing_processor.clone(),
+            async_processor: async_processor.clone(),
         });
 
         let app = Router::with_state(app_state)
@@ -34,10 +34,10 @@ impl Server {
             );
 
         let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
-        println!("Server setup at http://127.0.0.1:3001");
+        println!("Server up at http://127.0.0.1:3001/web/harness.html");
 
         join!(
-            listing_processor,
+            async_processor,
             axum::Server::bind(&addr).serve(app.into_make_service())
         );
 

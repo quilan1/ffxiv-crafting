@@ -1,14 +1,15 @@
 use std::time::Duration;
 
 use super::{builder::UniversalisBuilder, json::UniversalisJson, MarketItemInfoMap};
-use crate::util::{AsyncProcessor, SharedFuture};
+use crate::util::AsyncProcessor;
 
 use futures::{future::join_all, FutureExt};
 use log::{error, info, warn};
 use tokio::time::sleep;
 
-#[derive(Clone)]
-pub struct UniversalisRequest {
+const MAX_CHUNK_SIZE: usize = 20;
+
+struct UniversalisRequest {
     listing: String,
     history: String,
     world: String,
@@ -17,32 +18,25 @@ pub struct UniversalisRequest {
 pub struct UniversalisProcessor;
 
 impl UniversalisProcessor {
+    // Takes all of the IDs given, sends them out to Universalis and collates the results
     pub async fn process_ids(
-        listing_processor: AsyncProcessor,
+        processor: AsyncProcessor,
         builder: &UniversalisBuilder,
         ids: Vec<u32>,
     ) -> MarketItemInfoMap {
-        let worlds = builder.data_centers.clone();
-
-        let futures = Self::make_requests(listing_processor, &worlds, ids);
-
-        let outputs = join_all(futures)
-            .await
-            .into_iter()
-            .filter_map(|output| output)
-            .collect::<Vec<_>>();
+        let requests = Self::process_requests(processor, &builder.data_centers, ids).await;
 
         let mut mb_info_map = MarketItemInfoMap::new();
-        for output in outputs {
+        for request in requests {
             info!(
                 "[process_ids] world: {}, listing: {}, history: {}",
-                output.world,
-                output.listing.len(),
-                output.history.len()
+                request.world,
+                request.listing.len(),
+                request.history.len()
             );
 
             if let Err(_) =
-                UniversalisJson::parse(&output.listing, &output.history, &mut mb_info_map)
+                UniversalisJson::parse(&request.listing, &request.history, &mut mb_info_map)
             {
                 error!("[process_ids] Error: Invalid json response");
             }
@@ -51,50 +45,70 @@ impl UniversalisProcessor {
         mb_info_map
     }
 
-    fn make_requests(
+    // Processes the ids by creating futures of the fetch requests in a big pool, and awaiting them all
+    // Universalis accepts up to 100 IDs in a single request, so we chunk them up as such, avoiding
+    // the case where there is one single ID, by adding on a harmless one at the end.
+    async fn process_requests(
         processor: AsyncProcessor,
         worlds: &Vec<String>,
         ids: Vec<u32>,
-    ) -> Vec<SharedFuture<Option<UniversalisRequest>>> {
+    ) -> Vec<UniversalisRequest> {
         let mut requests = Vec::new();
 
-        let max_chunks = ((ids.len() + 99) / 100) * worlds.len();
+        let max_chunks = ((ids.len() + MAX_CHUNK_SIZE - 1) / MAX_CHUNK_SIZE) * worlds.len();
         let mut chunk_id = 1;
-        for ids in ids.chunks(100) {
+        for ids in Self::chunk_ids(&ids) {
+            for world in worlds {
+                requests.push(
+                    UniversalisRequest::fetch(
+                        processor.clone(),
+                        world.clone(),
+                        ids.clone(),
+                        chunk_id,
+                        max_chunks,
+                    )
+                    .boxed(),
+                );
+                chunk_id += 1;
+            }
+        }
+
+        join_all(requests)
+            .await
+            .into_iter()
+            .filter_map(|output| output)
+            .collect()
+    }
+
+    // Return the chunks as a comma-delimited string of 100 ids (or whatever remains)
+    fn chunk_ids(ids: &Vec<u32>) -> Vec<String> {
+        let mut id_chunks = Vec::new();
+        for ids in ids.chunks(MAX_CHUNK_SIZE) {
             let ids = if ids.len() != 1 {
                 ids.to_vec()
             } else {
+                // If there's only one ID in the group, the json will be different, so to make it a
+                // multiple-id request, we just tack on the id #2, 'Fire Shard'
                 let mut new_ids = ids.to_vec();
                 new_ids.push(2);
                 new_ids
             };
 
-            let ids = ids
-                .into_iter()
-                .map(|id| id.to_string())
-                .collect::<Vec<_>>()
-                .join(",");
-
-            for world in worlds {
-                let future = UniversalisRequest::fetch(
-                    processor.clone(),
-                    world.clone(),
-                    ids.clone(),
-                    chunk_id,
-                    max_chunks,
-                )
-                .boxed()
-                .shared();
-                requests.push(future);
-                chunk_id += 1;
-            }
+            id_chunks.push(
+                ids.into_iter()
+                    .map(|id| id.to_string())
+                    .collect::<Vec<_>>()
+                    .join(","),
+            );
         }
 
-        requests
+        id_chunks
     }
 }
 
 impl UniversalisRequest {
+    // Uses the AsyncProcessor to queue the listing & history API calls to Universalis. Once
+    // they return, it yields the full request back.
     async fn fetch(
         processor: AsyncProcessor,
         world: String,
@@ -102,46 +116,18 @@ impl UniversalisRequest {
         chunk_id: usize,
         max_chunks: usize,
     ) -> Option<Self> {
-        async fn get(url: &str) -> Option<String> {
-            Some(reqwest::get(url).await.ok()?.text().await.ok()?)
-        }
-
-        async fn fetch_listing(
-            num_attempts: usize,
-            fetch_type: String,
-            url: String,
-            signature: String,
-        ) -> Option<String> {
-            info!("[Fetch {signature}] {url}");
-
-            for attempt in 0..num_attempts {
-                let listing = get(&url).await?;
-
-                if !is_valid_json(&listing) {
-                    warn!("[Fetch {signature}] [{attempt}] Invalid {fetch_type} json: {url}");
-                    sleep(Duration::from_millis(500)).await;
-                    continue;
-                }
-
-                info!("[Fetch {signature}] {fetch_type} done");
-                return Some(listing);
-            }
-
-            error!("[Fetch {signature}] Failed to fetch: {url}");
-            return None;
-        }
-
-        let signature = format!("{chunk_id}/{max_chunks}");
+        let signature_listing = format!("{}/{}", 2 * chunk_id - 1, 2 * max_chunks);
+        let signature_history = format!("{}/{}", 2 * chunk_id, 2 * max_chunks);
         let listing_url = get_listing_url(&world, &ids);
         let history_url = get_history_url(&world, &ids);
         let mut requests = Vec::new();
         requests.push(
-            fetch_listing(10, "listing".into(), listing_url, signature.clone())
+            Self::fetch_listing(10, "listing".into(), listing_url, signature_listing)
                 .boxed()
                 .shared(),
         );
         requests.push(
-            fetch_listing(10, "history".into(), history_url, signature.clone())
+            Self::fetch_listing(10, "history".into(), history_url, signature_history)
                 .boxed()
                 .shared(),
         );
@@ -162,8 +148,36 @@ impl UniversalisRequest {
 
         None
     }
+
+    // Grab the JSON string from a listing API from Universalis
+    async fn fetch_listing(
+        num_attempts: usize,
+        fetch_type: String,
+        url: String,
+        signature: String,
+    ) -> Option<String> {
+        info!("[Fetch {signature}] {url}");
+
+        for attempt in 0..num_attempts {
+            let listing = reqwest::get(&url).await.ok()?.text().await.ok()?;
+
+            // Invalid response from the server. This typically is from load, so let's fall back a bit & retry in a second
+            if !is_valid_json(&listing) {
+                warn!("[Fetch {signature}] [{attempt}] Invalid {fetch_type} json: {url}");
+                sleep(Duration::from_millis(500)).await;
+                continue;
+            }
+
+            info!("[Fetch {signature}] {fetch_type} done");
+            return Some(listing);
+        }
+
+        error!("[Fetch {signature}] Failed to fetch: {url}");
+        return None;
+    }
 }
 
+// Universalis API for buy listings
 fn get_listing_url<S: AsRef<str>>(world: S, ids: S) -> String {
     format!(
         "https://universalis.app/api/v2/{}/{}?entries=0",
@@ -172,6 +186,7 @@ fn get_listing_url<S: AsRef<str>>(world: S, ids: S) -> String {
     )
 }
 
+// Universalis API for sell history listings
 fn get_history_url<S: AsRef<str>>(world: S, ids: S) -> String {
     format!(
         "https://universalis.app/api/v2/history/{}/{}",
@@ -180,6 +195,8 @@ fn get_history_url<S: AsRef<str>>(world: S, ids: S) -> String {
     )
 }
 
+// A dirty quick-test if something's valid json, without actually doing a full parse on it
+// This is just to rule out empty json & weird server responses
 fn is_valid_json<S: AsRef<str>>(value: S) -> bool {
     let value = value.as_ref();
     value.starts_with("{") && value.ends_with("}") && value.len() > 100
