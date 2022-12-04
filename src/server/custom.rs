@@ -64,7 +64,7 @@ pub struct Custom;
 impl Custom {
     // #[debug_handler]
     pub async fn custom_filter(
-        State(state): State<Arc<ServerState<'_>>>,
+        State(state): State<Arc<ServerState>>,
         Form(payload): Form<CustomFilter>,
     ) -> impl IntoResponse {
         info!("GET custom_filter: Payload {payload:?}");

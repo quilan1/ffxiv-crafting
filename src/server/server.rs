@@ -11,8 +11,8 @@ use super::{custom::Custom, StaticFiles};
 pub struct Server;
 
 #[derive(Clone)]
-pub struct ServerState<'a> {
-    pub listing_processor: AsyncProcessor<'a>,
+pub struct ServerState {
+    pub listing_processor: AsyncProcessor,
 }
 
 #[allow(unused_must_use)]
