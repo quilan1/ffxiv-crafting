@@ -33,7 +33,7 @@ struct AsyncProcessorData {
     active: Vec<BoxFuture<'static, ()>>,
     queue: VecDeque<BoxFuture<'static, ()>>,
     waker: Option<Waker>,
-    max_queue: usize,
+    max_active: usize,
 }
 
 pub trait Notify {
@@ -44,13 +44,13 @@ pub trait Notify {
 
 // Consumer side of the API
 impl AsyncProcessor {
-    pub fn new(max_queue: usize) -> Self {
+    pub fn new(max_active: usize) -> Self {
         Self {
             data: Arc::new(Mutex::new(AsyncProcessorData {
                 active: Vec::new(),
                 queue: VecDeque::new(),
                 waker: None,
-                max_queue,
+                max_active,
             })),
         }
     }
@@ -64,10 +64,16 @@ impl AsyncProcessor {
             return Vec::new();
         }
 
+        // The counter acts as a way of waiting for all futures to finish, before we await them
         let counter = AsyncCounter::new(values.len() as u32);
         self.queue_futures(values.clone(), counter.clone());
 
+        // At this point, the values can't be awaited directly, or they'll all run at the same time
+        // Thus, we wait for the counter to count down to zero, then it will finish its future
         counter.await;
+
+        // Now that the counter's zero, we know all futures have been resolved, so we can safely
+        // await their values
         join_all(values).await
     }
 
@@ -130,7 +136,7 @@ impl Future for AsyncProcessor {
         // );
 
         // Keep the queue limited to max_queue
-        while data.active.len() < data.max_queue {
+        while data.active.len() < data.max_active {
             match data.queue.pop_front() {
                 Some(future) => data.active.push(future),
                 None => break,
