@@ -1,14 +1,8 @@
 use super::{builder::UniversalisBuilder, json::UniversalisJson, MarketItemInfoMap};
 use crate::util::{AsyncProcessor, SharedFuture};
 
-use futures::{FutureExt};
+use futures::{future::join_all, FutureExt};
 use log::{error, info, warn};
-
-type UniversalisRequestFutureOutput = Option<UniversalisRequest>;
-type UniversalisListingFutureOutput = Option<String>;
-type UniversalisRequestFuture<'a> = SharedFuture<'a, UniversalisRequestFutureOutput>;
-pub type UniversalisRequestAsyncProcessor<'a> = AsyncProcessor<'a, UniversalisRequestFutureOutput>;
-pub type UniversalisListingAsyncProcessor<'a> = AsyncProcessor<'a, UniversalisListingFutureOutput>;
 
 #[derive(Clone)]
 pub struct UniversalisRequest {
@@ -20,18 +14,17 @@ pub struct UniversalisRequest {
 pub struct UniversalisProcessor;
 
 impl UniversalisProcessor {
-    pub async fn process_ids<'a: 'b, 'b>(
-        listing_processor: UniversalisListingAsyncProcessor<'a>,
-        request_processor: UniversalisRequestAsyncProcessor<'b>,
+    pub async fn process_ids<'a>(
+        listing_processor: AsyncProcessor<'a>,
         builder: &UniversalisBuilder,
         ids: Vec<u32>,
     ) -> MarketItemInfoMap {
         let worlds = builder.data_centers.clone();
 
         let futures = Self::make_requests(listing_processor, &worlds, ids);
-        let outputs = request_processor.process(futures).await;
 
-        let outputs = outputs
+        let outputs = join_all(futures)
+            .await
             .into_iter()
             .filter_map(|output| output)
             .collect::<Vec<_>>();
@@ -55,12 +48,11 @@ impl UniversalisProcessor {
         mb_info_map
     }
 
-    fn make_requests<'a, 'b: 'a>(
-        processor: UniversalisListingAsyncProcessor<'b>,
+    fn make_requests<'a>(
+        processor: AsyncProcessor<'a>,
         worlds: &Vec<String>,
         ids: Vec<u32>,
-    ) -> Vec<UniversalisRequestFuture<'a>>
-    {
+    ) -> Vec<SharedFuture<'a, Option<UniversalisRequest>>> {
         let mut requests = Vec::new();
 
         let max_chunks = ((ids.len() + 99) / 100) * worlds.len();
@@ -101,7 +93,7 @@ impl UniversalisProcessor {
 
 impl UniversalisRequest {
     async fn fetch(
-        processor: UniversalisListingAsyncProcessor<'_>,
+        processor: AsyncProcessor<'_>,
         world: String,
         ids: String,
         chunk_id: usize,
