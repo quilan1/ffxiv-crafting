@@ -5,7 +5,6 @@ use std::{
     task::{Poll, Waker},
 };
 
-use anyhow::{bail, Result};
 use futures::{
     future::{join_all, BoxFuture, Shared},
     Future, FutureExt,
@@ -36,18 +35,6 @@ struct AsyncProcessorData {
     waker: Option<Waker>,
     name: String,
     max_queue: usize,
-}
-
-trait Inner {
-    type Type;
-    fn with_inner<T, F: FnMut(&mut Self::Type) -> T>(&self, func: F) -> T;
-    fn try_into_inner(self) -> Result<Self::Type>;
-    fn into_inner(self) -> Self::Type
-    where
-        Self: Sized,
-    {
-        self.try_into_inner().unwrap()
-    }
 }
 
 pub trait Notify {
@@ -165,21 +152,5 @@ impl Future for AsyncProcessor {
 
         // This future never ends
         Poll::Pending
-    }
-}
-
-impl Inner for AsyncProcessor {
-    type Type = AsyncProcessorData;
-
-    fn with_inner<T, F: FnMut(&mut Self::Type) -> T>(&self, mut func: F) -> T {
-        let mut data = self.data.lock();
-        func(&mut data)
-    }
-
-    fn try_into_inner(self) -> Result<Self::Type> {
-        match Arc::try_unwrap(self.data) {
-            Err(_) => bail!("Couldn't unwrap rc"),
-            Ok(v) => Ok(v.into_inner()),
-        }
     }
 }
