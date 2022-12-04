@@ -1,8 +1,11 @@
+use std::time::Duration;
+
 use super::{builder::UniversalisBuilder, json::UniversalisJson, MarketItemInfoMap};
 use crate::util::{AsyncProcessor, SharedFuture};
 
 use futures::{future::join_all, FutureExt};
 use log::{error, info, warn};
+use tokio::time::sleep;
 
 #[derive(Clone)]
 pub struct UniversalisRequest {
@@ -14,8 +17,8 @@ pub struct UniversalisRequest {
 pub struct UniversalisProcessor;
 
 impl UniversalisProcessor {
-    pub async fn process_ids<'a>(
-        listing_processor: AsyncProcessor<'a>,
+    pub async fn process_ids(
+        listing_processor: AsyncProcessor,
         builder: &UniversalisBuilder,
         ids: Vec<u32>,
     ) -> MarketItemInfoMap {
@@ -48,11 +51,11 @@ impl UniversalisProcessor {
         mb_info_map
     }
 
-    fn make_requests<'a>(
-        processor: AsyncProcessor<'a>,
+    fn make_requests(
+        processor: AsyncProcessor,
         worlds: &Vec<String>,
         ids: Vec<u32>,
-    ) -> Vec<SharedFuture<'a, Option<UniversalisRequest>>> {
+    ) -> Vec<SharedFuture<Option<UniversalisRequest>>> {
         let mut requests = Vec::new();
 
         let max_chunks = ((ids.len() + 99) / 100) * worlds.len();
@@ -93,7 +96,7 @@ impl UniversalisProcessor {
 
 impl UniversalisRequest {
     async fn fetch(
-        processor: AsyncProcessor<'_>,
+        processor: AsyncProcessor,
         world: String,
         ids: String,
         chunk_id: usize,
@@ -105,71 +108,112 @@ impl UniversalisRequest {
 
         async fn fetch_listing(
             num_attempts: usize,
-            world: String,
-            ids: String,
-            chunk_id: usize,
-            max_chunks: usize,
+            fetch_type: String,
+            url: String,
+            signature: String,
         ) -> Option<String> {
-            let listing_url = get_listing_url(world, ids);
-            info!("[Fetch {chunk_id}/{max_chunks}] {listing_url}");
+            info!("[Fetch {signature}] {url}");
 
             for attempt in 0..num_attempts {
-                let listing = get(&listing_url).await?;
+                let listing = get(&url).await?;
 
                 if !is_valid_json(&listing) {
-                    warn!(
-                        "[Fetch {chunk_id}/{max_chunks}] [{attempt}] Invalid listing json: {listing_url}"
-                    );
+                    warn!("[Fetch {signature}] [{attempt}] Invalid {fetch_type} json: {url}");
+                    sleep(Duration::from_millis(500)).await;
                     continue;
                 }
 
-                info!("[Fetch {chunk_id}/{max_chunks}] Listing done");
+                info!("[Fetch {signature}] {fetch_type} done");
                 return Some(listing);
             }
 
-            error!("[Fetch {chunk_id}/{max_chunks}] Failed to fetch: {listing_url}");
+            error!("[Fetch {signature}] Failed to fetch: {url}");
             return None;
         }
 
-        async fn fetch_history(
-            num_attempts: usize,
-            world: String,
-            ids: String,
-            chunk_id: usize,
-            max_chunks: usize,
-        ) -> Option<String> {
-            let history_url = get_history_url(world, ids);
-            info!("[Fetch {chunk_id}/{max_chunks}] {history_url}");
+        // async fn fetch_listing(
+        //     num_attempts: usize,
+        //     world: String,
+        //     ids: String,
+        //     chunk_id: usize,
+        //     max_chunks: usize,
+        // ) -> Option<String> {
+        //     let listing_url = get_listing_url(world, ids);
+        //     info!("[Fetch {chunk_id}/{max_chunks}] {listing_url}");
 
-            for attempt in 0..num_attempts {
-                let history = get(&history_url).await?;
+        //     for attempt in 0..num_attempts {
+        //         let listing = get(&listing_url).await?;
 
-                if !is_valid_json(&history) {
-                    warn!(
-                        "[Fetch {chunk_id}/{max_chunks}] [{attempt}] Invalid history json: {history_url}"
-                    );
-                    continue;
-                }
+        //         if !is_valid_json(&listing) {
+        //             warn!(
+        //                 "[Fetch {chunk_id}/{max_chunks}] [{attempt}] Invalid listing json: {listing_url}"
+        //             );
+        //             sleep(Duration::from_millis(500)).await;
+        //             continue;
+        //         }
 
-                info!("[Fetch {chunk_id}/{max_chunks}] History done");
-                return Some(history);
-            }
+        //         info!("[Fetch {chunk_id}/{max_chunks}] Listing done");
+        //         return Some(listing);
+        //     }
 
-            error!("[Fetch {chunk_id}/{max_chunks}] Failed to fetch: {history_url}");
-            return None;
-        }
+        //     error!("[Fetch {chunk_id}/{max_chunks}] Failed to fetch: {listing_url}");
+        //     return None;
+        // }
 
+        // async fn fetch_history(
+        //     num_attempts: usize,
+        //     world: String,
+        //     ids: String,
+        //     chunk_id: usize,
+        //     max_chunks: usize,
+        // ) -> Option<String> {
+        //     let history_url = get_history_url(world, ids);
+        //     info!("[Fetch {chunk_id}/{max_chunks}] {history_url}");
+
+        //     for attempt in 0..num_attempts {
+        //         let history = get(&history_url).await?;
+
+        //         if !is_valid_json(&history) {
+        //             warn!(
+        //                 "[Fetch {chunk_id}/{max_chunks}] [{attempt}] Invalid history json: {history_url}"
+        //             );
+        //             sleep(Duration::from_millis(500)).await;
+        //             continue;
+        //         }
+
+        //         info!("[Fetch {chunk_id}/{max_chunks}] History done");
+        //         return Some(history);
+        //     }
+
+        //     error!("[Fetch {chunk_id}/{max_chunks}] Failed to fetch: {history_url}");
+        //     return None;
+        // }
+
+        let signature = format!("{chunk_id}/{max_chunks}");
+        let listing_url = get_listing_url(&world, &ids);
+        let history_url = get_history_url(&world, &ids);
         let mut requests = Vec::new();
         requests.push(
-            fetch_listing(10, world.clone(), ids.clone(), chunk_id, max_chunks)
+            fetch_listing(10, "listing".into(), listing_url, signature.clone())
                 .boxed()
                 .shared(),
         );
         requests.push(
-            fetch_history(10, world.clone(), ids.clone(), chunk_id, max_chunks)
+            fetch_listing(10, "history".into(), history_url, signature.clone())
                 .boxed()
                 .shared(),
         );
+
+        // requests.push(
+        //     fetch_listing(10, world.clone(), ids.clone(), chunk_id, max_chunks)
+        //         .boxed()
+        //         .shared(),
+        // );
+        // requests.push(
+        //     fetch_history(10, world.clone(), ids.clone(), chunk_id, max_chunks)
+        //         .boxed()
+        //         .shared(),
+        // );
 
         let mut results = processor.process(requests).await;
         let listing_result = results.remove(0);
