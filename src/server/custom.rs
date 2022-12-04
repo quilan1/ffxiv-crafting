@@ -69,7 +69,7 @@ impl Custom {
     ) -> impl IntoResponse {
         info!("GET custom_filter: Payload {payload:?}");
 
-        let (top_ids, ids) = get_ids_from_filters(payload.filters);
+        let (top_ids, all_ids) = get_ids_from_filters(payload.filters);
 
         let builder = {
             let builder = UniversalisBuilder::new();
@@ -81,12 +81,9 @@ impl Custom {
             }
         };
 
-        let mb_info_map = UniversalisProcessor::process_ids(
-            state.listing_processor.clone(),
-            &builder,
-            ids.clone(),
-        )
-        .await;
+        let mb_info_map =
+            UniversalisProcessor::process_ids(state.async_processor.clone(), &builder, all_ids)
+                .await;
 
         let out = json_results(top_ids, mb_info_map);
 
