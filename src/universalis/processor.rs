@@ -131,64 +131,6 @@ impl UniversalisRequest {
             return None;
         }
 
-        // async fn fetch_listing(
-        //     num_attempts: usize,
-        //     world: String,
-        //     ids: String,
-        //     chunk_id: usize,
-        //     max_chunks: usize,
-        // ) -> Option<String> {
-        //     let listing_url = get_listing_url(world, ids);
-        //     info!("[Fetch {chunk_id}/{max_chunks}] {listing_url}");
-
-        //     for attempt in 0..num_attempts {
-        //         let listing = get(&listing_url).await?;
-
-        //         if !is_valid_json(&listing) {
-        //             warn!(
-        //                 "[Fetch {chunk_id}/{max_chunks}] [{attempt}] Invalid listing json: {listing_url}"
-        //             );
-        //             sleep(Duration::from_millis(500)).await;
-        //             continue;
-        //         }
-
-        //         info!("[Fetch {chunk_id}/{max_chunks}] Listing done");
-        //         return Some(listing);
-        //     }
-
-        //     error!("[Fetch {chunk_id}/{max_chunks}] Failed to fetch: {listing_url}");
-        //     return None;
-        // }
-
-        // async fn fetch_history(
-        //     num_attempts: usize,
-        //     world: String,
-        //     ids: String,
-        //     chunk_id: usize,
-        //     max_chunks: usize,
-        // ) -> Option<String> {
-        //     let history_url = get_history_url(world, ids);
-        //     info!("[Fetch {chunk_id}/{max_chunks}] {history_url}");
-
-        //     for attempt in 0..num_attempts {
-        //         let history = get(&history_url).await?;
-
-        //         if !is_valid_json(&history) {
-        //             warn!(
-        //                 "[Fetch {chunk_id}/{max_chunks}] [{attempt}] Invalid history json: {history_url}"
-        //             );
-        //             sleep(Duration::from_millis(500)).await;
-        //             continue;
-        //         }
-
-        //         info!("[Fetch {chunk_id}/{max_chunks}] History done");
-        //         return Some(history);
-        //     }
-
-        //     error!("[Fetch {chunk_id}/{max_chunks}] Failed to fetch: {history_url}");
-        //     return None;
-        // }
-
         let signature = format!("{chunk_id}/{max_chunks}");
         let listing_url = get_listing_url(&world, &ids);
         let history_url = get_history_url(&world, &ids);
@@ -203,17 +145,6 @@ impl UniversalisRequest {
                 .boxed()
                 .shared(),
         );
-
-        // requests.push(
-        //     fetch_listing(10, world.clone(), ids.clone(), chunk_id, max_chunks)
-        //         .boxed()
-        //         .shared(),
-        // );
-        // requests.push(
-        //     fetch_history(10, world.clone(), ids.clone(), chunk_id, max_chunks)
-        //         .boxed()
-        //         .shared(),
-        // );
 
         let mut results = processor.process(requests).await;
         let listing_result = results.remove(0);
