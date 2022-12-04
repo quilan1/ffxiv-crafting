@@ -55,7 +55,6 @@ pub struct JsonFilter {
 
 #[derive(Serialize, Debug)]
 pub struct CustomOut {
-    // filters: Vec<JsonFilter>,
     item_info: BTreeMap<u32, ItemInfo>,
     top_ids: Vec<u32>,
 }
@@ -84,7 +83,6 @@ impl Custom {
 
         let mb_info_map = UniversalisProcessor::process_ids(
             state.listing_processor.clone(),
-            state.request_processor.clone(),
             &builder,
             ids.clone(),
         )

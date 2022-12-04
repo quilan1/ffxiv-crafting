@@ -8,7 +8,7 @@ use std::{
 use anyhow::{bail, Result};
 use futures::{
     future::{join_all, BoxFuture, Shared},
-    Future,
+    Future, FutureExt,
 };
 use parking_lot::Mutex;
 
@@ -18,8 +18,8 @@ use log::info;
 use crate::util::AsyncCounter;
 
 #[derive(Clone)]
-pub struct AsyncProcessor<'a, O> {
-    data: Arc<Mutex<AsyncProcessorData<'a, O>>>,
+pub struct AsyncProcessor<'a> {
+    data: Arc<Mutex<AsyncProcessorData<'a>>>,
 }
 
 pub type SharedFuture<'a, O> = Shared<BoxFuture<'a, O>>;
@@ -30,9 +30,9 @@ struct NotifyFuture<'a, O> {
 }
 
 #[allow(dead_code)]
-struct AsyncProcessorData<'a, O> {
-    active: Vec<NotifyFuture<'a, O>>,
-    queue: VecDeque<NotifyFuture<'a, O>>,
+struct AsyncProcessorData<'a> {
+    active: Vec<BoxFuture<'a, ()>>,
+    queue: VecDeque<BoxFuture<'a, ()>>,
     waker: Option<Waker>,
     name: String,
     max_queue: usize,
@@ -57,7 +57,7 @@ pub trait Notify {
 ////////////////////////////////////////////////////////////
 
 // Consumer side of the API
-impl<'a, O> AsyncProcessor<'a, O> {
+impl<'a> AsyncProcessor<'a> {
     pub fn new<S: Into<String>>(name: S, max_queue: usize) -> Self {
         Self {
             data: Arc::new(Mutex::new(AsyncProcessorData {
@@ -70,9 +70,9 @@ impl<'a, O> AsyncProcessor<'a, O> {
         }
     }
 
-    pub async fn process(&self, values: Vec<SharedFuture<'a, O>>) -> Vec<O>
+    pub async fn process<O>(&self, values: Vec<SharedFuture<'a, O>>) -> Vec<O>
     where
-        O: Clone,
+        O: Clone + Send + Sync + 'a,
     {
         if values.len() == 0 {
             return Vec::new();
@@ -85,9 +85,9 @@ impl<'a, O> AsyncProcessor<'a, O> {
         join_all(values).await
     }
 
-    fn queue_futures(&self, futures: Vec<SharedFuture<'a, O>>, counter: AsyncCounter)
+    fn queue_futures<O>(&self, futures: Vec<SharedFuture<'a, O>>, counter: AsyncCounter)
     where
-        O: Clone,
+        O: Clone + Send + Sync + 'a,
     {
         let mut data = self.data.lock();
 
@@ -96,7 +96,7 @@ impl<'a, O> AsyncProcessor<'a, O> {
             let notified_future = NotifyFuture {
                 future,
                 counter: counter.clone(),
-            };
+            }.boxed();
             data.queue.push_back(notified_future);
         }
 
@@ -107,11 +107,25 @@ impl<'a, O> AsyncProcessor<'a, O> {
     }
 }
 
-impl<'a, O> Future for AsyncProcessor<'a, O>
-where
-    O: Clone,
-{
-    type Output = O;
+impl<'a, O: Clone> Future for NotifyFuture<'a, O> {
+    type Output = ();
+
+    fn poll(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> Poll<Self::Output> {
+        match Pin::new(&mut self.future).poll(cx) {
+            Poll::Ready(_) => {
+                self.counter.notify();
+                Poll::Ready(())
+            }
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+impl<'a> Future for AsyncProcessor<'a> {
+    type Output = ();
 
     fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
         let mut data = self.data.lock();
@@ -134,9 +148,8 @@ where
         // Filter out any completed futures
         let mut notified_futures = data.active.drain(..).collect::<Vec<_>>();
         for mut notified_future in notified_futures.drain(..) {
-            match Pin::new(&mut notified_future.future).poll(cx) {
-                Poll::Pending => data.active.push(notified_future),
-                Poll::Ready(_) => notified_future.counter.notify(),
+            if Pin::new(&mut notified_future).poll(cx) == Poll::Pending {
+                data.active.push(notified_future);
             }
         }
 
@@ -154,8 +167,8 @@ where
     }
 }
 
-impl<'a, O> Inner for AsyncProcessor<'a, O> {
-    type Type = AsyncProcessorData<'a, O>;
+impl<'a> Inner for AsyncProcessor<'a> {
+    type Type = AsyncProcessorData<'a>;
 
     fn with_inner<T, F: FnMut(&mut Self::Type) -> T>(&self, mut func: F) -> T {
         let mut data = self.data.lock();
