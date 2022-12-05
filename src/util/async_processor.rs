@@ -131,7 +131,7 @@ impl Future for AsyncProcessor {
 
         // Keep only the unfinished futures
         data.active
-            .retain_mut(|notified_future| notified_future.poll_unpin(cx) == Poll::Pending);
+            .retain_mut(|notified_future| notified_future.poll_unpin(cx).is_pending());
 
         // Set the waker, so it can be re-polled
         data.waker = Some(cx.waker().clone());
