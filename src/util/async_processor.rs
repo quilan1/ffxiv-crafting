@@ -2,7 +2,7 @@ use std::{
     collections::VecDeque,
     pin::Pin,
     sync::Arc,
-    task::{Poll, Waker},
+    task::{Context, Poll, Waker},
 };
 
 use futures::{
@@ -60,21 +60,19 @@ impl AsyncProcessor {
     where
         O: Clone + Send + Sync + 'static,
     {
-        if values.len() == 0 {
-            return Vec::new();
-        }
-
-        // The counter acts as a way of waiting for all futures to finish, before we await them
-        let counter = AsyncCounter::new(values.len() as u32);
-        self.queue_futures(values.clone(), counter.clone());
-
-        // At this point, the values can't be awaited directly, or they'll all run at the same time
-        // Thus, we wait for the counter to count down to zero, then it will finish its future
-        counter.await;
-
-        // Now that the counter's zero, we know all futures have been resolved, so we can safely
-        // await their values
+        // By awaiting the lazy process, we ensure all futures are finished
+        self.process_lazy(values.clone()).await;
         join_all(values).await
+    }
+
+    pub fn process_lazy<O>(&self, values: Vec<SharedFuture<O>>) -> AsyncCounter
+    where
+        O: Clone + Send + Sync + 'static,
+    {
+        // The counter is the primative that will allow us to know when the futures have all been executed
+        let counter = AsyncCounter::new(values.len() as u32);
+        self.queue_futures(values, counter.clone());
+        counter
     }
 
     // Adds the futures to the internal queue system of the AsyncProcessor
@@ -109,11 +107,8 @@ impl AsyncProcessor {
 impl<O: Clone> Future for NotifyFuture<O> {
     type Output = ();
 
-    fn poll(
-        mut self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> Poll<Self::Output> {
-        match Pin::new(&mut self.future).poll(cx) {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        match self.future.poll_unpin(cx) {
             Poll::Ready(_) => {
                 self.counter.notify();
                 Poll::Ready(())
@@ -126,39 +121,20 @@ impl<O: Clone> Future for NotifyFuture<O> {
 impl Future for AsyncProcessor {
     type Output = ();
 
-    fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let mut data = self.data.lock();
 
-        // info!(
-        //     "[Poll] Start (active={}, queue={})",
-        //     data.active.len(),
-        //     data.queue.len()
-        // );
+        // Keep the number of active futures limited to at most max_active
+        let avail_slots = data.queue.len().min(data.max_active - data.active.len());
+        let moved_futures = data.queue.drain(..avail_slots).collect::<Vec<_>>();
+        data.active.extend(moved_futures);
 
-        // Keep the queue limited to max_queue
-        while data.active.len() < data.max_active {
-            match data.queue.pop_front() {
-                Some(future) => data.active.push(future),
-                None => break,
-            }
-        }
-
-        // Filter out any completed futures
-        let mut notified_futures = data.active.drain(..).collect::<Vec<_>>();
-        for mut notified_future in notified_futures.drain(..) {
-            if notified_future.as_mut().poll(cx) == Poll::Pending {
-                data.active.push(notified_future);
-            }
-        }
+        // Keep only the unfinished futures
+        data.active
+            .retain_mut(|notified_future| notified_future.poll_unpin(cx) == Poll::Pending);
 
         // Set the waker, so it can be re-polled
         data.waker = Some(cx.waker().clone());
-
-        // info!(
-        //     "[Poll] Done (active={}, queue={})",
-        //     data.active.len(),
-        //     data.queue.len()
-        // );
 
         // This future never ends
         Poll::Pending
