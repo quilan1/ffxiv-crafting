@@ -22,6 +22,10 @@ impl AsyncCounter {
             waker: Arc::new(Mutex::new(None)),
         }
     }
+
+    pub fn count(&self) -> u32 {
+        *self.count.lock()
+    }
 }
 
 impl Notify for AsyncCounter {
