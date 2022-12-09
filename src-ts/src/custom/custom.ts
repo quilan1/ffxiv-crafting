@@ -27,7 +27,12 @@ class CustomDlg {
 
     async onRefreshClick(debug?: boolean) {
         await FiltersDlg.withDisabledRefresh(async () => {
-            this.info = await CustomInfo.fetch(FiltersDlg.searchValue, FiltersDlg.countValue, FiltersDlg.dataCenter, debug === true) as CustomInfo;
+            const fn = (status: string) => FiltersDlg.setStatus(status);
+            if (debug === true) {
+                this.info = await CustomInfo.fetch(FiltersDlg.searchValue, FiltersDlg.countValue, FiltersDlg.dataCenter, debug === true) as CustomInfo;
+            } else {
+                this.info = await CustomInfo.fetchLazy(FiltersDlg.searchValue, FiltersDlg.countValue, FiltersDlg.dataCenter, fn) as CustomInfo;
+            }
         });
 
         this.filteredTopIds = this.getFilteredTopIds();
@@ -293,12 +298,12 @@ class CustomDlg {
 class FiltersDlg {
     static setupEvents(customDlg: CustomDlg) {
         this.selectors.refresh.onclick = (e) => customDlg.onRefreshClick(e.shiftKey);
-        this.selectors.load.onclick = (_: any) => this.load();
-        this.selectors.save.onclick = (_: any) => this.save();
-        this.selectors.saveAs.onclick = (_: any) => this.saveAs();
-        this.selectors.delete.onclick = (_: any) => this.delete();
-        this.selectors.list.onchange = (_: any) => this.changeSelection();
-        this.selectors.count.onchange = (_: any) => customDlg.onCountChange();
+        this.selectors.load.onclick = () => this.load();
+        this.selectors.save.onclick = () => this.save();
+        this.selectors.saveAs.onclick = () => this.saveAs();
+        this.selectors.delete.onclick = () => this.delete();
+        this.selectors.list.onchange = () => this.changeSelection();
+        this.selectors.count.onchange = () => customDlg.onCountChange();
         this.loadFromStorage();
         this.changeSelection();
     }
@@ -390,6 +395,7 @@ class FiltersDlg {
             get refresh() { return document.querySelector('#custom-filters-refresh') as HTMLButtonElement; },
             get count() { return document.querySelector('#custom-count') as HTMLInputElement; },
             get dataCenter() { return document.querySelector('#custom-data-center') as HTMLSelectElement; },
+            get status() { return document.querySelector('#custom-filters-status') as HTMLElement; },
         }
     }
 
@@ -413,6 +419,10 @@ class FiltersDlg {
         } finally {
             this.selectors.refresh.disabled = false;
         }
+    }
+
+    static setStatus(status: string) {
+        this.selectors.status.innerText = status;
     }
 };
 

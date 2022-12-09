@@ -23,6 +23,7 @@ impl AsyncCounter {
         }
     }
 
+    #[allow(dead_code)]
     pub fn count(&self) -> u32 {
         *self.count.lock()
     }

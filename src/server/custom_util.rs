@@ -125,12 +125,3 @@ fn recipe_info(id: u32) -> Option<Recipe> {
         None
     }
 }
-
-// impl From<Filter> for JsonFilter {
-//     fn from(filter: Filter) -> Self {
-//         Self {
-//             name: filter.ftype,
-//             values: filter.options,
-//         }
-//     }
-// }

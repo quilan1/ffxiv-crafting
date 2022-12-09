@@ -3,16 +3,6 @@ export type Mutable<T> = {
 };
 
 export default class Util {
-    private static readonly WEBPAGE: string = "http://127.0.0.1:3001";
-
-    static fetchPage(fileName: string): Promise<Response> {
-        return this.fetch(`web/${fileName}`);
-    }
-
-    static fetch(path: string, args?: object): Promise<Response> {
-        return window.fetch(`${this.WEBPAGE}/${path}`, args);
-    }
-
     static sorted<T>(_arr: Iterable<T>): T[] {
         const arr = [..._arr];
         arr.sort();
@@ -113,5 +103,9 @@ export default class Util {
             'Leviathan': 'Primal',
             'Ultros': 'Primal',
         }[world] as string;
+    }
+
+    static sleep(ms: number) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
