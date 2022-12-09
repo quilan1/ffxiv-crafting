@@ -81,9 +81,17 @@ impl AsyncProcessor {
         O: Clone + Send + Sync + 'static,
     {
         let mut data = self.data.lock();
+        data.queue_futures(futures, counter);
+    }
+}
 
-        // Move the futures into the queue
-        data.queue.extend(futures.into_iter().map(|future| {
+impl AsyncProcessorData {
+    fn queue_futures<O>(&mut self, futures: Vec<SharedFuture<O>>, counter: AsyncCounter)
+    where
+        O: Send + Sync + 'static,
+        NotifyFuture<O>: Future<Output = ()>,
+    {
+        self.queue.extend(futures.into_iter().map(|future| {
             NotifyFuture {
                 future,
                 counter: counter.clone(),
@@ -92,10 +100,10 @@ impl AsyncProcessor {
         }));
 
         // Wake up the processor, so it can take a look at the queue & move them into active polling
-        if let Some(waker) = data.waker.as_ref() {
+        if let Some(waker) = self.waker.as_ref() {
             waker.wake_by_ref();
         } else {
-            error!("AsyncProcessor waker does not exist?! This usually means the processor is not currently\
+            error!("AsyncProcessorData waker does not exist?! This usually means the processor is not currently\
                    'await'ing somewhere. Might cause orphan futures.");
         }
     }
