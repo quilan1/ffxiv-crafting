@@ -83,22 +83,20 @@ impl AsyncProcessor {
         let mut data = self.data.lock();
 
         // Move the futures into the queue
-        for future in futures {
-            data.queue.push_back(
-                NotifyFuture {
-                    future,
-                    counter: counter.clone(),
-                }
-                .boxed(),
-            );
-        }
+        data.queue.extend(futures.into_iter().map(|future| {
+            NotifyFuture {
+                future,
+                counter: counter.clone(),
+            }
+            .boxed()
+        }));
 
         // Wake up the processor, so it can take a look at the queue & move them into active polling
         if let Some(waker) = data.waker.as_ref() {
             waker.wake_by_ref();
         } else {
             error!("AsyncProcessor waker does not exist?! This usually means the processor is not currently\
-                   'await'ing somewhere. Might cause a zombie future.");
+                   'await'ing somewhere. Might cause orphan futures.");
         }
     }
 }
@@ -118,25 +116,33 @@ impl<O: Clone> Future for NotifyFuture<O> {
     }
 }
 
+// Simply a pass-through for the data information
 impl Future for AsyncProcessor {
     type Output = ();
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let mut data = self.data.lock();
+        self.data.lock().poll_unpin(cx)
+    }
+}
 
+// The main polling routine for the AsyncProcessor. Consumes any available futures from the queue, and moves them into
+// the active list. All futures in the active list are then polled, and anything that returns ready is removed.
+impl Future for AsyncProcessorData {
+    type Output = ();
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // Keep the number of active futures limited to at most max_active
-        let avail_slots = data.queue.len().min(data.max_active - data.active.len());
-        let moved_futures = data.queue.drain(..avail_slots).collect::<Vec<_>>();
-        data.active.extend(moved_futures);
+        let avail_slots = self.queue.len().min(self.max_active - self.active.len());
+        let moved_futures = self.queue.drain(..avail_slots).collect::<Vec<_>>();
+        self.active.extend(moved_futures);
 
         // Keep only the unfinished futures
-        data.active
-            .retain_mut(|notified_future| notified_future.poll_unpin(cx).is_pending());
+        self.active
+            .retain_mut(|fut| fut.poll_unpin(cx).is_pending());
 
         // Set the waker, so it can be re-polled
-        data.waker = Some(cx.waker().clone());
+        self.waker.replace(cx.waker().clone());
 
-        // This future never ends
         Poll::Pending
     }
 }

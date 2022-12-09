@@ -13,6 +13,7 @@ impl UniversalisBuilder {
         }
     }
 
+    #[allow(dead_code)]
     pub fn homeworld<S: AsRef<str>>(mut self, homeworld: S) -> Self {
         self.homeworld = homeworld.as_ref().to_string();
         self

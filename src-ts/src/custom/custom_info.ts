@@ -2,6 +2,7 @@ import RecStatistics, { RecStatisticsCollection } from "./rec_statistics.js";
 import Statistics, { Quality } from "./statistics.js";
 import Filters from "../filters.js";
 import Util from "../util.js";
+import Api from "../api.js";
 
 ////////////////////////////////////////////////////
 
@@ -42,6 +43,12 @@ export type CustomInfoJson = {
     top_ids: number[],
 }
 
+export type CustomInfoLazyJson = {
+    id: string,
+    status?: string,
+    output?: CustomInfoJson,
+}
+
 ////////////////////////////////////////////////////
 
 export default class CustomInfo {
@@ -59,9 +66,9 @@ export default class CustomInfo {
     static async fetch(searchFilter: string, count: number, dataCenter: string, isDebug?: boolean): Promise<CustomInfo> {
         let info;
         if (isDebug === true) {
-            info = await this.fetchDebug();
+            info = await this.apiGetDebug();
         } else {
-            info = await this.fetchRaw(searchFilter, dataCenter);
+            info = await this.apiGet(searchFilter, dataCenter);
         }
 
         info.item_info = Object.fromEntries(Object.entries(info.item_info).map(([key, value]) => [Number.parseInt(key), value]));
@@ -76,22 +83,47 @@ export default class CustomInfo {
         return new CustomInfo(info, count);
     }
 
-    private static async fetchRaw(searchFilter: string, dataCenter: string): Promise<CustomInfoJson> {
-        const encFilters = encodeURIComponent(searchFilter);
+    static async fetchLazy(searchFilter: string, count: number, dataCenter: string, statusFn: (_: string) => void): Promise<CustomInfo> {
+        const lazyInfo = await this.apiPutLazy(searchFilter, dataCenter);
+        const id = lazyInfo.id;
 
-        try {
-            let request = await Util.fetch(`v1/custom-filter?filters=${encFilters}&data_center=${dataCenter}`);
-            let json = await request.json();
-            return json;
-        } catch (err) {
-            console.error(err);
-            throw err;
+        let info = null;
+        while(info === null || info === undefined) {
+            await Util.sleep(500);
+            const lazyGetInfo = await this.apiGetLazy(id);
+            statusFn(lazyGetInfo.status ?? "");
+            console.log('lazyGetInfo', lazyGetInfo);
+            info = lazyGetInfo.output;
         }
+        statusFn("");
+
+        info.item_info = Object.fromEntries(Object.entries(info.item_info).map(([key, value]) => [Number.parseInt(key), value]));
+
+        for (const [_, item] of Object.entries(info.item_info)) {
+            if (item.recipe === null) {
+                delete item.recipe;
+            }
+            item.statistics = new Statistics(item);
+        }
+
+        return new CustomInfo(info, count);
     }
 
-    private static async fetchDebug(): Promise<CustomInfoJson> {
+    private static async apiGet(searchFilter: string, dataCenter: string): Promise<CustomInfoJson> {
+        return Api.call(this.api.filters.get, { filters: searchFilter, data_center: dataCenter });
+    }
+
+    private static async apiGetLazy(id: string): Promise<CustomInfoLazyJson> {
+        return Api.call(this.api.lazy.get, { id });
+    }
+
+    private static async apiPutLazy(searchFilter: string, dataCenter: string): Promise<CustomInfoLazyJson> {
+        return Api.call(this.api.lazy.put, {}, { filters: searchFilter, data_center: dataCenter });
+    }
+
+    private static async apiGetDebug(): Promise<CustomInfoJson> {
         try {
-            let request = await Util.fetch(`web/crafting-mats.json`);
+            let request = await Api.getPage(`crafting-mats.json`);
             let json = await request.json();
             return json;
         } catch (err) {
@@ -105,6 +137,26 @@ export default class CustomInfo {
             let stats = RecStatistics.from(id, count, this.item_info);
             if (stats !== undefined) {
                 this.rec_statistics.set(id, stats);
+            }
+        }
+    }
+
+    private static get api() {
+        const commonHeaders = {
+            headers: { 'Content-Type': 'application/json' },
+        };
+
+        return {
+            get filters() {
+                return {
+                    get: { endpoint: 'v1/custom-filter', options: { method: 'GET', ...commonHeaders } },
+                }
+            },
+            get lazy() {
+                return {
+                    get: { endpoint: 'v1/custom', options: { method: 'GET', ...commonHeaders } },
+                    put: { endpoint: 'v1/custom', options: { method: 'PUT', ...commonHeaders } },
+                }
             }
         }
     }

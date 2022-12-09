@@ -5,7 +5,7 @@ mod json;
 mod processor;
 
 pub use builder::UniversalisBuilder;
-pub use processor::UniversalisProcessor;
+pub use processor::{UniversalisProcessor, UniversalisStatus};
 use serde::Serialize;
 
 //////////////////////////////////////////////////////
