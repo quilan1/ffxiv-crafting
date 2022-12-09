@@ -102,7 +102,10 @@ impl AsyncProcessor {
 }
 
 // Abstract out the notify future polling
-impl<O: Clone> Future for NotifyFuture<O> {
+impl<O> Future for NotifyFuture<O>
+where
+    SharedFuture<O>: Future,
+{
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
