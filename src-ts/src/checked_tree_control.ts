@@ -98,7 +98,7 @@ export default class CheckedTreeControl {
         return this.collapsedIds.has(id);
     }
 
-    /////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////
 
     private makeRow(data: CtcRowData): TableRow {
         const _check = (td: HTMLTableCellElement, tr: HTMLTableRowElement) => {
@@ -144,7 +144,7 @@ export default class CheckedTreeControl {
         return rows;
     }
 
-    /////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////
 
     private setupTableTriggers() {
         const triggerEventCheck = () => {

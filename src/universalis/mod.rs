@@ -8,7 +8,7 @@ pub use builder::UniversalisBuilder;
 pub use processor::{UniversalisProcessor, UniversalisStatus};
 use serde::Serialize;
 
-//////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
 // Directly exported as json
 #[derive(Debug, Default, Serialize)]

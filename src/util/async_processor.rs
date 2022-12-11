@@ -22,7 +22,9 @@ pub struct AsyncProcessor {
     data: Arc<Mutex<AsyncProcessorData>>,
 }
 
-pub struct FutureOutput<O>(AsyncCounter, Vec<AmoValue<O>>);
+pub struct FutureOutput<O>(AsyncCounter, O);
+pub type FutureOutputOne<O> = FutureOutput<AmoValue<O>>;
+pub type FutureOutputVec<O> = FutureOutput<Vec<AmoValue<O>>>;
 
 struct NotifyFuture<Fut, O> {
     future: Fut,
@@ -35,6 +37,10 @@ struct AsyncProcessorData {
     queue: VecDeque<BoxFuture<'static, ()>>,
     waker: Option<Waker>,
     max_active: usize,
+}
+
+pub trait ProcessFutures<I, O> {
+    fn process(&self, futures: I) -> FutureOutput<O>;
 }
 
 ////////////////////////////////////////////////////////////
@@ -50,26 +56,6 @@ impl AsyncProcessor {
                 max_active,
             })),
         }
-    }
-
-    // Takes a set of futures, and returns future-output data, for storing the results
-    pub fn process<Fut>(&self, futures: Vec<Fut>) -> FutureOutput<Fut::Output>
-    where
-        Fut: Future + Unpin + Send + 'static,
-        Fut::Output: Send,
-    {
-        // Get the counter ready, to wait for when the futures are finished
-        let counter = AsyncCounter::new(futures.len() as u32);
-
-        // Create some output storage for the results
-        let outputs = futures.iter().map(|_| AmoValue::new()).collect::<Vec<_>>();
-
-        // Package the futures & outputs together
-        let futures = futures.into_iter().zip(outputs.clone()).collect();
-
-        // Queue the modified futures
-        self.queue_futures(futures, counter.clone());
-        FutureOutput(counter, outputs)
     }
 
     // Adds the futures to the internal queue system of the AsyncProcessor
@@ -163,9 +149,10 @@ impl Future for AsyncProcessorData {
     }
 }
 
-// For stored-value futures (instead of copying future outputs all around), this allows us to have a () future,
-// with an output value
-impl<O> Future for FutureOutput<O> {
+////////////////////////////////////////////////////////////
+
+// These allow us to have copyable outputs without having to require clone() for the futures
+impl<O> Future for FutureOutputVec<O> {
     type Output = Vec<O>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -176,5 +163,66 @@ impl<O> Future for FutureOutput<O> {
             }
             Poll::Pending => Poll::Pending,
         }
+    }
+}
+
+// These allow us to have a copyable output without having to require clone() for the future
+impl<O> Future for FutureOutputOne<O> {
+    type Output = O;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        match self.0.poll_unpin(cx) {
+            Poll::Ready(_) => {
+                let v = replace(&mut self.1, AmoValue::new());
+                Poll::Ready(v.take().unwrap())
+            }
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////
+
+// Takes a vec of futures, and returns future-output data
+impl<Fut> ProcessFutures<Vec<Fut>, Vec<AmoValue<Fut::Output>>> for AsyncProcessor
+where
+    Fut: Future + Unpin + Send + 'static,
+    Fut::Output: Send,
+{
+    fn process(&self, futures: Vec<Fut>) -> FutureOutput<Vec<AmoValue<Fut::Output>>> {
+        // Get the counter ready, to wait for when the futures are finished
+        let counter = AsyncCounter::new(futures.len() as u32);
+
+        // Create some output storage for the results
+        let outputs = futures.iter().map(|_| AmoValue::new()).collect::<Vec<_>>();
+
+        // Package the futures & outputs together
+        let futures = futures.into_iter().zip(outputs.clone()).collect();
+
+        // Queue the modified futures
+        self.queue_futures(futures, counter.clone());
+        FutureOutput(counter, outputs)
+    }
+}
+
+// Takes a future, and returns future-output data
+impl<Fut> ProcessFutures<Fut, AmoValue<Fut::Output>> for AsyncProcessor
+where
+    Fut: Future + Unpin + Send + 'static,
+    Fut::Output: Send,
+{
+    fn process(&self, future: Fut) -> FutureOutput<AmoValue<Fut::Output>> {
+        // Get the counter ready, to wait for when the futures are finished
+        let counter = AsyncCounter::new(1);
+
+        // Create some output storage for the results
+        let output = AmoValue::new();
+
+        // Package the futures & outputs together
+        let futures = vec![(future, output.clone())];
+
+        // Queue the modified futures
+        self.queue_futures(futures, counter.clone());
+        FutureOutput(counter, output)
     }
 }

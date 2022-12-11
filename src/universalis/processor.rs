@@ -1,7 +1,7 @@
 use std::{convert::identity, fmt::Display, sync::Arc, time::Duration};
 
 use super::{json::UniversalisJson, MarketItemInfoMap};
-use crate::util::AsyncProcessor;
+use crate::util::{AsyncProcessor, ProcessFutures};
 
 use futures::{future::join_all, FutureExt};
 use log::{error, info, warn};

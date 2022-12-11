@@ -15,7 +15,7 @@ use crate::{
         server::ServerState,
     },
     universalis::{MarketItemInfoMap, UniversalisProcessor, UniversalisStatus},
-    util::FutureOutput,
+    util::{FutureOutputOne, ProcessFutures},
 };
 
 use super::{custom_util::CustomItemInfo, make_builder, not_found, ok_json};
@@ -46,7 +46,7 @@ struct CustomLazyOutput {
 
 pub struct CustomLazyInfo {
     pub status: UniversalisStatus,
-    pub output: FutureOutput<MarketItemInfoMap>,
+    pub output: FutureOutputOne<MarketItemInfoMap>,
     pub top_ids: Vec<u32>,
 }
 
@@ -71,7 +71,7 @@ impl Custom {
         let info = state.remove_lazy(&uuid).unwrap();
 
         // Pull the output from the future
-        let mb_info_map = info.output.await.pop().unwrap();
+        let mb_info_map = info.output.await;
 
         // Return the final info
         let top_ids = info.top_ids;
@@ -100,7 +100,7 @@ impl Custom {
         .boxed();
 
         // Send it off for processing, via the unlimited queue
-        let output = state.async_general_processor.process(vec![future]);
+        let output = state.async_general_processor.process(future);
 
         // Save the placeholder & output into the server state
         let uuid = Uuid::new_v4().to_string();
