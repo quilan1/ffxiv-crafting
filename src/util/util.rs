@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub use crate::library::library;
 use crate::library::{Ingredient, ItemInfo};
 
