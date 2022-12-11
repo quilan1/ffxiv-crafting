@@ -1,14 +1,12 @@
 use std::{
     collections::VecDeque,
+    mem::replace,
     pin::Pin,
     sync::Arc,
     task::{Context, Poll, Waker},
 };
 
-use futures::{
-    future::{join_all, BoxFuture, Shared},
-    Future, FutureExt,
-};
+use futures::{future::BoxFuture, Future, FutureExt};
 use log::error;
 use parking_lot::Mutex;
 
@@ -17,15 +15,18 @@ use log::info;
 
 use crate::util::AsyncCounter;
 
+use super::AmoValue;
+
 #[derive(Clone)]
 pub struct AsyncProcessor {
     data: Arc<Mutex<AsyncProcessorData>>,
 }
 
-pub type SharedFuture<O> = Shared<BoxFuture<'static, O>>;
+pub struct FutureOutput<O>(AsyncCounter, Vec<AmoValue<O>>);
 
-struct NotifyFuture<O> {
-    future: SharedFuture<O>,
+struct NotifyFuture<Fut, O> {
+    future: Fut,
+    output: AmoValue<O>,
     counter: AsyncCounter,
 }
 
@@ -34,10 +35,6 @@ struct AsyncProcessorData {
     queue: VecDeque<BoxFuture<'static, ()>>,
     waker: Option<Waker>,
     max_active: usize,
-}
-
-pub trait Notify {
-    fn notify(&self);
 }
 
 ////////////////////////////////////////////////////////////
@@ -55,30 +52,31 @@ impl AsyncProcessor {
         }
     }
 
-    // Takes a vector of shared futures, and sends the through the count-limited queue and yields the results
-    pub async fn process<O>(&self, values: Vec<SharedFuture<O>>) -> Vec<O>
+    // Takes a set of futures, and returns future-output data, for storing the results
+    pub fn process<Fut>(&self, futures: Vec<Fut>) -> FutureOutput<Fut::Output>
     where
-        O: Clone + Send + Sync + 'static,
+        Fut: Future + Unpin + Send + 'static,
+        Fut::Output: Send,
     {
-        // By awaiting the lazy process, we ensure all futures are finished
-        self.process_lazy(values.clone()).await;
-        join_all(values).await
-    }
+        // Get the counter ready, to wait for when the futures are finished
+        let counter = AsyncCounter::new(futures.len() as u32);
 
-    pub fn process_lazy<O>(&self, values: Vec<SharedFuture<O>>) -> AsyncCounter
-    where
-        O: Clone + Send + Sync + 'static,
-    {
-        // The counter is the primative that will allow us to know when the futures have all been executed
-        let counter = AsyncCounter::new(values.len() as u32);
-        self.queue_futures(values, counter.clone());
-        counter
+        // Create some output storage for the results
+        let outputs = futures.iter().map(|_| AmoValue::new()).collect::<Vec<_>>();
+
+        // Package the futures & outputs together
+        let futures = futures.into_iter().zip(outputs.clone()).collect();
+
+        // Queue the modified futures
+        self.queue_futures(futures, counter.clone());
+        FutureOutput(counter, outputs)
     }
 
     // Adds the futures to the internal queue system of the AsyncProcessor
-    fn queue_futures<O>(&self, futures: Vec<SharedFuture<O>>, counter: AsyncCounter)
+    fn queue_futures<Fut>(&self, futures: Vec<(Fut, AmoValue<Fut::Output>)>, counter: AsyncCounter)
     where
-        O: Clone + Send + Sync + 'static,
+        Fut: Future + Unpin + Send + 'static,
+        Fut::Output: Send,
     {
         let mut data = self.data.lock();
         data.queue_futures(futures, counter);
@@ -86,18 +84,24 @@ impl AsyncProcessor {
 }
 
 impl AsyncProcessorData {
-    fn queue_futures<O>(&mut self, futures: Vec<SharedFuture<O>>, counter: AsyncCounter)
-    where
-        O: Send + Sync + 'static,
-        NotifyFuture<O>: Future<Output = ()>,
+    fn queue_futures<Fut>(
+        &mut self,
+        futures: Vec<(Fut, AmoValue<Fut::Output>)>,
+        counter: AsyncCounter,
+    ) where
+        Fut: Future + Send + 'static,
+        Fut::Output: Send,
+        NotifyFuture<Fut, Fut::Output>: Future<Output = ()>,
     {
-        self.queue.extend(futures.into_iter().map(|future| {
-            NotifyFuture {
-                future,
-                counter: counter.clone(),
-            }
-            .boxed()
-        }));
+        self.queue
+            .extend(futures.into_iter().map(|(future, output)| {
+                NotifyFuture {
+                    future,
+                    output,
+                    counter: counter.clone(),
+                }
+                .boxed()
+            }));
 
         // Wake up the processor, so it can take a look at the queue & move them into active polling
         if let Some(waker) = self.waker.as_ref() {
@@ -110,15 +114,16 @@ impl AsyncProcessorData {
 }
 
 // Abstract out the notify future polling
-impl<O> Future for NotifyFuture<O>
+impl<Fut> Future for NotifyFuture<Fut, Fut::Output>
 where
-    SharedFuture<O>: Future,
+    Fut: Future + Unpin,
 {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match self.future.poll_unpin(cx) {
-            Poll::Ready(_) => {
+            Poll::Ready(output) => {
+                self.output.replace(output);
                 self.counter.notify();
                 Poll::Ready(())
             }
@@ -155,5 +160,21 @@ impl Future for AsyncProcessorData {
         self.waker.replace(cx.waker().clone());
 
         Poll::Pending
+    }
+}
+
+// For stored-value futures (instead of copying future outputs all around), this allows us to have a () future,
+// with an output value
+impl<O> Future for FutureOutput<O> {
+    type Output = Vec<O>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        match self.0.poll_unpin(cx) {
+            Poll::Ready(_) => {
+                let v = replace(&mut self.1, Vec::new());
+                Poll::Ready(v.into_iter().map(|value| value.take().unwrap()).collect())
+            }
+            Poll::Pending => Poll::Pending,
+        }
     }
 }

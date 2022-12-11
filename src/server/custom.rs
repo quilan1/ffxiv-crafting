@@ -6,7 +6,6 @@ use axum::{
 };
 use futures::FutureExt;
 use log::info;
-use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -16,12 +15,10 @@ use crate::{
         server::ServerState,
     },
     universalis::{MarketItemInfoMap, UniversalisProcessor, UniversalisStatus},
-    util::{AsyncProcessor, SharedFuture},
+    util::FutureOutput,
 };
 
 use super::{custom_util::CustomItemInfo, make_builder, not_found, ok_json};
-
-type MarketItemInfoMapOutput = Arc<Mutex<Option<MarketItemInfoMap>>>;
 
 #[derive(Deserialize, Debug)]
 pub struct CustomInput {
@@ -49,8 +46,7 @@ struct CustomLazyOutput {
 
 pub struct CustomLazyInfo {
     pub status: UniversalisStatus,
-    pub future: SharedFuture<()>,
-    pub future_output: MarketItemInfoMapOutput,
+    pub output: FutureOutput<MarketItemInfoMap>,
     pub top_ids: Vec<u32>,
 }
 
@@ -74,14 +70,8 @@ impl Custom {
         // We're finished processing, remove it from the records, and send it off
         let info = state.remove_lazy(&uuid).unwrap();
 
-        // Make sure the future's finished up
-        info.future.await;
-
-        // Pull the output from the mutex
-        let mb_info_map = {
-            let mut output = info.future_output.lock();
-            std::mem::replace(&mut *output, None).unwrap()
-        };
+        // Pull the output from the future
+        let mb_info_map = info.output.await.pop().unwrap();
 
         // Return the final info
         let top_ids = info.top_ids;
@@ -101,21 +91,16 @@ impl Custom {
 
         // Queue up the future
         let status = UniversalisStatus::new();
-        let future_output = Arc::new(Mutex::new(None));
-        let future = lazy_process_ids(
+        let future = UniversalisProcessor::process_ids(
             state.async_processor.clone(),
             builder.data_centers.clone(),
             all_ids,
             status.clone(),
-            future_output.clone(),
         )
-        .boxed()
-        .shared();
+        .boxed();
 
         // Send it off for processing, via the unlimited queue
-        state
-            .async_general_processor
-            .process_lazy(vec![future.clone()]);
+        let output = state.async_general_processor.process(vec![future]);
 
         // Save the placeholder & output into the server state
         let uuid = Uuid::new_v4().to_string();
@@ -123,8 +108,7 @@ impl Custom {
             &uuid,
             CustomLazyInfo {
                 status: status.clone(),
-                future,
-                future_output,
+                output,
                 top_ids,
             },
         );
@@ -186,16 +170,4 @@ fn make_partial_response<S: AsRef<str>>(state: &ServerState, uuid: S) -> Option<
             }
         }
     })
-}
-
-// This is separate, because it's annoying to clone stuff outside of an async move
-async fn lazy_process_ids(
-    async_processor: AsyncProcessor,
-    worlds: Vec<String>,
-    all_ids: Vec<u32>,
-    status: UniversalisStatus,
-    output: MarketItemInfoMapOutput,
-) {
-    let info = UniversalisProcessor::process_ids(async_processor, worlds, all_ids, status).await;
-    output.lock().replace(info);
 }

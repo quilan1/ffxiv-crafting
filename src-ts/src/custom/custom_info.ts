@@ -1,6 +1,5 @@
 import RecStatistics, { RecStatisticsCollection } from "./rec_statistics.js";
-import Statistics, { Quality } from "./statistics.js";
-import Filters from "../filters.js";
+import Statistics from "./statistics.js";
 import Util from "../util.js";
 import Api from "../api.js";
 
@@ -91,11 +90,10 @@ export default class CustomInfo {
         while(info === null || info === undefined) {
             await Util.sleep(500);
             const lazyGetInfo = await this.apiGetLazy(id);
-            statusFn(lazyGetInfo.status ?? "");
-            console.log('lazyGetInfo', lazyGetInfo);
+            statusFn(lazyGetInfo.status ?? '');
             info = lazyGetInfo.output;
         }
-        statusFn("");
+        statusFn('');
 
         info.item_info = Object.fromEntries(Object.entries(info.item_info).map(([key, value]) => [Number.parseInt(key), value]));
 

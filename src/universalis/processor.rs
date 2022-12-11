@@ -136,16 +136,8 @@ impl UniversalisRequest {
         let listing_url = get_listing_url(&world, &ids);
         let history_url = get_history_url(&world, &ids);
         let mut requests = Vec::new();
-        requests.push(
-            fetch_listing(10, "listing".into(), listing_url, signature_listing)
-                .boxed()
-                .shared(),
-        );
-        requests.push(
-            fetch_listing(10, "history".into(), history_url, signature_history)
-                .boxed()
-                .shared(),
-        );
+        requests.push(fetch_listing(10, "listing".into(), listing_url, signature_listing).boxed());
+        requests.push(fetch_listing(10, "history".into(), history_url, signature_history).boxed());
 
         let mut results = processor.process(requests).await;
         let listing_result = results.remove(0);

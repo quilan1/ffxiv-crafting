@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::{
     pin::Pin,
     sync::Arc,
@@ -6,8 +8,6 @@ use std::{
 
 use futures::Future;
 use parking_lot::Mutex;
-
-use super::async_processor::Notify;
 
 #[derive(Clone)]
 pub struct AsyncCounter {
@@ -23,14 +23,11 @@ impl AsyncCounter {
         }
     }
 
-    #[allow(dead_code)]
     pub fn count(&self) -> u32 {
         *self.count.lock()
     }
-}
 
-impl Notify for AsyncCounter {
-    fn notify(&self) {
+    pub fn notify(&self) {
         *self.count.lock() -= 1;
         if let Some(waker) = self.waker.lock().as_ref() {
             waker.wake_by_ref();
