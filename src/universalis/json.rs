@@ -53,11 +53,12 @@ impl UniversalisJson {
         listings_json: &str,
         history_json: &str,
         mb_info_map: &mut MarketItemInfoMap,
+        retain_num_days: f32,
     ) -> Result<()> {
         let MultipleListingView { items } =
             serde_json::from_str::<MultipleListingView>(&listings_json)?;
         for (id, info) in items.into_iter() {
-            let mut listings = parse_recent_listings(info.listings);
+            let mut listings = parse_recent_listings(info.listings, retain_num_days);
 
             let id = id.parse::<u32>()?;
             let entry = mb_info_map.entry(id).or_default();
@@ -68,7 +69,7 @@ impl UniversalisJson {
         let MultipleHistoryView { items } =
             serde_json::from_str::<MultipleHistoryView>(&history_json)?;
         for (id, info) in items.into_iter() {
-            let mut listings = parse_recent_listings(info.entries);
+            let mut listings = parse_recent_listings(info.entries, retain_num_days);
 
             let id = id.parse::<u32>()?;
             let entry = mb_info_map.entry(id).or_default();
@@ -80,7 +81,10 @@ impl UniversalisJson {
     }
 }
 
-fn parse_recent_listings(item_listing_view: Vec<ItemListingView>) -> Vec<ItemListing> {
+fn parse_recent_listings(
+    item_listing_view: Vec<ItemListingView>,
+    retain_num_days: f32,
+) -> Vec<ItemListing> {
     item_listing_view
         .into_iter()
         .filter(|listing| {
@@ -88,7 +92,7 @@ fn parse_recent_listings(item_listing_view: Vec<ItemListingView>) -> Vec<ItemLis
             if let Some(timestamp) = listing.timestamp {
                 let days = SystemTime::UNIX_EPOCH + Duration::from_secs(timestamp);
                 let days = days.elapsed().unwrap().as_secs_f32() / (3600.0 * 24.0);
-                days <= 7.0
+                days <= retain_num_days
             } else {
                 true
             }

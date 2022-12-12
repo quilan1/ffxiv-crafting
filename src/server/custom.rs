@@ -24,6 +24,7 @@ use super::{custom_util::CustomItemInfo, make_builder, not_found, ok_json};
 pub struct CustomInput {
     pub filters: String,
     pub data_center: Option<String>,
+    pub retain_num_days: Option<f32>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -95,6 +96,7 @@ impl Custom {
             state.async_processor.clone(),
             builder.data_centers.clone(),
             all_ids,
+            payload.retain_num_days.unwrap_or(7.0),
             status.clone(),
         )
         .boxed();

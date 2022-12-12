@@ -57,16 +57,6 @@ impl AsyncProcessor {
             })),
         }
     }
-
-    // Adds the futures to the internal queue system of the AsyncProcessor
-    fn queue_futures<Fut>(&self, futures: Vec<(Fut, AmoValue<Fut::Output>)>, counter: AsyncCounter)
-    where
-        Fut: Future + Unpin + Send + 'static,
-        Fut::Output: Send,
-    {
-        let mut data = self.data.lock();
-        data.queue_futures(futures, counter);
-    }
 }
 
 impl AsyncProcessorData {
@@ -200,7 +190,7 @@ where
         let futures = futures.into_iter().zip(outputs.clone()).collect();
 
         // Queue the modified futures
-        self.queue_futures(futures, counter.clone());
+        self.data.lock().queue_futures(futures, counter.clone());
         FutureOutput(counter, outputs)
     }
 }
@@ -222,7 +212,7 @@ where
         let futures = vec![(future, output.clone())];
 
         // Queue the modified futures
-        self.queue_futures(futures, counter.clone());
+        self.data.lock().queue_futures(futures, counter.clone());
         FutureOutput(counter, output)
     }
 }

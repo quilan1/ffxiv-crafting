@@ -41,7 +41,7 @@ class CustomDlg {
         const treeData = this.generateTreeData(this.filteredTopIds);
         const collapsedIds = this.generateCollapsedIds(this.filteredTopIds);
 
-        const headers = ['☑', 'Name', '#/wk', 'Sell', 'Buy', 'Craft', 'Profit'];
+        const headers = ['☑', 'Name', '#/day', '#/wk', '#/2wk', 'Sell', 'Buy', 'Craft', 'Profit'];
         this.customTreeControl?.destroy();
         this.customTreeControl = new CheckedTreeControl(parentDiv, headers, treeData, collapsedIds);
         this.customTreeControl.render();
@@ -94,7 +94,7 @@ class CustomDlg {
             return true;
         }
 
-        const velocity = this.info.item_info[id].statistics?.homeworldVelocity?.aq;
+        const velocity = this.info.item_info[id].statistics?.homeworldVelocityWeek?.aq;
         if (velocity === undefined) {
             return false;
         }
@@ -139,7 +139,10 @@ class CustomDlg {
         for (const { id, stats } of idStats) {
             const children = stats?.inputs?.childChains(id).map(childId => CustomDlg.rowId(childId)) ?? [];
 
-            const velocity = stats?.item.statistics.homeworldVelocity?.aq?.toFixed(2) ?? "-";
+            const statistics = stats?.item.statistics;
+            const velocity1 = statistics?.homeworldVelocityDay?.aq?.toFixed(2) ?? '-';
+            const velocity7 = statistics?.homeworldVelocityWeek?.aq?.toFixed(2) ?? '-';
+            const velocity14 = statistics?.homeworldVelocityWeeks?.aq?.toFixed(2) ?? '-';
             const count = (stats?.count ?? 0 > 1) ? `${stats?.count}x ` : '';
             const depth = id.length;
             rowData.push({
@@ -148,7 +151,9 @@ class CustomDlg {
                 children,
                 text: [
                     `${count}${stats?.item.name}`,
-                    velocity,
+                    velocity1,
+                    velocity7,
+                    velocity14,
                     stats?.medSellPrice ?? '-',
                     stats?.minBuyPrice ?? "-",
                     stats?.minCraftPrice ?? "-",

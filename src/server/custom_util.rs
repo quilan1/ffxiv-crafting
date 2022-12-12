@@ -77,7 +77,7 @@ pub fn json_results(top_ids: Vec<u32>, mb_info: MarketItemInfoMap) -> CustomOut 
             id,
             CustomItemInfo {
                 item_id: id,
-                name: item_name(id).to_string(),
+                name: item_name(id).replace("\u{00A0}", " ").to_string(),
                 listings,
                 history,
                 recipe: recipe_info(id),
