@@ -65,7 +65,7 @@ const exchangeProfits = [
     { tickets: 1200, name: "The Mendicant's Relish Orchestrion Roll" },
     { tickets: 1200, name: "The Heavens' Ward Orchestrion Roll" },
     { tickets: 1200, name: "Hearthward Orchestrion Roll" },
-    { tickets: 1200, name: "What Is Love? Orchestrion Roll" },
+    { tickets: 1200, name: "What Is Love? Orchestrion Roll", search: 'What Is Love\\? Orchestrion Roll' },
     { tickets: 1200, name: "Skyrise Orchestrion Roll" },
     { tickets: 600, name: "Jewel Orchestrion Roll" },
     { tickets: 600, name: "Paradise Found Orchestrion Roll" },
@@ -98,13 +98,13 @@ export default {
 
     _pricePromise(search: string): Promise<CustomInfo> {
         const filters = new Filters(search);
-        return CustomInfo.fetch(search, filters.getOneAsInt(':count') ?? 1, "Dynamis");
+        return CustomInfo.fetchLazy(search, filters.getOneAsInt(':count') ?? 1, "Dynamis");
     },
 
     _profitPromise(type: string): Promise<CustomInfo> {
         const purchases = exchangeProfits.filter(item => (item as any)[type] !== undefined);
-        const search = ":name (" + purchases.map(item => `^${item.name}\$`).join("|") + ")";
-        return CustomInfo.fetch(search, 1, "Dynamis");
+        const search = ":name (" + purchases.map(item => `^${item.search ?? item.name}\$`).join("|") + ")";
+        return CustomInfo.fetchLazy(search, 1, "Dynamis");
     },
 
     async _calculate() {
@@ -170,7 +170,7 @@ export default {
                     { tag: 'div', innerText: sellPrice },
                     { tag: 'div', innerText: Math.round(itemPricePer) },
                     { tag: 'div', innerText: Math.round(10*sellPrice/itemPricePer)/10 },
-                    { tag: 'div', innerText: `${purchase.name} [${stats.item.statistics.homeworldVelocity?.aq?.toFixed(2) ?? '--'}]` },
+                    { tag: 'div', innerText: `${purchase.name} [${stats.item.statistics.homeworldVelocityWeeks?.aq?.toFixed(2) ?? '--'}]` },
                 ]
             });
         }

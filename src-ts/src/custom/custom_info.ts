@@ -82,9 +82,10 @@ export default class CustomInfo {
         return new CustomInfo(info, count);
     }
 
-    static async fetchLazy(searchFilter: string, count: number, dataCenter: string, statusFn: (_: string) => void): Promise<CustomInfo> {
+    static async fetchLazy(searchFilter: string, count: number, dataCenter: string, statusFn?: (_: string) => void): Promise<CustomInfo> {
         const lazyInfo = await this.apiPutLazy(searchFilter, dataCenter);
         const id = lazyInfo.id;
+        statusFn ??= () => {};
 
         let info = null;
         while(info === null || info === undefined) {
@@ -108,7 +109,7 @@ export default class CustomInfo {
     }
 
     private static async apiGet(searchFilter: string, dataCenter: string): Promise<CustomInfoJson> {
-        return Api.call(this.api.filters.get, { filters: searchFilter, data_center: dataCenter });
+        return Api.call(this.api.filters.get, { filters: searchFilter, data_center: dataCenter, retain_num_days: 7.0 });
     }
 
     private static async apiGetLazy(id: string): Promise<CustomInfoLazyJson> {
@@ -116,7 +117,7 @@ export default class CustomInfo {
     }
 
     private static async apiPutLazy(searchFilter: string, dataCenter: string): Promise<CustomInfoLazyJson> {
-        return Api.call(this.api.lazy.put, {}, { filters: searchFilter, data_center: dataCenter });
+        return Api.call(this.api.lazy.put, {}, { filters: searchFilter, data_center: dataCenter, retain_num_days: 14.0 });
     }
 
     private static async apiGetDebug(): Promise<CustomInfoJson> {

@@ -115,7 +115,8 @@ impl Filter {
     }
 
     fn filter_name<'a>(options: FilterOptions, items: Vec<&'a ItemInfo>) -> Vec<&'a ItemInfo> {
-        let re = Regex::new(&options.join("|")).unwrap();
+        let re = options.join("|").replace(" ", "\\s");
+        let re = Regex::new(&re).unwrap();
 
         items
             .into_iter()

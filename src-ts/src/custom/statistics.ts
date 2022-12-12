@@ -11,18 +11,23 @@ export type Quality<T> = {
 export default class Statistics {
     readonly minBuyPrice?: Quality<number>;
     readonly homeworldMedSellPrice?: Quality<number>;
-    readonly homeworldVelocity?: Quality<number>;
+    readonly homeworldVelocityDay?: Quality<number>;
+    readonly homeworldVelocityWeek?: Quality<number>;
+    readonly homeworldVelocityWeeks?: Quality<number>;
 
     constructor(itemInfo: ItemInfo) {
         const isHomeworld = (item: Listing) => item.world === HOMEWORLD;
         const toIdent = (item: Listing) => item;
         const toPrice = (item: Listing) => item.price;
-        const median = (items: number[]) => { items.sort(); return items[(items.length / 2) | 0]; };
+        const median = (items: number[]) => { items.sort((a,b) => a - b); return items[(items.length / 3) | 0]; };
         const min = (items: number[]) => items.reduce((prev: number | undefined, cur: number) => (prev === undefined || cur < prev) ? cur : prev, undefined) as number;
-    
+        const velocity = (days: number) => (listings: Listing[]) => calculateVelocity(listings, days);
+
         this.minBuyPrice = generateQuality(itemInfo.name, itemInfo.listings, [], toPrice, min);
         this.homeworldMedSellPrice = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld], toPrice, median);
-        this.homeworldVelocity = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld], toIdent, calculateVelocity);
+        this.homeworldVelocityDay = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld], toIdent, velocity(1.0));
+        this.homeworldVelocityWeek = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld], toIdent, velocity(7.0));
+        this.homeworldVelocityWeeks = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld], toIdent, velocity(14.0));
     }
 }
 
@@ -55,13 +60,11 @@ function reduceListings<T, O>(name: string, listings: Listing[], filter_fns: ((i
     return (filteredListings.length > 0) ? reduce_fn(filteredListings) : undefined;
 }
 
-function calculateVelocity(items: Listing[]): number {
-    const totalCount = items.reduce((prev, item) => prev + item.count, 0);
+function calculateVelocity(allListings: Listing[], days: number): number {
+    const postingToDays = (posting: number) => (Date.now() / 1000.0 - posting) / 3600.0 / 24.0;
+    let listings = allListings.filter(listing => postingToDays(listing.posting) <= days);
 
-    const minPosting = Math.min(...items.map(item => item.posting));
-    const timeDiffMillis = Date.now() / 1000.0 - Math.min(minPosting);
-    let timeDiffDays = timeDiffMillis / 3600.0 / 24.0;
-
-    timeDiffDays = 7.0;
-    return totalCount / timeDiffDays;
+    const totalCount = listings.reduce((prev, item) => prev + item.count, 0);
+    const minPosting = Math.min(...listings.map(item => item.posting));
+    return totalCount / postingToDays(minPosting);
 }

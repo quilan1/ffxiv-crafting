@@ -36,6 +36,7 @@ impl UniversalisProcessor {
         processor: AsyncProcessor,
         worlds: Vec<String>,
         ids: Vec<u32>,
+        retain_num_days: f32,
         status: UniversalisStatus,
     ) -> MarketItemInfoMap {
         let requests = Self::make_requests(processor, worlds, ids, status.clone()).await;
@@ -43,9 +44,12 @@ impl UniversalisProcessor {
 
         let mut mb_info_map = MarketItemInfoMap::new();
         for request in requests {
-            if let Err(_) =
-                UniversalisJson::parse(&request.listing, &request.history, &mut mb_info_map)
-            {
+            if let Err(_) = UniversalisJson::parse(
+                &request.listing,
+                &request.history,
+                &mut mb_info_map,
+                retain_num_days,
+            ) {
                 error!("[process_ids] Error: Invalid json response");
             }
         }
