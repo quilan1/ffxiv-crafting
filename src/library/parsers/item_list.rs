@@ -57,6 +57,7 @@ impl ItemList {
             .collect::<Vec<_>>()
     }
 
+    #[allow(dead_code)]
     pub fn all_gatherable_items(&self) -> Vec<&ItemInfo> {
         self.items
             .iter()
@@ -73,7 +74,7 @@ impl Index<&u32> for ItemList {
     fn index(&self, index: &u32) -> &Self::Output {
         match self.items.get(index) {
             None => panic!("Missing item id: {index}"),
-            Some(value) => &value,
+            Some(value) => value,
         }
     }
 }

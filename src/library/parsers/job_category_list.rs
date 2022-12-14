@@ -60,7 +60,7 @@ impl Jobs {
                 _ => panic!("Invalid job: {job}"),
             }
         }
-        jobs.len() == 0 || (bits & self.bits) > 0
+        jobs.is_empty() || (bits & self.bits) > 0
     }
 }
 
@@ -68,9 +68,9 @@ impl Index<&u32> for JobCategoryList {
     type Output = Jobs;
 
     fn index(&self, index: &u32) -> &Self::Output {
-        match self.jobs.get(&index) {
+        match self.jobs.get(index) {
             None => panic!("Missing job_category id: {index}"),
-            Some(value) => &value,
+            Some(value) => value,
         }
     }
 }

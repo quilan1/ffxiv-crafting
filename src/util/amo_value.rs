@@ -38,3 +38,9 @@ impl<O> Clone for AmoValue<O> {
         }
     }
 }
+
+impl<O> Default for AmoValue<O> {
+    fn default() -> Self {
+        Self::new()
+    }
+}

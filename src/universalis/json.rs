@@ -56,7 +56,7 @@ impl UniversalisJson {
         retain_num_days: f32,
     ) -> Result<()> {
         let MultipleListingView { items } =
-            serde_json::from_str::<MultipleListingView>(&listings_json)?;
+            serde_json::from_str::<MultipleListingView>(listings_json)?;
         for (id, info) in items.into_iter() {
             let mut listings = parse_recent_listings(info.listings, retain_num_days);
 
@@ -67,7 +67,7 @@ impl UniversalisJson {
         }
 
         let MultipleHistoryView { items } =
-            serde_json::from_str::<MultipleHistoryView>(&history_json)?;
+            serde_json::from_str::<MultipleHistoryView>(history_json)?;
         for (id, info) in items.into_iter() {
             let mut listings = parse_recent_listings(info.entries, retain_num_days);
 

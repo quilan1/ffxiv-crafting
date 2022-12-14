@@ -1,9 +1,9 @@
-use std::{convert::identity, fmt::Display, sync::Arc, time::Duration};
+use std::{fmt::Display, sync::Arc, time::Duration};
 
 use super::{json::UniversalisJson, MarketItemInfoMap};
 use crate::util::{AsyncProcessor, ProcessFutures};
 
-use futures::{future::join_all, FutureExt};
+use futures::{future::join_all, FutureExt, join};
 use log::{error, info, warn};
 use parking_lot::Mutex;
 use tokio::time::sleep;
@@ -44,12 +44,12 @@ impl UniversalisProcessor {
 
         let mut mb_info_map = MarketItemInfoMap::new();
         for request in requests {
-            if let Err(_) = UniversalisJson::parse(
+            if UniversalisJson::parse(
                 &request.listing,
                 &request.history,
                 &mut mb_info_map,
                 retain_num_days,
-            ) {
+            ).is_err() {
                 error!("[process_ids] Error: Invalid json response");
             }
         }
@@ -94,12 +94,12 @@ impl UniversalisProcessor {
         join_all(requests)
             .await
             .into_iter()
-            .filter_map(identity)
+            .flatten()
             .collect()
     }
 
     // Return the chunks as a comma-delimited string of 100 ids (or whatever remains)
-    fn chunk_ids(ids: &Vec<u32>) -> Vec<String> {
+    fn chunk_ids(ids: &[u32]) -> Vec<String> {
         let mut id_chunks = Vec::new();
         for ids in ids.chunks(MAX_CHUNK_SIZE) {
             let ids = if ids.len() != 1 {
@@ -139,21 +139,18 @@ impl UniversalisRequest {
         let signature_history = format!("{}/{}", 2 * chunk_id, 2 * max_chunks);
         let listing_url = get_listing_url(&world, &ids);
         let history_url = get_history_url(&world, &ids);
-        let mut requests = Vec::new();
-        requests.push(fetch_listing(10, "listing".into(), listing_url, signature_listing).boxed());
-        requests.push(fetch_listing(10, "history".into(), history_url, signature_history).boxed());
 
-        let mut results = processor.process(requests).await;
-        let listing_result = results.remove(0);
-        let history_result = results.remove(0);
+        let listing = processor.process(fetch_listing(10, "listing".into(), listing_url, signature_listing).boxed());
+        let history = processor.process(fetch_listing(10, "history".into(), history_url, signature_history).boxed());
+        let (listing_result, history_result) = join!(listing, history);
 
         status.dec_count();
 
         if let Some(listing) = listing_result {
             if let Some(history) = history_result {
                 return Some(UniversalisRequest {
-                    listing: listing,
-                    history: history,
+                    listing,
+                    history,
                 });
             }
         }
@@ -207,10 +204,7 @@ impl Display for UniversalisStatus {
 
 impl UniversalisStatusValue {
     fn is_finished(&self) -> bool {
-        match *self {
-            UniversalisStatusValue::Finished => true,
-            _ => false,
-        }
+        matches!(*self, UniversalisStatusValue::Finished)
     }
 }
 
@@ -250,7 +244,7 @@ async fn fetch_listing(
     }
 
     error!("[Fetch {signature}] Failed to fetch: {url}");
-    return None;
+    None
 }
 
 // Universalis API for buy listings
@@ -275,5 +269,5 @@ fn get_history_url<S: AsRef<str>>(world: S, ids: S) -> String {
 // This is just to rule out empty json & weird server responses
 fn is_valid_json<S: AsRef<str>>(value: S) -> bool {
     let value = value.as_ref();
-    value.starts_with("{") && value.ends_with("}") && value.len() > 100
+    value.starts_with('{') && value.ends_with('}') && value.len() > 100
 }

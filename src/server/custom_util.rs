@@ -54,12 +54,11 @@ pub fn get_ids_from_filters(filters: String) -> (Vec<u32>, Vec<u32>) {
 
     let ids = items
         .iter()
-        .map(|item| {
+        .flat_map(|item| {
             let mut item_ids = Vec::new();
             push_ids(&mut item_ids, item.id);
             item_ids
         })
-        .flatten()
         // .filter(|item_id| !item(item_id).is_untradable)
         .collect::<BTreeSet<_>>()
         .into_iter()
@@ -77,7 +76,7 @@ pub fn json_results(top_ids: Vec<u32>, mb_info: MarketItemInfoMap) -> CustomOut 
             id,
             CustomItemInfo {
                 item_id: id,
-                name: item_name(id).replace("\u{00A0}", " ").to_string(),
+                name: item_name(id).replace('\u{00A0}', " ").to_string(),
                 listings,
                 history,
                 recipe: recipe_info(id),
@@ -109,19 +108,15 @@ pub fn json_results(top_ids: Vec<u32>, mb_info: MarketItemInfoMap) -> CustomOut 
 }
 
 fn recipe_info(id: u32) -> Option<Recipe> {
-    if let Some(recipe) = library().all_recipes.get(&id) {
-        Some(Recipe {
-            outputs: recipe.output.count,
-            inputs: recipe
-                .inputs
-                .iter()
-                .map(|input| RecipeData {
-                    item_id: input.item_id,
-                    count: input.count,
-                })
-                .collect(),
-        })
-    } else {
-        None
-    }
+    library().all_recipes.get(&id).map(|recipe| Recipe {
+        outputs: recipe.output.count,
+        inputs: recipe
+            .inputs
+            .iter()
+            .map(|input| RecipeData {
+                item_id: input.item_id,
+                count: input.count,
+            })
+            .collect(),
+    })
 }

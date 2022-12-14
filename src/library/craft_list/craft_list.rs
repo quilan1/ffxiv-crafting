@@ -66,7 +66,7 @@ impl CraftList {
                     group.filters.extend(filters);
                 }
                 _ => {
-                    let (items, filters) = Filter::apply_filters(item_list.clone(), &line);
+                    let (items, filters) = Filter::apply_filters(item_list.clone(), line);
                     for item in items {
                         // println!("Adding filter match: {}", item.name);
                         group.crafts.push(CraftInfo {
@@ -99,14 +99,12 @@ impl CraftList {
 
         self.craft_groups
             .iter()
-            .map(|craft_group| &craft_group.crafts)
-            .flatten()
-            .map(|craft| {
+            .flat_map(|craft_group| &craft_group.crafts)
+            .flat_map(|craft| {
                 let mut item_ids = Vec::new();
                 push_ids(&mut item_ids, craft.item_id);
                 item_ids
             })
-            .flatten()
             .filter(|item_id| !item(item_id).is_untradable)
             .collect::<BTreeSet<_>>()
             .into_iter()
