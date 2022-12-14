@@ -27,7 +27,7 @@ impl GatheringList {
             level = U[1 + 1];
 
             let level = library().all_gathering_levels[&level];
-            match item_checked(item_id).map(|item| item.name == "") {
+            match item_checked(item_id).map(|item| item.name.is_empty()) {
                 None | Some(true) => continue,
                 _ => {},
             };
@@ -38,8 +38,8 @@ impl GatheringList {
         });
 
         Ok(Self {
-            by_item: by_item,
-            gathering: gathering,
+            by_item,
+            gathering,
         })
     }
 
@@ -54,7 +54,7 @@ impl Index<&u32> for GatheringList {
     fn index(&self, index: &u32) -> &Self::Output {
         match self.gathering.get(index) {
             None => panic!("Missing gathering id: {index}"),
-            Some(value) => &value,
+            Some(value) => value,
         }
     }
 }

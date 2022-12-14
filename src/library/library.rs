@@ -79,10 +79,10 @@ impl Library {
 
             DirBuilder::new().recursive(true).create("./csv")?;
 
-            println!("Downloading {}", local_path);
+            println!("Downloading {local_path}");
             let content = download_url(url).await?;
             let mut writer = BufWriter::new(File::create(local_path)?);
-            writer.write(content.as_ref())?;
+            writer.write_all(content.as_ref())?;
 
             Ok(())
         }
@@ -99,7 +99,7 @@ impl Library {
             "RecipeLevelTable.csv",
         ];
 
-        let results = join_all(files.into_iter().map(|file_name| download_file(file_name))).await;
+        let results = join_all(files.into_iter().map(download_file)).await;
         results
             .into_iter()
             .filter_map(|res| res.err())
@@ -112,10 +112,12 @@ impl Library {
         library().all_items.all_craftable_items()
     }
 
+    #[allow(dead_code)]
     pub fn all_gatherable_items(&self) -> Vec<&ItemInfo> {
         library().all_items.all_gatherable_items()
     }
 
+    #[allow(dead_code)]
     pub fn all_market_board_ids(&self) -> Vec<u32> {
         let run_mode = &settings().run_mode;
         let mut ids = HashSet::new();

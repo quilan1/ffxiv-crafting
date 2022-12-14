@@ -29,12 +29,14 @@ pub struct AnalysisFilters {
 }
 
 impl AnalysisFilters {
-    pub fn new(group_filters: &Vec<Filter>, item_filters: &Vec<Filter>) -> Result<Self> {
-        let mut all_filters = group_filters.clone();
-        all_filters.extend(item_filters.clone());
+    #[allow(dead_code)]
+    pub fn new(group_filters: &[Filter], item_filters: &[Filter]) -> Result<Self> {
+        let mut all_filters = group_filters.to_owned();
+        all_filters.extend(item_filters.to_owned());
         Self::from_filters(&all_filters)
     }
 
+    #[allow(dead_code)]
     pub fn from_filters(all_filters: &Vec<Filter>) -> Result<Self> {
         let mut filters = AnalysisFilters::default();
         for Filter { ftype, options } in all_filters {
@@ -62,18 +64,18 @@ pub struct Filter {
 impl Filter {
     pub fn new(filters: &str) -> Vec<Filter> {
         filters
-            .split(",")
+            .split(',')
             .map(|filter| {
                 let filter = filter.trim();
-                let contents = filter.split(" ").collect::<Vec<_>>();
+                let contents = filter.split(' ').collect::<Vec<_>>();
                 let (ftype, options) = if contents.len() > 1 {
                     (
                         contents[0].to_string(),
                         contents[1..]
                             .join(" ")
-                            .split("|")
+                            .split('|')
                             .map(|filter| filter.trim())
-                            .filter(|filter| filter.len() > 0)
+                            .filter(|filter| !filter.is_empty())
                             .map(|filter| filter.to_string())
                             .collect::<Vec<_>>(),
                     )
@@ -104,8 +106,8 @@ impl Filter {
                     result_filters.push(Filter { ftype, options });
                     continue;
                 }
-                f @ _ => {
-                    println!("Unknown filter: {}", f);
+                f => {
+                    println!("Unknown filter: {f}");
                     items
                 }
             }
@@ -114,8 +116,8 @@ impl Filter {
         (items, result_filters)
     }
 
-    fn filter_name<'a>(options: FilterOptions, items: Vec<&'a ItemInfo>) -> Vec<&'a ItemInfo> {
-        let re = options.join("|").replace(" ", "\\s");
+    fn filter_name(options: FilterOptions, items: Vec<&ItemInfo>) -> Vec<&ItemInfo> {
+        let re = options.join("|").replace(' ', "\\s");
         let re = Regex::new(&re).unwrap();
 
         items
@@ -124,10 +126,10 @@ impl Filter {
             .collect::<Vec<_>>()
     }
 
-    fn filter_recipe_level<'a>(
+    fn filter_recipe_level(
         options: FilterOptions,
-        items: Vec<&'a ItemInfo>,
-    ) -> Vec<&'a ItemInfo> {
+        items: Vec<&ItemInfo>,
+    ) -> Vec<&ItemInfo> {
         let levels = options
             .into_iter()
             .map(|level| level.parse::<u32>().unwrap())
@@ -148,10 +150,10 @@ impl Filter {
             .collect::<Vec<_>>()
     }
 
-    fn filter_equip_level<'a>(
+    fn filter_equip_level(
         options: FilterOptions,
-        items: Vec<&'a ItemInfo>,
-    ) -> Vec<&'a ItemInfo> {
+        items: Vec<&ItemInfo>,
+    ) -> Vec<&ItemInfo> {
         let levels = options
             .into_iter()
             .map(|level| level.parse::<u32>().unwrap())
@@ -165,7 +167,7 @@ impl Filter {
             .collect::<Vec<_>>()
     }
 
-    fn filter_ilevel<'a>(options: FilterOptions, items: Vec<&'a ItemInfo>) -> Vec<&'a ItemInfo> {
+    fn filter_ilevel(options: FilterOptions, items: Vec<&ItemInfo>) -> Vec<&ItemInfo> {
         let levels = options
             .into_iter()
             .map(|level| level.parse::<u32>().unwrap())
@@ -179,10 +181,10 @@ impl Filter {
             .collect::<Vec<_>>()
     }
 
-    fn filter_ui_category<'a>(
+    fn filter_ui_category(
         options: FilterOptions,
-        items: Vec<&'a ItemInfo>,
-    ) -> Vec<&'a ItemInfo> {
+        items: Vec<&ItemInfo>,
+    ) -> Vec<&ItemInfo> {
         let categories = options;
 
         items
@@ -191,7 +193,7 @@ impl Filter {
             .collect::<Vec<_>>()
     }
 
-    fn filter_leve<'a>(options: FilterOptions, items: Vec<&'a ItemInfo>) -> Vec<&'a ItemInfo> {
+    fn filter_leve(options: FilterOptions, items: Vec<&ItemInfo>) -> Vec<&ItemInfo> {
         let categories = options.iter().map(|cat| cat.as_str()).collect::<Vec<_>>();
         let all_leve_items = library().all_leves.all_item_ids();
 
@@ -202,13 +204,13 @@ impl Filter {
                 let leve_ids = library().all_leves.get_by_item_id(&item.id).unwrap();
                 leve_ids
                     .iter()
-                    .map(|leve_id| &library().all_leves[&leve_id].jobs)
-                    .any(|jobs| library().all_job_categories[&jobs].matches_any(&categories))
+                    .map(|leve_id| &library().all_leves[leve_id].jobs)
+                    .any(|jobs| library().all_job_categories[jobs].matches_any(&categories))
             })
             .collect::<Vec<_>>()
     }
 
-    fn filter_contains<'a>(options: FilterOptions, items: Vec<&'a ItemInfo>) -> Vec<&'a ItemInfo> {
+    fn filter_contains(options: FilterOptions, items: Vec<&ItemInfo>) -> Vec<&ItemInfo> {
         let re = Regex::new(&options.join("|")).unwrap();
 
         items

@@ -66,7 +66,7 @@ pub fn process_cli() {
     }
 
     if let Some(value) = matches.get_one::<String>("data_centers") {
-        settings.data_centers = value.split(",").map(|v| v.trim().into()).collect();
+        settings.data_centers = value.split(',').map(|v| v.trim().into()).collect();
     }
 
     if let Some(&value) = matches.get_one::<i32>("min_profit") {

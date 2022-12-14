@@ -54,7 +54,7 @@ impl RecipeList {
                 }
             }
 
-            if ingredients.len() == 0 {
+            if ingredients.is_empty() {
                 continue;
             }
 

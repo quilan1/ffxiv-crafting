@@ -2,6 +2,7 @@ mod custom;
 mod custom_old;
 mod custom_util;
 mod files;
+#[allow(clippy::module_inception)]
 mod server;
 
 pub use files::StaticFiles;
@@ -11,7 +12,7 @@ pub(super) fn make_builder(data_center: Option<String>) -> crate::universalis::U
     let builder = crate::universalis::UniversalisBuilder::new();
     match data_center {
         None => builder,
-        Some(data_center) => builder.data_centers(data_center.split(",").collect::<Vec<_>>()),
+        Some(data_center) => builder.data_centers(data_center.split(',').collect::<Vec<_>>()),
     }
 }
 

@@ -1,6 +1,7 @@
 mod amo_value;
 mod async_counter;
 mod async_processor;
+#[allow(clippy::module_inception)]
 mod util;
 
 pub use amo_value::AmoValue;

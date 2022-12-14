@@ -27,7 +27,7 @@ impl Index<&u32> for GatheringLevelList {
     fn index(&self, index: &u32) -> &Self::Output {
         match self.gathering_levels.get(index) {
             None => panic!("Missing gathering_level id: {index}"),
-            Some(value) => &value,
+            Some(value) => value,
         }
     }
 }

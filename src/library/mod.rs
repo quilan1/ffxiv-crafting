@@ -1,4 +1,5 @@
 mod craft_list;
+#[allow(clippy::module_inception)]
 mod library;
 mod parsers;
 

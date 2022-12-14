@@ -1,6 +1,6 @@
 use std::{
     collections::VecDeque,
-    mem::replace,
+    mem::{take},
     pin::Pin,
     sync::Arc,
     task::{Context, Poll, Waker},
@@ -148,7 +148,7 @@ impl<O> Future for FutureOutputVec<O> {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match self.0.poll_unpin(cx) {
             Poll::Ready(_) => {
-                let v = replace(&mut self.1, Vec::new());
+                let v = take(&mut self.1);
                 Poll::Ready(v.into_iter().map(|value| value.take().unwrap()).collect())
             }
             Poll::Pending => Poll::Pending,
@@ -163,7 +163,7 @@ impl<O> Future for FutureOutputOne<O> {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match self.0.poll_unpin(cx) {
             Poll::Ready(_) => {
-                let v = replace(&mut self.1, AmoValue::new());
+                let v = take(&mut self.1);
                 Poll::Ready(v.take().unwrap())
             }
             Poll::Pending => Poll::Pending,

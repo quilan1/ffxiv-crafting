@@ -66,7 +66,7 @@ impl Index<&u32> for LeveList {
     fn index(&self, index: &u32) -> &Self::Output {
         match self.leves.get(index) {
             None => panic!("Missing leve id: {index}"),
-            Some(value) => &value,
+            Some(value) => value,
         }
     }
 }
