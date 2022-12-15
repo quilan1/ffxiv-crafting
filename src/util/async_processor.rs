@@ -101,11 +101,7 @@ impl AsyncProcessor {
     }
 
     // Create a counter, output, then queue & package the future
-    fn process_one<Fut>(
-        &mut self,
-        future: Fut,
-        is_limited: bool,
-    ) -> FutureOutput<AmoValue<Fut::Output>>
+    fn process_one<Fut>(&mut self, future: Fut, is_limited: bool) -> FutureOutputOne<Fut::Output>
     where
         Fut: Future + Unpin + Send + 'static,
         Fut::Output: Send,
@@ -123,7 +119,7 @@ impl AsyncProcessor {
         &mut self,
         futures: Vec<Fut>,
         is_limited: bool,
-    ) -> FutureOutput<Vec<AmoValue<Fut::Output>>>
+    ) -> FutureOutputVec<Fut::Output>
     where
         Fut: Future + Unpin + Send + 'static,
         Fut::Output: Send,
