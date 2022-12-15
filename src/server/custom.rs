@@ -102,7 +102,7 @@ impl Custom {
         .boxed();
 
         // Send it off for processing, via the unlimited queue
-        let output = state.async_processor.clone().process(future, true);
+        let output = state.async_processor.clone().process_unlimited(future);
 
         // Save the placeholder & output into the server state
         let uuid = Uuid::new_v4().to_string();

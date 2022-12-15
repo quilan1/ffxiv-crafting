@@ -140,8 +140,8 @@ impl UniversalisRequest {
 
         let listing = fetch_listing(10, "listing".into(), listing_url, signature_listing).boxed();
         let history = fetch_listing(10, "history".into(), history_url, signature_history).boxed();
-        let listing = processor.process(listing, false);
-        let history = processor.process(history, false);
+        let listing = processor.process_limited(listing);
+        let history = processor.process_limited(history);
         let (listing_result, history_result) = join!(listing, history);
 
         status.dec_count();
