@@ -1,11 +1,10 @@
-use std::{fmt::Display, sync::Arc, time::Duration};
+use std::{fmt::Display, time::Duration};
 
 use super::{json::UniversalisJson, MarketItemInfoMap};
-use crate::util::{AsyncProcessor, ProcessFutures};
+use crate::util::{AmValue, AsyncProcessor, ProcessFutures};
 
-use futures::{future::join_all, FutureExt, join};
+use futures::{future::join_all, join, FutureExt};
 use log::{error, info, warn};
-use parking_lot::Mutex;
 use tokio::time::sleep;
 
 const MAX_CHUNK_SIZE: usize = 100;
@@ -17,7 +16,7 @@ struct UniversalisRequest {
 
 #[derive(Clone)]
 pub struct UniversalisStatus {
-    data: Arc<Mutex<UniversalisStatusValue>>,
+    data: AmValue<UniversalisStatusValue>,
 }
 
 #[derive(Clone)]
@@ -49,7 +48,9 @@ impl UniversalisProcessor {
                 &request.history,
                 &mut mb_info_map,
                 retain_num_days,
-            ).is_err() {
+            )
+            .is_err()
+            {
                 error!("[process_ids] Error: Invalid json response");
             }
         }
@@ -91,11 +92,8 @@ impl UniversalisProcessor {
             }
         }
 
-        join_all(requests)
-            .await
-            .into_iter()
-            .flatten()
-            .collect()
+        info!("[make_requests] Joining requests");
+        join_all(requests).await.into_iter().flatten().collect()
     }
 
     // Return the chunks as a comma-delimited string of 100 ids (or whatever remains)
@@ -128,7 +126,7 @@ impl UniversalisRequest {
     // Uses the AsyncProcessor to queue the listing & history API calls to Universalis. Once
     // they return, it yields the full request back.
     async fn fetch(
-        processor: AsyncProcessor,
+        mut processor: AsyncProcessor,
         world: String,
         ids: String,
         status: UniversalisStatus,
@@ -140,18 +138,17 @@ impl UniversalisRequest {
         let listing_url = get_listing_url(&world, &ids);
         let history_url = get_history_url(&world, &ids);
 
-        let listing = processor.process(fetch_listing(10, "listing".into(), listing_url, signature_listing).boxed());
-        let history = processor.process(fetch_listing(10, "history".into(), history_url, signature_history).boxed());
+        let listing = fetch_listing(10, "listing".into(), listing_url, signature_listing).boxed();
+        let history = fetch_listing(10, "history".into(), history_url, signature_history).boxed();
+        let listing = processor.process(listing, false);
+        let history = processor.process(history, false);
         let (listing_result, history_result) = join!(listing, history);
 
         status.dec_count();
 
         if let Some(listing) = listing_result {
             if let Some(history) = history_result {
-                return Some(UniversalisRequest {
-                    listing,
-                    history,
-                });
+                return Some(UniversalisRequest { listing, history });
             }
         }
 
@@ -163,7 +160,7 @@ impl UniversalisRequest {
 impl UniversalisStatus {
     pub fn new() -> Self {
         Self {
-            data: Arc::new(Mutex::new(UniversalisStatusValue::Starting)),
+            data: AmValue::with_value(UniversalisStatusValue::Starting),
         }
     }
 

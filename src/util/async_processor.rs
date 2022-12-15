@@ -1,30 +1,22 @@
 use std::{
     collections::VecDeque,
-    mem::{take},
+    mem::take,
     pin::Pin,
-    sync::Arc,
     task::{Context, Poll, Waker},
 };
 
 use futures::{future::BoxFuture, Future, FutureExt};
 use log::error;
-use parking_lot::Mutex;
-
-#[allow(unused_imports)]
-use log::info;
 
 use crate::util::AsyncCounter;
 
-use super::AmoValue;
-
-#[derive(Clone)]
-pub struct AsyncProcessor {
-    data: Arc<Mutex<AsyncProcessorData>>,
-}
+use super::{AmValue, AmoValue};
 
 pub struct FutureOutput<O>(AsyncCounter, O);
 pub type FutureOutputOne<O> = FutureOutput<AmoValue<O>>;
 pub type FutureOutputVec<O> = FutureOutput<Vec<AmoValue<O>>>;
+
+type SFuture = BoxFuture<'static, ()>;
 
 struct NotifyFuture<Fut, O> {
     future: Fut,
@@ -32,15 +24,28 @@ struct NotifyFuture<Fut, O> {
     counter: AsyncCounter,
 }
 
-struct AsyncProcessorData {
-    active: Vec<BoxFuture<'static, ()>>,
-    queue: VecDeque<BoxFuture<'static, ()>>,
-    waker: Option<Waker>,
+#[derive(Clone, Default)]
+pub struct AsyncProcessor {
+    active: AmValue<AsyncProcessorActive>,
+    queue: AmValue<AsyncProcessorQueue>,
+    waker: AmoValue<Waker>,
     max_active: usize,
 }
 
+#[derive(Default)]
+struct AsyncProcessorActive {
+    active: Vec<SFuture>,
+    active_unlimited: Vec<SFuture>,
+}
+
+#[derive(Default)]
+struct AsyncProcessorQueue {
+    queue: VecDeque<SFuture>,
+    queue_unlimited: Vec<SFuture>,
+}
+
 pub trait ProcessFutures<I, O> {
-    fn process(&self, futures: I) -> FutureOutput<O>;
+    fn process(&mut self, futures: I, unlimited: bool) -> FutureOutput<O>;
 }
 
 ////////////////////////////////////////////////////////////
@@ -49,43 +54,100 @@ pub trait ProcessFutures<I, O> {
 impl AsyncProcessor {
     pub fn new(max_active: usize) -> Self {
         Self {
-            data: Arc::new(Mutex::new(AsyncProcessorData {
-                active: Vec::new(),
-                queue: VecDeque::new(),
-                waker: None,
-                max_active,
-            })),
+            active: AmValue::with_value(AsyncProcessorActive::default()),
+            queue: AmValue::with_value(AsyncProcessorQueue::default()),
+            waker: AmoValue::new(),
+            max_active,
         }
     }
-}
 
-impl AsyncProcessorData {
-    fn queue_futures<Fut>(
+    fn queue_future<Fut>(
         &mut self,
-        futures: Vec<(Fut, AmoValue<Fut::Output>)>,
-        counter: AsyncCounter,
+        future: Fut,
+        output: &AmoValue<Fut::Output>,
+        counter: &AsyncCounter,
+        unlimited: bool,
     ) where
         Fut: Future + Send + 'static,
         Fut::Output: Send,
         NotifyFuture<Fut, Fut::Output>: Future<Output = ()>,
     {
-        self.queue
-            .extend(futures.into_iter().map(|(future, output)| {
-                NotifyFuture {
-                    future,
-                    output,
-                    counter: counter.clone(),
-                }
-                .boxed()
-            }));
+        let notify_future = NotifyFuture::new(future, output, counter).boxed();
 
-        // Wake up the processor, so it can take a look at the queue & move them into active polling
-        if let Some(waker) = self.waker.as_ref() {
+        let mut queue = self.queue.lock();
+        if unlimited {
+            queue.queue_unlimited.push(notify_future);
+        } else {
+            queue.queue.push_back(notify_future);
+        }
+    }
+
+    fn move_from_queue_to_active(&mut self) {
+        let mut active = self.active.lock();
+        let mut queue = self.queue.lock();
+
+        // Keep the number of active futures limited to at most max_active
+        let avail_slots = queue.queue.len().min(self.max_active - active.active.len());
+        let moved_futures = queue.queue.drain(..avail_slots).collect::<Vec<_>>();
+        active.active.extend(moved_futures);
+
+        // Move from the unlimited queue to active
+        let moved_futures = queue.queue_unlimited.drain(..).collect::<Vec<_>>();
+        active.active_unlimited.extend(moved_futures);
+    }
+
+    // Wake up the processor, so it can take a look at the queue & move them into active polling
+    fn wake(&self) {
+        if let Some(waker) = self.waker.lock().as_ref() {
             waker.wake_by_ref();
         } else {
             error!("AsyncProcessorData waker does not exist?! This usually means the processor is not currently\
                    'await'ing somewhere. Might cause orphan futures.");
         }
+    }
+}
+
+impl<Fut, O> NotifyFuture<Fut, O> {
+    fn new(future: Fut, output: &AmoValue<O>, counter: &AsyncCounter) -> Self {
+        Self {
+            future,
+            output: output.clone(),
+            counter: counter.clone(),
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////
+
+// Simply a pass-through for the data information
+impl Future for AsyncProcessor {
+    type Output = ();
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        // Set the waker, so it can be re-polled
+        self.waker.replace(cx.waker().clone());
+
+        // Move from queue
+        self.move_from_queue_to_active();
+
+        // Poll!
+        self.active.lock().poll_unpin(cx)
+    }
+}
+
+// The main polling routine for the AsyncProcessor. Consumes any available futures from the queue, and moves them into
+// the active list. All futures in the active list are then polled, and anything that returns ready is removed.
+impl Future for AsyncProcessorActive {
+    type Output = ();
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        // Keep only the unfinished futures
+        self.active
+            .retain_mut(|fut| fut.poll_unpin(cx).is_pending());
+        self.active_unlimited
+            .retain_mut(|fut| fut.poll_unpin(cx).is_pending());
+
+        Poll::Pending
     }
 }
 
@@ -107,39 +169,6 @@ where
         }
     }
 }
-
-// Simply a pass-through for the data information
-impl Future for AsyncProcessor {
-    type Output = ();
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.data.lock().poll_unpin(cx)
-    }
-}
-
-// The main polling routine for the AsyncProcessor. Consumes any available futures from the queue, and moves them into
-// the active list. All futures in the active list are then polled, and anything that returns ready is removed.
-impl Future for AsyncProcessorData {
-    type Output = ();
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        // Keep the number of active futures limited to at most max_active
-        let avail_slots = self.queue.len().min(self.max_active - self.active.len());
-        let moved_futures = self.queue.drain(..avail_slots).collect::<Vec<_>>();
-        self.active.extend(moved_futures);
-
-        // Keep only the unfinished futures
-        self.active
-            .retain_mut(|fut| fut.poll_unpin(cx).is_pending());
-
-        // Set the waker, so it can be re-polled
-        self.waker.replace(cx.waker().clone());
-
-        Poll::Pending
-    }
-}
-
-////////////////////////////////////////////////////////////
 
 // These allow us to have copyable outputs without having to require clone() for the futures
 impl<O> Future for FutureOutputVec<O> {
@@ -179,18 +208,23 @@ where
     Fut: Future + Unpin + Send + 'static,
     Fut::Output: Send,
 {
-    fn process(&self, futures: Vec<Fut>) -> FutureOutput<Vec<AmoValue<Fut::Output>>> {
+    fn process(
+        &mut self,
+        futures: Vec<Fut>,
+        unlimited: bool,
+    ) -> FutureOutput<Vec<AmoValue<Fut::Output>>> {
         // Get the counter ready, to wait for when the futures are finished
         let counter = AsyncCounter::new(futures.len() as u32);
 
         // Create some output storage for the results
         let outputs = futures.iter().map(|_| AmoValue::new()).collect::<Vec<_>>();
 
-        // Package the futures & outputs together
-        let futures = futures.into_iter().zip(outputs.clone()).collect();
+        // Queue the futures
+        for (future, output) in futures.into_iter().zip(outputs.clone()) {
+            self.queue_future(future, &output, &counter, unlimited);
+        }
+        self.wake();
 
-        // Queue the modified futures
-        self.data.lock().queue_futures(futures, counter.clone());
         FutureOutput(counter, outputs)
     }
 }
@@ -201,18 +235,12 @@ where
     Fut: Future + Unpin + Send + 'static,
     Fut::Output: Send,
 {
-    fn process(&self, future: Fut) -> FutureOutput<AmoValue<Fut::Output>> {
-        // Get the counter ready, to wait for when the futures are finished
+    fn process(&mut self, future: Fut, unlimited: bool) -> FutureOutput<AmoValue<Fut::Output>> {
         let counter = AsyncCounter::new(1);
-
-        // Create some output storage for the results
         let output = AmoValue::new();
+        self.queue_future(future, &output, &counter, unlimited);
+        self.wake();
 
-        // Package the futures & outputs together
-        let futures = vec![(future, output.clone())];
-
-        // Queue the modified futures
-        self.data.lock().queue_futures(futures, counter.clone());
         FutureOutput(counter, output)
     }
 }

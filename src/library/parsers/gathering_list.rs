@@ -23,7 +23,7 @@ impl GatheringList {
 
         csv_parse!(path => {
             id = U[0];
-            item_id = U[0 + 1];
+            item_id = U[1];
             level = U[1 + 1];
 
             let level = library().all_gathering_levels[&level];
@@ -37,10 +37,7 @@ impl GatheringList {
             by_item.entry(item_id).or_default().push(id);
         });
 
-        Ok(Self {
-            by_item,
-            gathering,
-        })
+        Ok(Self { by_item, gathering })
     }
 
     pub fn contains_item_id(&self, item_id: &u32) -> bool {
