@@ -16,7 +16,7 @@ impl UiCategoryList {
 
         csv_parse!(path => {
             id = U[0];
-            name = S[0 + 1];
+            name = S[1];
             categories.insert(id, name.to_string());
             name_to_id.insert(name.to_string(), id);
         });

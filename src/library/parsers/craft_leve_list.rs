@@ -12,7 +12,7 @@ impl CraftLeveList {
         let mut leves = BTreeMap::new();
 
         csv_parse!(path => {
-            id = U[0 + 1];
+            id = U[1];
             item = U[3 + 1];
             leves.insert(id, item);
         });

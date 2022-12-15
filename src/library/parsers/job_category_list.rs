@@ -28,7 +28,7 @@ impl JobCategoryList {
             alc = B[15 + 1];
             cul = B[16 + 1];
 
-            let bits = ((crp as u32) << 0)
+            let bits = (crp as u32)
                 + ((bsm as u32) << 1)
                 + ((arm as u32) << 2)
                 + ((gsm as u32) << 3)

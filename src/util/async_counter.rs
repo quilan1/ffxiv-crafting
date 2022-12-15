@@ -2,24 +2,24 @@
 
 use std::{
     pin::Pin,
-    sync::Arc,
     task::{Context, Poll, Waker},
 };
 
 use futures::Future;
-use parking_lot::Mutex;
+
+use super::{AmValue, AmoValue};
 
 #[derive(Clone)]
 pub struct AsyncCounter {
-    count: Arc<Mutex<u32>>,
-    waker: Arc<Mutex<Option<Waker>>>,
+    count: AmValue<u32>,
+    waker: AmoValue<Waker>,
 }
 
 impl AsyncCounter {
     pub fn new(count: u32) -> Self {
         Self {
-            count: Arc::new(Mutex::new(count)),
-            waker: Arc::new(Mutex::new(None)),
+            count: AmValue::with_value(count),
+            waker: AmoValue::new(),
         }
     }
 

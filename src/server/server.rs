@@ -1,11 +1,10 @@
 use anyhow::Result;
 use axum::{http::Method, routing::get, Router};
 use futures::join;
-use parking_lot::Mutex;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::util::AsyncProcessor;
+use crate::util::{AmValue, AsyncProcessor};
 
 use super::{
     custom::{Custom, CustomLazyInfo},
@@ -17,20 +16,17 @@ pub struct Server;
 #[derive(Clone)]
 pub struct ServerState {
     pub async_processor: AsyncProcessor,
-    pub async_general_processor: AsyncProcessor,
-    pub lazy_records: Arc<Mutex<HashMap<String, CustomLazyInfo>>>,
+    pub lazy_records: AmValue<HashMap<String, CustomLazyInfo>>,
 }
 
 #[allow(unused_must_use)]
 impl Server {
     pub async fn run() -> Result<()> {
         let async_processor = AsyncProcessor::new(8);
-        let async_general_processor = AsyncProcessor::new(10000);
 
         let app_state = Arc::new(ServerState {
             async_processor: async_processor.clone(),
-            async_general_processor: async_general_processor.clone(),
-            lazy_records: Arc::new(Mutex::new(HashMap::new())),
+            lazy_records: AmValue::with_value(HashMap::new()),
         });
 
         let app = Router::with_state(app_state)
@@ -48,7 +44,6 @@ impl Server {
 
         join!(
             async_processor,
-            async_general_processor,
             axum::Server::bind(&addr).serve(app.into_make_service())
         );
 

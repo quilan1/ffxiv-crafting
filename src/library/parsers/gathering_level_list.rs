@@ -13,7 +13,7 @@ impl GatheringLevelList {
 
         csv_parse!(path => {
             id = U[0];
-            level = U[0 + 1];
+            level = U[1];
             gathering_levels.insert(id, level);
         });
 

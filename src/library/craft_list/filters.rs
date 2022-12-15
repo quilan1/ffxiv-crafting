@@ -126,10 +126,7 @@ impl Filter {
             .collect::<Vec<_>>()
     }
 
-    fn filter_recipe_level(
-        options: FilterOptions,
-        items: Vec<&ItemInfo>,
-    ) -> Vec<&ItemInfo> {
+    fn filter_recipe_level(options: FilterOptions, items: Vec<&ItemInfo>) -> Vec<&ItemInfo> {
         let levels = options
             .into_iter()
             .map(|level| level.parse::<u32>().unwrap())
@@ -150,10 +147,7 @@ impl Filter {
             .collect::<Vec<_>>()
     }
 
-    fn filter_equip_level(
-        options: FilterOptions,
-        items: Vec<&ItemInfo>,
-    ) -> Vec<&ItemInfo> {
+    fn filter_equip_level(options: FilterOptions, items: Vec<&ItemInfo>) -> Vec<&ItemInfo> {
         let levels = options
             .into_iter()
             .map(|level| level.parse::<u32>().unwrap())
@@ -181,10 +175,7 @@ impl Filter {
             .collect::<Vec<_>>()
     }
 
-    fn filter_ui_category(
-        options: FilterOptions,
-        items: Vec<&ItemInfo>,
-    ) -> Vec<&ItemInfo> {
+    fn filter_ui_category(options: FilterOptions, items: Vec<&ItemInfo>) -> Vec<&ItemInfo> {
         let categories = options;
 
         items

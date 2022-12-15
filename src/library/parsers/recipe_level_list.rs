@@ -20,7 +20,7 @@ impl RecipeLevelTable {
 
         csv_parse!(path => {
             id = U[0];
-            level = U[0 + 1];
+            level = U[1];
             stars = U[1 + 1];
             level_table.insert(id, RecipeLevel { id, level, stars });
         });
