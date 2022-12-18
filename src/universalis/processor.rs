@@ -92,7 +92,6 @@ impl UniversalisProcessor {
             }
         }
 
-        info!("[make_requests] Joining requests");
         join_all(requests).await.into_iter().flatten().collect()
     }
 
