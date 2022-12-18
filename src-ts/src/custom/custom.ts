@@ -5,6 +5,7 @@ import Elem from '../elem.js';
 import Filters from '../filters.js';
 import Util from '../util.js';
 import CheckedTreeControl, { CtcRowData } from '../checked_tree_control.js';
+import { calculatePurchases } from './purchases.js';
 
 const savedFilters: any[] = [];
 
@@ -122,12 +123,12 @@ class CustomDlg {
             if (item === undefined) {
                 return RecStatisticsSkip.SkipEverything;
             }
-    
+
             let stats = this.info?.rec_statistics.get(id);
             if (stats === undefined) {
                 return RecStatisticsSkip.SkipEverything;
             }
-    
+
             if (_regexNameSkip.test(item.name)) {
                 return RecStatisticsSkip.SkipEverything;
             }
@@ -217,22 +218,16 @@ class CustomDlg {
         const worlds: Record<string, Record<string, WorldBuyInfo[]>> = {};
         for (const [idStr, origCount] of Object.entries(counts)) {
             const id = Number.parseInt(idStr);
-            let count = origCount;
-            for (const listing of listings[id] as Listing[]) {
-                if (count <= 0) {
-                    break;
-                }
 
-                if (listing.count === 0) {
-                    continue;
-                }
+            // Calculate listings
+            let usedListings = calculatePurchases(listings[id], origCount);
+            if (usedListings === undefined) {
+                continue;
+            }
 
+            for (const listing of usedListings) {
                 const usedCount = listing.count;
-                listing.count -= usedCount;
-                count -= usedCount;
-
                 const dataCenter = Util.dataCenter(listing.world);
-
                 worlds[dataCenter] ??= {};
                 worlds[dataCenter][listing.world] ??= [];
                 worlds[dataCenter][listing.world].push({
@@ -244,6 +239,7 @@ class CustomDlg {
             }
         }
 
+        // Build the html elements
         for (const [dataCenter, worldsInfo] of Object.entries(worlds)) {
             const dcTitleDiv = Elem.makeDiv({ innerText: dataCenter });
             const dcChildren = [];
@@ -296,7 +292,8 @@ class CustomDlg {
             if (count <= 0) return;
             this.info.calcRecStatistics(count);
             this.customTreeControl.updateRows(this.generateTreeData(this.filteredTopIds));
-        } catch(_) {}
+            this.displayWorldInfoNew();
+        } catch (_) { }
     }
 };
 
