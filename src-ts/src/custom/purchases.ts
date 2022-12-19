@@ -74,7 +74,10 @@ export const calculatePurchases = (listings: Listing[], minCount: number): (List
 
         // Make sure the active items are all lower in value than the best one
         activeListings = activeListings.filter(active => active.value < bestValue());
-        activeListings.sort((a, b) => a.value - b.value);
+
+        // Short circuit the larger items -- this will elimenate huge swaths of the field quickly and
+        // keep our activeListings small. This should also yield better optimizations quicker.
+        activeListings.sort((a, b) => b.count - a.count);
     }
 
     // If we still have nothing, we're done
