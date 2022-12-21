@@ -42,7 +42,7 @@ class CustomDlg {
         const treeData = this.generateTreeData(this.filteredTopIds);
         const collapsedIds = this.generateCollapsedIds(this.filteredTopIds);
 
-        const headers = ['☑', 'Name', '#/day', '#/wk', '#/2wk', 'Sell', 'Buy', 'Craft', 'Profit'];
+        const headers = ['☑', 'Name', '#/day', '#/wk', '#/2wk', 'Count', 'Sell', 'Buy', 'Craft', 'Profit'];
         this.customTreeControl?.destroy();
         this.customTreeControl = new CheckedTreeControl(parentDiv, headers, treeData, collapsedIds);
         this.customTreeControl.render();
@@ -141,6 +141,7 @@ class CustomDlg {
             const children = stats?.inputs?.childChains(id).map(childId => CustomDlg.rowId(childId)) ?? [];
 
             const statistics = stats?.item.statistics;
+            const avgCount = statistics?.homeworldAvgSellCount?.aq?.toFixed(2) ?? '-';
             const velocity1 = statistics?.homeworldVelocityDay?.aq?.toFixed(2) ?? '-';
             const velocity7 = statistics?.homeworldVelocityWeek?.aq?.toFixed(2) ?? '-';
             const velocity14 = statistics?.homeworldVelocityWeeks?.aq?.toFixed(2) ?? '-';
@@ -155,6 +156,7 @@ class CustomDlg {
                     velocity1,
                     velocity7,
                     velocity14,
+                    avgCount,
                     stats?.medSellPrice ?? '-',
                     stats?.minBuyPrice ?? "-",
                     stats?.minCraftPrice ?? "-",

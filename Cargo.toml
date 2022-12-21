@@ -6,10 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde = { version="1.0.137", features=["derive"] }
-tokio = { version="1.18.2", features=["full"] }
+serde = { version="1.0.137", features = ["derive"] }
+tokio = { version="1.18.2", features = ["rt-multi-thread", "fs"] }
 tower-http = { version = "0.3.4", features = ["cors"] }
-clap = { version="3.1.18", features=["cargo"] }
+clap = { version="3.1.18", features = ["cargo"] }
 uuid = { version = "1.2.2", features = ["v4"] }
 reqwest = "0.11.10"
 serde_json = "1.0.82"

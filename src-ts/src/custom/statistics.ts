@@ -10,31 +10,33 @@ export type Quality<T> = {
 
 export default class Statistics {
     readonly minBuyPrice?: Quality<number>;
+    readonly homeworldAvgSellCount?: Quality<number>;
     readonly homeworldMedSellPrice?: Quality<number>;
     readonly homeworldVelocityDay?: Quality<number>;
     readonly homeworldVelocityWeek?: Quality<number>;
     readonly homeworldVelocityWeeks?: Quality<number>;
 
     constructor(itemInfo: ItemInfo) {
-        const isHomeworld = (item: Listing) => item.world === HOMEWORLD;
-        const toIdent = (item: Listing) => item;
-        const toPrice = (item: Listing) => item.price;
-        const median = (items: number[]) => { items.sort((a,b) => a - b); return items[(items.length / 3) | 0]; };
-        const min = (items: number[]) => items.reduce((prev: number | undefined, cur: number) => (prev === undefined || cur < prev) ? cur : prev, undefined) as number;
-        const velocity = (days: number) => (listings: Listing[]) => calculateVelocity(listings, days);
+        const isHomeworld = (listing: Listing) => listing.world === HOMEWORLD;
+        const isWithinDays = (days: number) => (listing: Listing) => postingToDays(listing.posting) <= days;
+        const toIdent = (listing: Listing) => listing;
+        const toPrice = (listing: Listing) => listing.price;
+        const toCount = (listing: Listing) => listing.count;
+        const average = (values: number[]) => (values.length == 0) ? 0 : values.reduce((a,b) => a+b, 0) / values.length;
+        const median = (values: number[]) => { values.sort((a,b) => a - b); return values[(values.length / 3) | 0]; };
+        const min = (values: number[]) => values.reduce((prev: number | undefined, cur: number) => (prev === undefined || cur < prev) ? cur : prev, undefined) as number;
 
         this.minBuyPrice = generateQuality(itemInfo.name, itemInfo.listings, [], toPrice, min);
-        this.homeworldMedSellPrice = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld], toPrice, median);
-        this.homeworldVelocityDay = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld], toIdent, velocity(1.0));
-        this.homeworldVelocityWeek = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld], toIdent, velocity(7.0));
-        this.homeworldVelocityWeeks = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld], toIdent, velocity(14.0));
+        this.homeworldAvgSellCount = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld, isWithinDays(7.0)], toCount, average);
+        this.homeworldMedSellPrice = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld, isWithinDays(7.0)], toPrice, median);
+        this.homeworldVelocityDay = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld, isWithinDays(1.0)], toIdent, calculateVelocity);
+        this.homeworldVelocityWeek = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld, isWithinDays(7.0)], toIdent, calculateVelocity);
+        this.homeworldVelocityWeeks = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld, isWithinDays(14.0)], toIdent, calculateVelocity);
     }
 }
 
 function generateQuality<T, O>(name: string, listings: Listing[], filter_fns: ((item: Listing) => boolean)[], map_fn: (item: Listing) => T, reduce_fn: (items: T[]) => O): Quality<O> | undefined {
-    if (listings.length === 0) {
-        return undefined;
-    }
+    if (listings.length === 0) return undefined;
 
     const isHq = (item: Listing) => item.is_hq;
     const isNq = (item: Listing) => !item.is_hq;
@@ -60,11 +62,12 @@ function reduceListings<T, O>(name: string, listings: Listing[], filter_fns: ((i
     return (filteredListings.length > 0) ? reduce_fn(filteredListings) : undefined;
 }
 
-function calculateVelocity(allListings: Listing[], days: number): number {
-    const postingToDays = (posting: number) => (Date.now() / 1000.0 - posting) / 3600.0 / 24.0;
-    let listings = allListings.filter(listing => postingToDays(listing.posting) <= days);
-
+function calculateVelocity(listings: Listing[]): number {
     const totalCount = listings.reduce((prev, item) => prev + item.count, 0);
     const minPosting = Math.min(...listings.map(item => item.posting));
     return totalCount / postingToDays(minPosting);
+}
+
+function postingToDays(posting: number) {
+    return (Date.now() / 1000.0 - posting) / 3600.0 / 24.0;
 }
