@@ -4,7 +4,7 @@ use axum::{
     extract::{Form, Json, State},
     response::{IntoResponse, Response},
 };
-use futures::FutureExt;
+use futures::{future::BoxFuture, FutureExt};
 use log::info;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -15,7 +15,7 @@ use crate::{
         server::ServerState,
     },
     universalis::{MarketItemInfoMap, UniversalisProcessor, UniversalisStatus},
-    util::{FutureOutputOne, ProcessFutures},
+    util::ProcessType,
 };
 
 use super::{custom_util::CustomItemInfo, make_builder, not_found, ok_json};
@@ -47,7 +47,7 @@ struct CustomLazyOutput {
 
 pub struct CustomLazyInfo {
     pub status: UniversalisStatus,
-    pub output: FutureOutputOne<MarketItemInfoMap>,
+    pub output: BoxFuture<'static, MarketItemInfoMap>,
     pub top_ids: Vec<u32>,
 }
 
@@ -102,7 +102,10 @@ impl Custom {
         .boxed();
 
         // Send it off for processing, via the unlimited queue
-        let output = state.async_processor.clone().process_unlimited(future);
+        let output = state
+            .async_processor
+            .clone()
+            .process_future(future, ProcessType::Unlimited);
 
         // Save the placeholder & output into the server state
         let uuid = Uuid::new_v4().to_string();
