@@ -1,9 +1,9 @@
 use std::{fmt::Display, time::Duration};
 
 use super::{json::UniversalisJson, MarketItemInfoMap};
-use crate::util::{AmValue, AsyncProcessor, ProcessFutures};
+use crate::util::{AmValue, AsyncProcessor, ProcessType};
 
-use futures::{future::join_all, join, FutureExt};
+use futures::{future::join_all, join, Future, FutureExt};
 use log::{error, info, warn};
 use tokio::time::sleep;
 
@@ -21,7 +21,7 @@ pub struct UniversalisStatus {
 
 #[derive(Clone)]
 enum UniversalisStatusValue {
-    Starting,
+    Queued,
     Remaining(usize),
     Processing,
     Finished,
@@ -72,7 +72,6 @@ impl UniversalisProcessor {
         let mut requests = Vec::new();
 
         let max_chunks = ((ids.len() + MAX_CHUNK_SIZE - 1) / MAX_CHUNK_SIZE) * worlds.len();
-        status.set_count(max_chunks);
 
         let mut chunk_id = 1;
         for ids in Self::chunk_ids(&ids) {
@@ -132,15 +131,34 @@ impl UniversalisRequest {
         chunk_id: usize,
         max_chunks: usize,
     ) -> Option<Self> {
+        let _status = status.clone();
+        let init_status = async move {
+            _status.try_set_count(max_chunks);
+        }
+        .boxed()
+        .shared();
+
         let signature_listing = format!("{}/{}", 2 * chunk_id - 1, 2 * max_chunks);
         let signature_history = format!("{}/{}", 2 * chunk_id, 2 * max_chunks);
         let listing_url = get_listing_url(&world, &ids);
         let history_url = get_history_url(&world, &ids);
 
-        let listing = fetch_listing(10, "listing".into(), listing_url, signature_listing).boxed();
-        let history = fetch_listing(10, "history".into(), history_url, signature_history).boxed();
-        let listing = processor.process_limited(listing);
-        let history = processor.process_limited(history);
+        let listing = fetch_listing(
+            "listing".into(),
+            listing_url,
+            signature_listing,
+            init_status.clone(),
+        )
+        .boxed();
+        let history = fetch_listing(
+            "history".into(),
+            history_url,
+            signature_history,
+            init_status,
+        )
+        .boxed();
+        let listing = processor.process_future(listing, ProcessType::Limited);
+        let history = processor.process_future(history, ProcessType::Limited);
         let (listing_result, history_result) = join!(listing, history);
 
         status.dec_count();
@@ -159,7 +177,7 @@ impl UniversalisRequest {
 impl UniversalisStatus {
     pub fn new() -> Self {
         Self {
-            data: AmValue::with_value(UniversalisStatusValue::Starting),
+            data: AmValue::with_value(UniversalisStatusValue::Queued),
         }
     }
 
@@ -168,9 +186,11 @@ impl UniversalisStatus {
         data.is_finished()
     }
 
-    fn set_count(&self, count: usize) {
+    fn try_set_count(&self, count: usize) {
         let mut data = self.data.lock();
-        *data = UniversalisStatusValue::Remaining(count);
+        if let UniversalisStatusValue::Queued = *data {
+            *data = UniversalisStatusValue::Remaining(count);
+        }
     }
 
     fn dec_count(&self) {
@@ -208,7 +228,7 @@ impl UniversalisStatusValue {
 impl Display for UniversalisStatusValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
-            UniversalisStatusValue::Starting => write!(f, "Starting..."),
+            UniversalisStatusValue::Queued => write!(f, "Queued..."),
             UniversalisStatusValue::Remaining(count) => write!(f, "Remaining: {count}"),
             UniversalisStatusValue::Processing => write!(f, "Processing..."),
             UniversalisStatusValue::Finished => write!(f, "Finished"),
@@ -217,13 +237,19 @@ impl Display for UniversalisStatusValue {
 }
 
 // Grab the JSON string from a listing API from Universalis
-async fn fetch_listing(
-    num_attempts: usize,
+async fn fetch_listing<Fut>(
     fetch_type: String,
     url: String,
     signature: String,
-) -> Option<String> {
+    init_status: Fut,
+) -> Option<String>
+where
+    Fut: Future,
+{
+    let num_attempts = 10;
     info!("[Fetch {signature}] {url}");
+
+    init_status.await;
 
     for attempt in 0..num_attempts {
         let listing = reqwest::get(&url).await.ok()?.text().await.ok()?;

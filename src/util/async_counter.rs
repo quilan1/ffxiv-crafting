@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+// No longer necessary in the project, but was still fun code, so I'm keeping it around
+
 use std::{
     pin::Pin,
     task::{Context, Poll, Waker},
