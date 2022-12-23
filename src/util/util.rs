@@ -35,17 +35,17 @@ impl ItemId for &Ingredient {
 
 ////////////////////////////////////////////////////////////
 
-pub fn item_name<I: ItemId>(obj: I) -> &'static str {
+pub fn item_name<I: ItemId>(obj: &I) -> &'static str {
     let id = obj.item_id();
     &library().all_items[&id].name
 }
 
-pub fn item<I: ItemId>(obj: I) -> &'static ItemInfo {
+pub fn item<I: ItemId>(obj: &I) -> &'static ItemInfo {
     let id = obj.item_id();
     &library().all_items[&id]
 }
 
-pub fn item_checked<I: ItemId>(obj: I) -> Option<&'static ItemInfo> {
+pub fn item_checked<I: ItemId>(obj: &I) -> Option<&'static ItemInfo> {
     let id = obj.item_id();
     library().all_items.items.get(&id)
 }

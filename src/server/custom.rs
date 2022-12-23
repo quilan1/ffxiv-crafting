@@ -1,8 +1,10 @@
+#![allow(clippy::unused_async)]
+
 use std::{collections::BTreeMap, sync::Arc};
 
 use axum::{
     extract::{Form, Json, State},
-    response::{IntoResponse, Response},
+    response::IntoResponse,
 };
 use futures::{future::BoxFuture, FutureExt};
 use log::info;
@@ -70,17 +72,17 @@ impl Custom {
         let uuid = payload.id;
         let current_status = state.with_lazy(&uuid, |info| match info {
             None => CurrentStatus::Error(format!("Id not found: {uuid}")),
-            Some(info) => {
-                match (&mut info.output).now_or_never() {
-                    Some(result) => CurrentStatus::Finished(result),
-                    None => CurrentStatus::InProgress(info.status.to_string()),
-                }
-            }
+            Some(info) => match (&mut info.output).now_or_never() {
+                Some(result) => CurrentStatus::Finished(result),
+                None => CurrentStatus::InProgress(info.status.to_string()),
+            },
         });
 
         match current_status {
             CurrentStatus::Error(err) => not_found(err).into_response(),
-            CurrentStatus::InProgress(status) => ok_json(CustomLazyOutput::from_in_progress(uuid, status)).into_response(),
+            CurrentStatus::InProgress(status) => {
+                ok_json(CustomLazyOutput::from_in_progress(uuid, status)).into_response()
+            }
             CurrentStatus::Finished(mb_info_map) => {
                 let info = state.remove_lazy(&uuid).unwrap();
                 let top_ids = info.top_ids;

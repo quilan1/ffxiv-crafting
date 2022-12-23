@@ -74,9 +74,9 @@ impl Filter {
                         contents[1..]
                             .join(" ")
                             .split('|')
-                            .map(|filter| filter.trim())
+                            .map(str::trim)
                             .filter(|filter| !filter.is_empty())
-                            .map(|filter| filter.to_string())
+                            .map(ToString::to_string)
                             .collect::<Vec<_>>(),
                     )
                 } else {
@@ -95,13 +95,13 @@ impl Filter {
         let mut result_filters = Vec::new();
         for Filter { ftype, options } in filters {
             items = match &ftype[..] {
-                ":name" => Self::filter_name(options, items),
-                ":rlevel" => Self::filter_recipe_level(options, items),
-                ":elevel" => Self::filter_equip_level(options, items),
-                ":ilevel" => Self::filter_ilevel(options, items),
-                ":cat" => Self::filter_ui_category(options, items),
-                ":is_leve" => Self::filter_leve(options, items),
-                ":contains" => Self::filter_contains(options, items),
+                ":name" => Self::filter_name(&options, items),
+                ":rlevel" => Self::filter_recipe_level(&options, items),
+                ":elevel" => Self::filter_equip_level(&options, items),
+                ":ilevel" => Self::filter_ilevel(&options, items),
+                ":cat" => Self::filter_ui_category(&options, items),
+                ":is_leve" => Self::filter_leve(&options, items),
+                ":contains" => Self::filter_contains(&options, items),
                 ":count" | ":limit" | ":min_velocity" => {
                     result_filters.push(Filter { ftype, options });
                     continue;
@@ -116,7 +116,7 @@ impl Filter {
         (items, result_filters)
     }
 
-    fn filter_name(options: FilterOptions, items: Vec<&ItemInfo>) -> Vec<&ItemInfo> {
+    fn filter_name<'a>(options: &FilterOptions, items: Vec<&'a ItemInfo>) -> Vec<&'a ItemInfo> {
         let re = options.join("|").replace(' ', "\\s");
         let re = Regex::new(&re).unwrap();
 
@@ -126,9 +126,12 @@ impl Filter {
             .collect::<Vec<_>>()
     }
 
-    fn filter_recipe_level(options: FilterOptions, items: Vec<&ItemInfo>) -> Vec<&ItemInfo> {
+    fn filter_recipe_level<'a>(
+        options: &FilterOptions,
+        items: Vec<&'a ItemInfo>,
+    ) -> Vec<&'a ItemInfo> {
         let levels = options
-            .into_iter()
+            .iter()
             .map(|level| level.parse::<u32>().unwrap())
             .collect::<Vec<_>>();
         let min_level = levels[0];
@@ -137,7 +140,7 @@ impl Filter {
         items
             .into_iter()
             .filter(|item| {
-                if let Some(recipe) = library().all_recipes.get(&item.id) {
+                if let Some(recipe) = library().all_recipes.get(item.id) {
                     let recipe_level = &library().all_recipe_levels[&recipe.level_id];
                     recipe_level.level >= min_level && recipe_level.level <= max_level
                 } else {
@@ -147,9 +150,12 @@ impl Filter {
             .collect::<Vec<_>>()
     }
 
-    fn filter_equip_level(options: FilterOptions, items: Vec<&ItemInfo>) -> Vec<&ItemInfo> {
+    fn filter_equip_level<'a>(
+        options: &FilterOptions,
+        items: Vec<&'a ItemInfo>,
+    ) -> Vec<&'a ItemInfo> {
         let levels = options
-            .into_iter()
+            .iter()
             .map(|level| level.parse::<u32>().unwrap())
             .collect::<Vec<_>>();
         let min_level = levels[0];
@@ -161,9 +167,9 @@ impl Filter {
             .collect::<Vec<_>>()
     }
 
-    fn filter_ilevel(options: FilterOptions, items: Vec<&ItemInfo>) -> Vec<&ItemInfo> {
+    fn filter_ilevel<'a>(options: &FilterOptions, items: Vec<&'a ItemInfo>) -> Vec<&'a ItemInfo> {
         let levels = options
-            .into_iter()
+            .iter()
             .map(|level| level.parse::<u32>().unwrap())
             .collect::<Vec<_>>();
         let min_level = levels[0];
@@ -175,7 +181,10 @@ impl Filter {
             .collect::<Vec<_>>()
     }
 
-    fn filter_ui_category(options: FilterOptions, items: Vec<&ItemInfo>) -> Vec<&ItemInfo> {
+    fn filter_ui_category<'a>(
+        options: &FilterOptions,
+        items: Vec<&'a ItemInfo>,
+    ) -> Vec<&'a ItemInfo> {
         let categories = options;
 
         items
@@ -184,15 +193,15 @@ impl Filter {
             .collect::<Vec<_>>()
     }
 
-    fn filter_leve(options: FilterOptions, items: Vec<&ItemInfo>) -> Vec<&ItemInfo> {
-        let categories = options.iter().map(|cat| cat.as_str()).collect::<Vec<_>>();
+    fn filter_leve<'a>(options: &FilterOptions, items: Vec<&'a ItemInfo>) -> Vec<&'a ItemInfo> {
+        let categories = options.iter().map(String::as_str).collect::<Vec<_>>();
         let all_leve_items = library().all_leves.all_item_ids();
 
         items
             .into_iter()
             .filter(|item| all_leve_items.contains(&item.id))
             .filter(|item| {
-                let leve_ids = library().all_leves.get_by_item_id(&item.id).unwrap();
+                let leve_ids = library().all_leves.get_by_item_id(item.id).unwrap();
                 leve_ids
                     .iter()
                     .map(|leve_id| &library().all_leves[leve_id].jobs)
@@ -201,23 +210,18 @@ impl Filter {
             .collect::<Vec<_>>()
     }
 
-    fn filter_contains(options: FilterOptions, items: Vec<&ItemInfo>) -> Vec<&ItemInfo> {
+    fn filter_contains<'a>(options: &FilterOptions, items: Vec<&'a ItemInfo>) -> Vec<&'a ItemInfo> {
         let re = Regex::new(&options.join("|")).unwrap();
 
         items
             .into_iter()
             .filter(|item| {
-                library()
-                    .all_recipes
-                    .get(&item.id)
-                    .map(|recipe| {
-                        recipe.inputs.iter().any(|input| {
-                            item_checked(input)
-                                .map(|input_item| re.is_match(&input_item.name))
-                                .unwrap_or(false)
-                        })
+                library().all_recipes.get(item.id).map_or(false, |recipe| {
+                    recipe.inputs.iter().any(|input| {
+                        item_checked(input)
+                            .map_or(false, |input_item| re.is_match(&input_item.name))
                     })
-                    .unwrap_or(false)
+                })
             })
             .collect::<Vec<_>>()
     }

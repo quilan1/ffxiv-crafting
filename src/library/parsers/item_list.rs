@@ -62,7 +62,7 @@ impl ItemList {
         self.items
             .iter()
             .filter_map(|(_, v)| {
-                Some(v).filter(|item| library().all_gathering.contains_item_id(&item.id))
+                Some(v).filter(|item| library().all_gathering.contains_item_id(item.id))
             })
             .collect::<Vec<_>>()
     }

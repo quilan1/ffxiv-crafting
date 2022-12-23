@@ -57,7 +57,7 @@ impl CraftList {
                 continue;
             }
 
-            let group = cur_group.get_or_insert(Default::default());
+            let group = cur_group.get_or_insert(CraftGroup::default());
             match &line[..1] {
                 "S" => skip = true,
                 "X" => break,

@@ -3,7 +3,7 @@ mod craft_list;
 mod library;
 mod parsers;
 
-use craft_list::*;
+use craft_list::CraftList;
 pub use craft_list::{AnalysisFilters, Filter};
 
 pub use library::{library, Library};

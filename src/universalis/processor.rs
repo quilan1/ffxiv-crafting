@@ -98,14 +98,14 @@ impl UniversalisProcessor {
     fn chunk_ids(ids: &[u32]) -> Vec<String> {
         let mut id_chunks = Vec::new();
         for ids in ids.chunks(MAX_CHUNK_SIZE) {
-            let ids = if ids.len() != 1 {
-                ids.to_vec()
-            } else {
+            let ids = if ids.len() == 1 {
                 // If there's only one ID in the group, the json will be different, so to make it a
                 // multiple-id request, we just tack on the id #2, 'Fire Shard'
                 let mut new_ids = ids.to_vec();
                 new_ids.push(2);
                 new_ids
+            } else {
+                ids.to_vec()
             };
 
             id_chunks.push(
@@ -131,12 +131,12 @@ impl UniversalisRequest {
         chunk_id: usize,
         max_chunks: usize,
     ) -> Option<Self> {
-        let _status = status.clone();
-        let init_status = async move {
-            _status.try_set_count(max_chunks);
+        #[allow(clippy::unused_async)]
+        async fn try_set_status(status: UniversalisStatus, max_chunks: usize) {
+            status.try_set_count(max_chunks);
         }
-        .boxed()
-        .shared();
+
+        let init_status = try_set_status(status.clone(), max_chunks).boxed().shared();
 
         let signature_listing = format!("{}/{}", 2 * chunk_id - 1, 2 * max_chunks);
         let signature_history = format!("{}/{}", 2 * chunk_id, 2 * max_chunks);
@@ -181,6 +181,7 @@ impl UniversalisStatus {
         }
     }
 
+    #[allow(dead_code)]
     pub fn is_finished(&self) -> bool {
         let data = self.data.lock();
         data.is_finished()
@@ -218,6 +219,7 @@ impl Display for UniversalisStatus {
     }
 }
 
+#[allow(dead_code)]
 impl UniversalisStatusValue {
     fn is_finished(&self) -> bool {
         matches!(*self, UniversalisStatusValue::Finished)

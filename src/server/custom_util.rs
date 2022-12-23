@@ -37,10 +37,7 @@ pub struct JsonFilter {
     values: Vec<String>,
 }
 
-pub fn get_ids_from_filters(filters: String) -> (Vec<u32>, Vec<u32>) {
-    let item_list = library().all_items.items.values().collect::<Vec<_>>();
-    let (items, _) = Filter::apply_filters(item_list, &filters);
-
+pub fn get_ids_from_filters<S: AsRef<str>>(filters: S) -> (Vec<u32>, Vec<u32>) {
     fn push_ids(ids: &mut Vec<u32>, item_id: u32) {
         ids.push(item_id);
         if !library().all_recipes.contains_item_id(item_id) {
@@ -51,6 +48,10 @@ pub fn get_ids_from_filters(filters: String) -> (Vec<u32>, Vec<u32>) {
             push_ids(ids, input.item_id);
         }
     }
+
+    let filters = filters.as_ref();
+    let item_list = library().all_items.items.values().collect::<Vec<_>>();
+    let (items, _) = Filter::apply_filters(item_list, filters);
 
     let ids = items
         .iter()
@@ -76,7 +77,7 @@ pub fn json_results(top_ids: Vec<u32>, mb_info: MarketItemInfoMap) -> CustomOut 
             id,
             CustomItemInfo {
                 item_id: id,
-                name: item_name(id).replace('\u{00A0}', " ").to_string(),
+                name: item_name(&id).replace('\u{00A0}', " ").to_string(),
                 listings,
                 history,
                 recipe: recipe_info(id),
@@ -93,7 +94,7 @@ pub fn json_results(top_ids: Vec<u32>, mb_info: MarketItemInfoMap) -> CustomOut 
             id,
             CustomItemInfo {
                 item_id: id,
-                name: item_name(id).to_string(),
+                name: item_name(&id).to_string(),
                 listings: Vec::new(),
                 history: Vec::new(),
                 recipe: recipe_info(id),
@@ -108,7 +109,7 @@ pub fn json_results(top_ids: Vec<u32>, mb_info: MarketItemInfoMap) -> CustomOut 
 }
 
 fn recipe_info(id: u32) -> Option<Recipe> {
-    library().all_recipes.get(&id).map(|recipe| Recipe {
+    library().all_recipes.get(id).map(|recipe| Recipe {
         outputs: recipe.output.count,
         inputs: recipe
             .inputs

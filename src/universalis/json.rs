@@ -57,7 +57,7 @@ impl UniversalisJson {
     ) -> Result<()> {
         let MultipleListingView { items } =
             serde_json::from_str::<MultipleListingView>(listings_json)?;
-        for (id, info) in items.into_iter() {
+        for (id, info) in items {
             let mut listings = parse_recent_listings(info.listings, retain_num_days);
 
             let id = id.parse::<u32>()?;
@@ -68,7 +68,7 @@ impl UniversalisJson {
 
         let MultipleHistoryView { items } =
             serde_json::from_str::<MultipleHistoryView>(history_json)?;
-        for (id, info) in items.into_iter() {
+        for (id, info) in items {
             let mut listings = parse_recent_listings(info.entries, retain_num_days);
 
             let id = id.parse::<u32>()?;
