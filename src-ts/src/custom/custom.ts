@@ -188,7 +188,7 @@ class CustomDlg {
         if (!this.info || !this.customTreeControl) return;
 
         const worldDiv = Elem.makeDiv({ id: 'custom-world-cur' });
-        const ids = this.customTreeControl.selectedIds.map(idStr => idStr.split('-').map(id => Number.parseInt(id))) as IdChain[];
+        const ids = this.customTreeControl.checkedIds.map(idStr => idStr.split('-').map(id => Number.parseInt(id))) as IdChain[];
 
         // Enumerate the counts for each item
         const counts: Record<Id, number> = {};

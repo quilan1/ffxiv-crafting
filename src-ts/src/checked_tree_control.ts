@@ -14,6 +14,7 @@ export default class CheckedTreeControl {
     private headers: string[];
     private data: CtcRowData[];
     private collapsedIds: Set<string>;
+    private _checkedIds: Set<string>;
     private table: HTMLElement | null;
     private eventCheck: (() => void) | null;
 
@@ -22,6 +23,7 @@ export default class CheckedTreeControl {
         this.headers = headers;
         this.data = data;
         this.collapsedIds = new Set(collapsed);
+        this._checkedIds = new Set();
         this.table = null;
         this.eventCheck = null;
     }
@@ -83,15 +85,8 @@ export default class CheckedTreeControl {
         }
     }
 
-    get selectedIds(): string[] {
-        const ids = [];
-        for (const rowData of this.data) {
-            const check = this.selectors.check(rowData.id);
-            if (check?.checked === true) {
-                ids.push(rowData.id);
-            }
-        }
-        return ids;
+    get checkedIds(): string[] {
+        return Array.from(this._checkedIds);
     }
 
     isCollapsed(id: string): boolean {
@@ -103,6 +98,7 @@ export default class CheckedTreeControl {
     private makeRow(data: CtcRowData): TableRow {
         const _check = (td: HTMLTableCellElement, tr: HTMLTableRowElement) => {
             tr.setAttribute('ctcRowId', data.id);
+            tr.setAttribute('ctcIsChild', (data.depth > 1).toString());
             td.appendChild(Elem.makeCheckbox());
         }
 
@@ -226,6 +222,7 @@ export default class CheckedTreeControl {
         if (row === undefined || rowData === undefined) {
             return;
         }
+        this.setChecked(id, check);
 
         const children = rowData.children;
         for (const childId of children) {
@@ -234,6 +231,15 @@ export default class CheckedTreeControl {
                 continue;
             }
             childCheck.checked = check;
+            this.setChecked(childId, check);
+        }
+    }
+
+    private setChecked(id: string, check: boolean) {
+        if (check) {
+            this._checkedIds.add(id);
+        } else {
+            this._checkedIds.delete(id);
         }
     }
 }

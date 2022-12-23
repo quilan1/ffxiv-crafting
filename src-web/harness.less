@@ -160,18 +160,25 @@ Custom stuff
     width: 100%;
     border: 1px solid black;
 
-    > tbody > tr {
-        > td {
-            border: unset;
-            border-bottom: 1px solid black;
-
-            > button {
-                width: 24px;
-            }
+    > tbody {
+        > tr[ctcischild="true"] {
+            font-style: italic;
+            font-size: smaller;
         }
 
-        > td:last-child, td:nth-child(3), td:nth-child(6), td:nth-child(7) {
-            border-left: 1px solid black;
+        > tr {
+            > td {
+                border: unset;
+                border-bottom: 1px solid black;
+
+                > button {
+                    width: 24px;
+                }
+            }
+
+            > td:last-child, td:nth-child(3), td:nth-child(6), td:nth-child(7) {
+                border-left: 1px solid black;
+            }
         }
     }
 }

@@ -51,6 +51,12 @@ pub struct CustomLazyInfo {
     pub top_ids: Vec<u32>,
 }
 
+enum CurrentStatus {
+    Error(String),
+    InProgress(String),
+    Finished(MarketItemInfoMap),
+}
+
 pub struct Custom;
 
 impl Custom {
@@ -62,22 +68,26 @@ impl Custom {
         info!("[get_lazy] Payload {payload:?}");
 
         let uuid = payload.id;
+        let current_status = state.with_lazy(&uuid, |info| match info {
+            None => CurrentStatus::Error(format!("Id not found: {uuid}")),
+            Some(info) => {
+                match (&mut info.output).now_or_never() {
+                    Some(result) => CurrentStatus::Finished(result),
+                    None => CurrentStatus::InProgress(info.status.to_string()),
+                }
+            }
+        });
 
-        // Check if it's still busy processing
-        if let Some(resp) = make_partial_response(&state, &uuid) {
-            return resp;
+        match current_status {
+            CurrentStatus::Error(err) => not_found(err).into_response(),
+            CurrentStatus::InProgress(status) => ok_json(CustomLazyOutput::from_in_progress(uuid, status)).into_response(),
+            CurrentStatus::Finished(mb_info_map) => {
+                let info = state.remove_lazy(&uuid).unwrap();
+                let top_ids = info.top_ids;
+                let out = CustomLazyOutput::from_finished(uuid, json_results(top_ids, mb_info_map));
+                ok_json(out).into_response()
+            }
         }
-
-        // We're finished processing, remove it from the records, and send it off
-        let info = state.remove_lazy(&uuid).unwrap();
-
-        // Pull the output from the future
-        let mb_info_map = info.output.await;
-
-        // Return the final info
-        let top_ids = info.top_ids;
-        let out = CustomLazyOutput::from_finished(uuid, json_results(top_ids, mb_info_map));
-        ok_json(out).into_response()
     }
 
     // Queue up a future, and create a future_output variable in which to store the result
@@ -153,26 +163,9 @@ impl ServerState {
 
     fn with_lazy<S: AsRef<str>, F, T>(&self, uuid: S, func: F) -> T
     where
-        F: Fn(Option<&CustomLazyInfo>) -> T,
+        F: Fn(Option<&mut CustomLazyInfo>) -> T,
     {
-        let records = self.lazy_records.lock();
-        func(records.get(uuid.as_ref()))
+        let mut records = self.lazy_records.lock();
+        func(records.get_mut(uuid.as_ref()))
     }
-}
-
-// Creates a response if the UUID is still being processed, OR if that's an invalid UUID
-fn make_partial_response<S: AsRef<str>>(state: &ServerState, uuid: S) -> Option<Response> {
-    let uuid = uuid.as_ref();
-    state.with_lazy(uuid, |info| match info {
-        None => Some(not_found(format!("Id not found: {uuid}")).into_response()),
-        Some(info) => {
-            let status = &info.status;
-            if !status.is_finished() {
-                let out = CustomLazyOutput::from_in_progress(uuid, status.to_string());
-                Some(ok_json(out).into_response())
-            } else {
-                None
-            }
-        }
-    })
 }
