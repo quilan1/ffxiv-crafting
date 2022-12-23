@@ -29,7 +29,7 @@ export default class Statistics {
 
         this.minBuyPrice = generateQuality(itemInfo.name, itemInfo.listings, [], toPrice, min);
         this.homeworldAvgSellCount = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld, isWithinDays(7.0)], toCount, average);
-        this.homeworldSellPrice = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld], toPostingPrice, weightedTimeAverage(itemInfo.name, 1.0, 7.0));
+        this.homeworldSellPrice = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld], toPostingPrice, weightedTimeAverage(1.0, 7.0));
         this.homeworldVelocityDay = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld, isWithinDays(1.0)], toIdent, calculateVelocity);
         this.homeworldVelocityWeek = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld, isWithinDays(7.0)], toIdent, calculateVelocity);
         this.homeworldVelocityWeeks = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld, isWithinDays(14.0)], toIdent, calculateVelocity);
@@ -74,7 +74,7 @@ function postingToDays(posting: number) {
 }
 
 // Creates a function that does a weighted-average, with a normal distribution
-function weightedTimeAverage(name: string, meanDays: number, stdDevDays: number) {
+function weightedTimeAverage(meanDays: number, stdDevDays: number) {
     return (listingInfos: { posting: number, value: number }[]) => {
         let numerator = 0, denomenator = 0;
         for (const {posting, value} of listingInfos) {
