@@ -57,7 +57,7 @@ pub fn process_cli() {
         data_centers: vec!["Dynamis".into()],
         characters: vec!["Quilan", "Vernox", "Veronixia"]
             .into_iter()
-            .map(|c| c.into())
+            .map(Into::into)
             .collect::<Vec<_>>(),
     };
 

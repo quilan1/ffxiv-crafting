@@ -51,12 +51,12 @@ impl LeveList {
         })
     }
 
-    pub fn get_by_item_id(&self, index: &u32) -> Option<&Vec<u32>> {
-        self.leves_by_item.get(index)
+    pub fn get_by_item_id(&self, index: u32) -> Option<&Vec<u32>> {
+        self.leves_by_item.get(&index)
     }
 
     pub fn all_item_ids(&self) -> Vec<u32> {
-        self.leves_by_item.keys().cloned().collect::<Vec<_>>()
+        self.leves_by_item.keys().copied().collect::<Vec<_>>()
     }
 }
 

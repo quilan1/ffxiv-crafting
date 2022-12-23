@@ -50,7 +50,7 @@ impl RecipeList {
             let mut ingredients = Vec::new();
             for (item_id, count) in arr.into_iter().tuples() {
                 if count > 0 {
-                    ingredients.push(Ingredient { item_id, count });
+                    ingredients.push(Ingredient { count, item_id });
                 }
             }
 
@@ -64,7 +64,7 @@ impl RecipeList {
                 output.item_id,
                 Recipe {
                     output: output.clone(),
-                    inputs: inputs.to_vec(),
+                    inputs: inputs.clone(),
                     level_id,
                 },
             );
@@ -77,8 +77,8 @@ impl RecipeList {
         self.recipes.contains_key(&id)
     }
 
-    pub fn get(&self, id: &u32) -> Option<&Recipe> {
-        self.recipes.get(id)
+    pub fn get(&self, id: u32) -> Option<&Recipe> {
+        self.recipes.get(&id)
     }
 }
 

@@ -19,25 +19,24 @@ impl StaticFiles {
         let path = Path::new("./src-web").join(path);
         println!("GET static {path:?}");
 
-        match Path::exists(path.as_ref()) {
-            false => Response::builder()
+        if Path::exists(path.as_ref()) {
+            let mut file = File::open(path).await.unwrap();
+            let mut buffer = Vec::new();
+            file.read_to_end(&mut buffer).await.unwrap();
+
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(
+                    CONTENT_TYPE,
+                    HeaderValue::from_str(mime_type.as_ref()).unwrap(),
+                )
+                .body(axum::body::boxed(Full::from(buffer)))
+                .unwrap()
+        } else {
+            Response::builder()
                 .status(StatusCode::NOT_FOUND)
                 .body(axum::body::boxed(Empty::new()))
-                .unwrap(),
-            true => {
-                let mut file = File::open(path).await.unwrap();
-                let mut buffer = Vec::new();
-                file.read_to_end(&mut buffer).await.unwrap();
-
-                Response::builder()
-                    .status(StatusCode::OK)
-                    .header(
-                        CONTENT_TYPE,
-                        HeaderValue::from_str(mime_type.as_ref()).unwrap(),
-                    )
-                    .body(axum::body::boxed(Full::from(buffer)))
-                    .unwrap()
-            }
+                .unwrap()
         }
     }
 }

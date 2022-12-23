@@ -27,7 +27,7 @@ impl GatheringList {
             level = U[1 + 1];
 
             let level = library().all_gathering_levels[&level];
-            match item_checked(item_id).map(|item| item.name.is_empty()) {
+            match item_checked(&item_id).map(|item| item.name.is_empty()) {
                 None | Some(true) => continue,
                 _ => {},
             };
@@ -40,8 +40,8 @@ impl GatheringList {
         Ok(Self { by_item, gathering })
     }
 
-    pub fn contains_item_id(&self, item_id: &u32) -> bool {
-        self.by_item.contains_key(item_id)
+    pub fn contains_item_id(&self, item_id: u32) -> bool {
+        self.by_item.contains_key(&item_id)
     }
 }
 

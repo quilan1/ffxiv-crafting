@@ -7,7 +7,10 @@ use std::{collections::HashSet, fs::DirBuilder, io::Write};
 
 use crate::cli::{settings, RunMode};
 
-use super::parsers::*;
+use super::parsers::{
+    CraftLeveList, GatheringLevelList, GatheringList, ItemInfo, ItemList, JobCategoryList,
+    LeveList, RecipeLevelTable, RecipeList, UiCategoryList,
+};
 use super::CraftList;
 
 #[derive(Default)]
@@ -102,19 +105,19 @@ impl Library {
         let results = join_all(files.into_iter().map(download_file)).await;
         results
             .into_iter()
-            .filter_map(|res| res.err())
+            .filter_map(Result::err)
             .for_each(|err| panic!("{}", err));
 
         Ok(())
     }
 
     pub fn all_craftable_items(&self) -> Vec<&ItemInfo> {
-        library().all_items.all_craftable_items()
+        self.all_items.all_craftable_items()
     }
 
     #[allow(dead_code)]
     pub fn all_gatherable_items(&self) -> Vec<&ItemInfo> {
-        library().all_items.all_gatherable_items()
+        self.all_items.all_gatherable_items()
     }
 
     #[allow(dead_code)]

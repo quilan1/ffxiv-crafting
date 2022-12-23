@@ -28,14 +28,14 @@ impl JobCategoryList {
             alc = B[15 + 1];
             cul = B[16 + 1];
 
-            let bits = (crp as u32)
-                + ((bsm as u32) << 1)
-                + ((arm as u32) << 2)
-                + ((gsm as u32) << 3)
-                + ((ltw as u32) << 4)
-                + ((wvr as u32) << 5)
-                + ((alc as u32) << 6)
-                + ((cul as u32) << 7);
+            let bits = u32::from(crp)
+                + (u32::from(bsm) << 1)
+                + (u32::from(arm) << 2)
+                + (u32::from(gsm) << 3)
+                + (u32::from(ltw) << 4)
+                + (u32::from(wvr) << 5)
+                + (u32::from(alc) << 6)
+                + (u32::from(cul) << 7);
 
             jobs.insert(id, Jobs { id, bits });
         });

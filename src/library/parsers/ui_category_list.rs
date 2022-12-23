@@ -22,8 +22,8 @@ impl UiCategoryList {
         });
 
         Ok(Self {
-            categories,
             name_to_id,
+            categories,
         })
     }
 }
