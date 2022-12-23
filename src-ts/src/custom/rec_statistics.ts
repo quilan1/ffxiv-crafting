@@ -131,7 +131,7 @@ export default class RecStatistics {
         this.count = recMultiplier;
 
         const maybeMul = (value: number | undefined) => value !== undefined ? value * recMultiplier : undefined;
-        this.medSellPrice = maybeMul(qualityDefault(this.item.statistics.homeworldMedSellPrice));
+        this.medSellPrice = maybeMul(qualityDefault(this.item.statistics.homeworldSellPrice));
         this.minBuyPrice = RecStatistics.calculateBuyCost(this.item, recMultiplier);
 
         const recipe = this.item.recipe;

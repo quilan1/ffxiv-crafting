@@ -11,7 +11,7 @@ export type Quality<T> = {
 export default class Statistics {
     readonly minBuyPrice?: Quality<number>;
     readonly homeworldAvgSellCount?: Quality<number>;
-    readonly homeworldMedSellPrice?: Quality<number>;
+    readonly homeworldSellPrice?: Quality<number>;
     readonly homeworldVelocityDay?: Quality<number>;
     readonly homeworldVelocityWeek?: Quality<number>;
     readonly homeworldVelocityWeeks?: Quality<number>;
@@ -22,13 +22,14 @@ export default class Statistics {
         const toIdent = (listing: Listing) => listing;
         const toPrice = (listing: Listing) => listing.price;
         const toCount = (listing: Listing) => listing.count;
+        const toPostingPrice = (listing: Listing) => { return { posting: listing.posting, value: listing.price } };
         const average = (values: number[]) => (values.length == 0) ? 0 : values.reduce((a,b) => a+b, 0) / values.length;
         const median = (values: number[]) => { values.sort((a,b) => a - b); return values[(values.length / 3) | 0]; };
         const min = (values: number[]) => values.reduce((prev: number | undefined, cur: number) => (prev === undefined || cur < prev) ? cur : prev, undefined) as number;
 
         this.minBuyPrice = generateQuality(itemInfo.name, itemInfo.listings, [], toPrice, min);
         this.homeworldAvgSellCount = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld, isWithinDays(7.0)], toCount, average);
-        this.homeworldMedSellPrice = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld, isWithinDays(7.0)], toPrice, median);
+        this.homeworldSellPrice = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld], toPostingPrice, weightedTimeAverage(itemInfo.name, 1.0, 7.0));
         this.homeworldVelocityDay = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld, isWithinDays(1.0)], toIdent, calculateVelocity);
         this.homeworldVelocityWeek = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld, isWithinDays(7.0)], toIdent, calculateVelocity);
         this.homeworldVelocityWeeks = generateQuality(itemInfo.name, itemInfo.history, [isHomeworld, isWithinDays(14.0)], toIdent, calculateVelocity);
@@ -70,4 +71,19 @@ function calculateVelocity(listings: Listing[]): number {
 
 function postingToDays(posting: number) {
     return (Date.now() / 1000.0 - posting) / 3600.0 / 24.0;
+}
+
+// Creates a function that does a weighted-average, with a normal distribution
+function weightedTimeAverage(name: string, meanDays: number, stdDevDays: number) {
+    return (listingInfos: { posting: number, value: number }[]) => {
+        let numerator = 0, denomenator = 0;
+        for (const {posting, value} of listingInfos) {
+            let days = postingToDays(posting);
+            let coefficient = Math.exp(-(days-meanDays)*(days-meanDays)/(2*stdDevDays*stdDevDays));
+            numerator += coefficient * value;
+            denomenator += coefficient;
+        }
+
+        return Math.round(numerator / denomenator);
+    }
 }
