@@ -1,4 +1,4 @@
-import Util from "../util.js";
+import Util from "../util/util.js";
 import { Listing } from "./custom_info.js";
 
 type ListingInfo = {

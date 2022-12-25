@@ -1,5 +1,3 @@
-import Util from "./util.js";
-
 export type ApiInfo = {
     endpoint: string,
     options?: object,

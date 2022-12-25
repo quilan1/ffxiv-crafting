@@ -1,7 +1,6 @@
-import RecStatistics from "./custom/rec_statistics.js";
 import CustomInfo from "./custom/custom_info.js";
-import Elem, { ElemAnyOpts } from "./elem.js";
-import Filters from "./filters.js";
+import Elem, { ElemAnyOpts } from "./util/elem.js";
+import Filters from "./util/filters.js";
 
 const exchangeCosts = [
     { type: 'purpleScrips', name: "Purple Crafting Scrips", search: ":name ^Rarefied, :rlevel 90, :count 20", exchange: 20*144 },
@@ -98,13 +97,14 @@ export default {
 
     _pricePromise(search: string): Promise<CustomInfo> {
         const filters = new Filters(search);
-        return CustomInfo.fetch(search, filters.getOneAsInt(':count') ?? 1, "Dynamis");
+        const countFn = () => filters.getOneAsInt(':count') ?? 1;
+        return CustomInfo.fetch(search, "Dynamis", countFn);
     },
 
     _profitPromise(type: string): Promise<CustomInfo> {
         const purchases = exchangeProfits.filter(item => (item as any)[type] !== undefined);
         const search = ":name (" + purchases.map(item => `^${item.search ?? item.name}\$`).join("|") + ")";
-        return CustomInfo.fetch(search, 1, "Dynamis");
+        return CustomInfo.fetch(search, "Dynamis");
     },
 
     async _calculate() {
@@ -129,7 +129,7 @@ export default {
                 newDiv.appendChild(Elem.makeDiv({ className: 'exchange-profit-list', children: profitResults }));
             }
             this.selectors.status.innerText = '';
-            this.selectors.status.innerText = `Time taken: ${Date.now()-start}`;
+            this.selectors.status.innerText = `Time taken: ${Date.now()-start}ms`;
             this.selectors.cur.parentNode?.replaceChild(newDiv, this.selectors.cur);
         } finally {
             this.selectors.refresh.disabled = false;

@@ -1,10 +1,10 @@
 import CustomInfo, { Id, IdChain, Listing } from './custom_info.js';
 import RecStatistics, { RecStatisticsCollection, RecStatisticsSkip } from './rec_statistics.js';
 
-import Elem from '../elem.js';
-import Filters from '../filters.js';
-import Util from '../util.js';
-import CheckedTreeControl, { CtcRowData } from '../checked_tree_control.js';
+import Elem from '../util/elem.js';
+import Filters from '../util/filters.js';
+import Util from '../util/util.js';
+import CheckedTreeControl, { CtcRowData } from '../tables/checked_tree_control.js';
 import { calculatePurchases } from './purchases.js';
 
 const savedFilters: any[] = [];
@@ -28,11 +28,12 @@ class CustomDlg {
 
     async onRefreshClick(debug?: boolean) {
         await FiltersDlg.withDisabledRefresh(async () => {
-            const fn = (status: string) => FiltersDlg.setStatus(status);
+            const countFn = () => FiltersDlg.countValue;
+            const statusFn = (status: string) => FiltersDlg.setStatus(status);
             if (debug === true) {
                 this.info = await CustomInfo.fetchDebug(FiltersDlg.countValue) as CustomInfo;
             } else {
-                this.info = await CustomInfo.fetch(FiltersDlg.searchValue, FiltersDlg.countValue, FiltersDlg.dataCenter, fn) as CustomInfo;
+                this.info = await CustomInfo.fetch(FiltersDlg.searchValue, FiltersDlg.dataCenter, countFn, statusFn) as CustomInfo;
             }
         });
 
@@ -45,9 +46,8 @@ class CustomDlg {
         const headers = ['☑', 'Name', '#/day', '#/wk', '#/2wk', 'Count', 'Sell', 'Buy', 'Craft', 'Profit'];
         this.customTreeControl?.destroy();
         this.customTreeControl = new CheckedTreeControl(parentDiv, headers, treeData, collapsedIds);
+        this.customTreeControl.setOnRender(() => this.displayWorldInfoNew());
         this.customTreeControl.render();
-        this.customTreeControl.setEventCheck(() => this.displayWorldInfoNew());
-        this.displayWorldInfoNew();
     }
 
     /////////////////////////////////////////////////
@@ -289,13 +289,12 @@ class CustomDlg {
     onCountChange() {
         if (!this.info || !this.customTreeControl || !this.filteredTopIds) return;
 
-        try {
-            const count = FiltersDlg.countValue;
-            if (count <= 0) return;
-            this.info.calcRecStatistics(count);
-            this.customTreeControl.updateRows(this.generateTreeData(this.filteredTopIds));
-            this.displayWorldInfoNew();
-        } catch (_) { }
+        const count = FiltersDlg.countValue;
+        if (count <= 0) return;
+        this.info.calcRecStatistics(count);
+        this.filteredTopIds = this.getFilteredTopIds();
+        this.customTreeControl.updateRows(this.generateTreeData(this.filteredTopIds));
+        this.customTreeControl.render();
     }
 };
 

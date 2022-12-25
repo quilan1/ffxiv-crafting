@@ -1,5 +1,4 @@
-import Util from './util.js';
-import Elem from './elem.js';
+import Elem from '../util/elem.js';
 
 export type TableRowFunction = (td: HTMLTableCellElement, tr: HTMLTableRowElement) => void;
 export type TableRowElement = string | number | TableRowFunction | HTMLElement;

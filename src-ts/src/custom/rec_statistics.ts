@@ -1,5 +1,5 @@
 import { Id, IdChain, ItemInfo, RecipeData } from "./custom_info";
-import Util from "../util.js";
+import Util from "../util/util.js";
 import { Quality } from "./statistics";
 
 export enum RecStatisticsSkip {

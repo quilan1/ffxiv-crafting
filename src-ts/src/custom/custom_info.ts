@@ -1,7 +1,7 @@
 import RecStatistics, { RecStatisticsCollection } from "./rec_statistics.js";
 import Statistics from "./statistics.js";
-import Util from "../util.js";
-import Api from "../api.js";
+import Util from "../util/util.js";
+import Api from "../util/api.js";
 
 ////////////////////////////////////////////////////
 
@@ -66,10 +66,11 @@ export default class CustomInfo {
         return this.customInfoFromJson(await this.apiGetDebug(), count);
     }
 
-    static async fetch(searchFilter: string, count: number, dataCenter: string, statusFn?: (_: string) => void): Promise<CustomInfo> {
+    static async fetch(searchFilter: string, dataCenter: string, countFn?: () => number, statusFn?: (_: string) => void): Promise<CustomInfo> {
         const lazyInfo = await this.apiPut(searchFilter, dataCenter);
         const id = lazyInfo.id;
         statusFn ??= () => {};
+        countFn ??= () => 1;
 
         let info = null;
         while(info === null || info === undefined) {
@@ -80,7 +81,7 @@ export default class CustomInfo {
         }
         statusFn('');
 
-        return this.customInfoFromJson(info, count);
+        return this.customInfoFromJson(info, countFn());
     }
 
     private static customInfoFromJson(info: CustomInfoJson, count: number): CustomInfo {

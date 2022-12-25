@@ -86,7 +86,6 @@ impl Custom {
         State(state): State<Arc<ServerState>>,
         Form(payload): Form<GetInput>,
     ) -> impl IntoResponse {
-
         enum CurrentStatus {
             Error(String),
             InProgress(String),
@@ -112,8 +111,7 @@ impl Custom {
             CurrentStatus::Finished(mb_info_map) => {
                 let info = state.remove_custom(&uuid).unwrap();
                 let top_ids = info.top_ids;
-                let out =
-                    Output::from_finished(uuid, util::json_results(top_ids, mb_info_map));
+                let out = Output::from_finished(uuid, util::json_results(top_ids, mb_info_map));
                 ok_json(out).into_response()
             }
         }

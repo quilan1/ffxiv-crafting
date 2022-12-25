@@ -4,10 +4,12 @@ export type ElemInnerTextBaseOpts = { innerText?: string };
 export type ElemValueBaseOpts = { value?: string };
 export type ElemTypeBaseOpts = { type?: string };
 export type ElemBaseOpts = { className?: string, id?: string };
+export type ElemCheckedOpts = { checked?: boolean };
 
 export type ElemOptionOpts = ElemBaseOpts & ElemInnerTextBaseOpts & ElemValueBaseOpts;
 export type ElemButtonOpts = ElemBaseOpts & ElemInnerTextBaseOpts & ElemValueBaseOpts;
 export type ElemInputOpts = ElemBaseOpts & ElemTypeBaseOpts;
+export type ElemCheckboxOpts = ElemBaseOpts & ElemTypeBaseOpts & ElemCheckedOpts;
 export type ElemDivOpts = ElemBaseOpts & ElemInnerTextBaseOpts & ElemChildBaseOpts;
 export type ElemSpanOpts = ElemDivOpts;
 
@@ -59,7 +61,7 @@ class Elem {
         return this.makeElem({ tag: 'input', ...opts}) as HTMLInputElement;
     }
 
-    static makeCheckbox(opts?: ElemInputOpts): HTMLInputElement {
+    static makeCheckbox(opts?: ElemCheckboxOpts): HTMLInputElement {
         return this.makeInput({ type: 'checkbox', ...opts });
     }
 

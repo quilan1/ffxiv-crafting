@@ -1,6 +1,5 @@
-import Elem from "./elem.js";
+import Elem from "../util/elem.js";
 import Tables, { TableRow } from "./tables.js";
-import Util from "./util.js";
 
 export type CtcRowData = {
     id: string,
@@ -13,23 +12,24 @@ export default class CheckedTreeControl {
     private parent: HTMLElement;
     private headers: string[];
     private data: CtcRowData[];
-    private collapsedIds: Set<string>;
-    private _checkedIds: Set<string>;
     private table: HTMLElement | null;
-    private eventCheck: (() => void) | null;
+
+    private _collapsedIds: Set<string>;
+    private _checkedIds: Set<string>;
+    private _onRender: (() => void) | null;
 
     constructor(tableBody: HTMLElement, headers: string[], data: CtcRowData[], collapsed?: string[]) {
         this.parent = tableBody;
         this.headers = headers;
         this.data = data;
-        this.collapsedIds = new Set(collapsed);
+        this._collapsedIds = new Set(collapsed);
         this._checkedIds = new Set();
         this.table = null;
-        this.eventCheck = null;
+        this._onRender = null;
     }
 
-    setEventCheck(func: () => void) {
-        this.eventCheck = func;
+    setOnRender(func: () => void) {
+        this._onRender = func;
     }
 
     render() {
@@ -43,6 +43,7 @@ export default class CheckedTreeControl {
         }
         this.table = table;
         this.setupTableTriggers();
+        this.onRender();
     }
 
     destroy() {
@@ -51,8 +52,10 @@ export default class CheckedTreeControl {
         }
     }
 
-    updateRows(data: CtcRowData[]) {
+    updateRows(data: CtcRowData[], reRender?: boolean) {
         this.data = data;
+        if (reRender !== true) return;
+
         for (const rowData of this.data) {
             for (let index=0; index < rowData.text.length; ++index) {
                 const cell = this.selectors.cell(rowData.id, index);
@@ -90,16 +93,16 @@ export default class CheckedTreeControl {
     }
 
     isCollapsed(id: string): boolean {
-        return this.collapsedIds.has(id);
+        return this._collapsedIds.has(id);
     }
 
     ////////////////////////////////////////////////////////////
 
-    private makeRow(data: CtcRowData): TableRow {
+    private makeRow(data: CtcRowData, isChecked: boolean): TableRow {
         const _check = (td: HTMLTableCellElement, tr: HTMLTableRowElement) => {
             tr.setAttribute('ctcRowId', data.id);
             tr.setAttribute('ctcIsChild', (data.depth > 1).toString());
-            td.appendChild(Elem.makeCheckbox());
+            td.appendChild(Elem.makeCheckbox({ checked: isChecked }));
         }
 
         const _text = (td: HTMLTableCellElement) => {
@@ -107,7 +110,7 @@ export default class CheckedTreeControl {
             td.style.paddingLeft = `${20 * (data.depth - 1) + (data.children.length > 0 ? 0 : 24)}px`;
 
             if (data.children.length > 0) {
-                const isCollapsed = this.collapsedIds.has(data.id);
+                const isCollapsed = this._collapsedIds.has(data.id);
                 td.append(Elem.makeButton({ innerText: ['-', '+'][Number(isCollapsed)], className: 'collapsable' }));
             }
             td.append(Elem.makeSpan({ innerText: data.text[0] }));
@@ -130,25 +133,25 @@ export default class CheckedTreeControl {
                 skipParent = undefined;
             }
 
-            if (this.collapsedIds.has(row.id)) {
+            if (this._collapsedIds.has(row.id)) {
                 skipParent = `${row.id}-`;
             }
 
-            rows.push(this.makeRow(row));
+            let isChecked = this._checkedIds.has(row.id);
+            rows.push(this.makeRow(row, isChecked));
         }
 
         return rows;
     }
 
+    private onRender() {
+        if (this._onRender)
+            this._onRender();
+    }
+
     ////////////////////////////////////////////////////////////
 
     private setupTableTriggers() {
-        const triggerEventCheck = () => {
-            if (this.eventCheck) {
-                this.eventCheck();
-            }
-        }
-
         for (const row of this.data) {
             const plus = this.selectors.plus(row.id);
             if (plus) {
@@ -157,7 +160,7 @@ export default class CheckedTreeControl {
                     plus.innerText = ['-', '+'][Number(toCollapse)];
                     this.toggleChildrenPlus(row.id, toCollapse);
                     this.setupTableTriggers();
-                    triggerEventCheck();
+                    this.onRender();
                 }
             }
 
@@ -165,7 +168,7 @@ export default class CheckedTreeControl {
             if (checkbox) {
                 checkbox.onclick = _ => {
                     this.toggleChildrenCheck(row.id, checkbox.checked);
-                    triggerEventCheck();
+                    this.onRender();
                 }
             }
         }
@@ -179,9 +182,9 @@ export default class CheckedTreeControl {
         }
 
         if (collapse) {
-            this.collapsedIds.add(id);
+            this._collapsedIds.add(id);
         } else {
-            this.collapsedIds.delete(id);
+            this._collapsedIds.delete(id);
         }
 
         // Delete the child rows on collapse
