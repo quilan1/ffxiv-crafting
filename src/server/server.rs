@@ -7,7 +7,7 @@ use tower_http::cors::{Any, CorsLayer};
 use crate::util::{AmValue, AsyncProcessor};
 
 use super::{
-    custom::{Custom, CustomLazyInfo},
+    custom::{Custom, CustomStateInfo},
     StaticFiles,
 };
 
@@ -16,7 +16,7 @@ pub struct Server;
 #[derive(Clone)]
 pub struct ServerState {
     pub async_processor: AsyncProcessor,
-    pub lazy_records: AmValue<HashMap<String, CustomLazyInfo>>,
+    pub lazy_records: AmValue<HashMap<String, CustomStateInfo>>,
 }
 
 #[allow(unused_must_use)]
@@ -31,7 +31,6 @@ impl Server {
 
         let app = Router::with_state(app_state)
             .route("/web/*path", get(StaticFiles::static_path))
-            .route("/v1/custom-filter", get(Custom::custom_filter))
             .route("/v1/custom", get(Custom::get_lazy).put(Custom::put_lazy))
             .layer(
                 CorsLayer::new()
