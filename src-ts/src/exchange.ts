@@ -98,13 +98,13 @@ export default {
 
     _pricePromise(search: string): Promise<CustomInfo> {
         const filters = new Filters(search);
-        return CustomInfo.fetchLazy(search, filters.getOneAsInt(':count') ?? 1, "Dynamis");
+        return CustomInfo.fetch(search, filters.getOneAsInt(':count') ?? 1, "Dynamis");
     },
 
     _profitPromise(type: string): Promise<CustomInfo> {
         const purchases = exchangeProfits.filter(item => (item as any)[type] !== undefined);
         const search = ":name (" + purchases.map(item => `^${item.search ?? item.name}\$`).join("|") + ")";
-        return CustomInfo.fetchLazy(search, 1, "Dynamis");
+        return CustomInfo.fetch(search, 1, "Dynamis");
     },
 
     async _calculate() {

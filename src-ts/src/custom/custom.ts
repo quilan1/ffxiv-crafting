@@ -30,9 +30,9 @@ class CustomDlg {
         await FiltersDlg.withDisabledRefresh(async () => {
             const fn = (status: string) => FiltersDlg.setStatus(status);
             if (debug === true) {
-                this.info = await CustomInfo.fetch(FiltersDlg.searchValue, FiltersDlg.countValue, FiltersDlg.dataCenter, debug === true) as CustomInfo;
+                this.info = await CustomInfo.fetchDebug(FiltersDlg.countValue) as CustomInfo;
             } else {
-                this.info = await CustomInfo.fetchLazy(FiltersDlg.searchValue, FiltersDlg.countValue, FiltersDlg.dataCenter, fn) as CustomInfo;
+                this.info = await CustomInfo.fetch(FiltersDlg.searchValue, FiltersDlg.countValue, FiltersDlg.dataCenter, fn) as CustomInfo;
             }
         });
 

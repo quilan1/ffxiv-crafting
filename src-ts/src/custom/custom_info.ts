@@ -45,7 +45,7 @@ export type CustomInfoJson = {
 export type CustomInfoLazyJson = {
     id: string,
     status?: string,
-    output?: CustomInfoJson,
+    output_info?: CustomInfoJson,
 }
 
 ////////////////////////////////////////////////////
@@ -62,40 +62,28 @@ export default class CustomInfo {
         this.calcRecStatistics(count);
     }
 
-    static async fetch(searchFilter: string, count: number, dataCenter: string, isDebug?: boolean): Promise<CustomInfo> {
-        let info;
-        if (isDebug === true) {
-            info = await this.apiGetDebug();
-        } else {
-            info = await this.apiGet(searchFilter, dataCenter);
-        }
-
-        info.item_info = Object.fromEntries(Object.entries(info.item_info).map(([key, value]) => [Number.parseInt(key), value]));
-
-        for (const [_, item] of Object.entries(info.item_info)) {
-            if (item.recipe === null) {
-                delete item.recipe;
-            }
-            item.statistics = new Statistics(item);
-        }
-
-        return new CustomInfo(info, count);
+    static async fetchDebug(count: number): Promise<CustomInfo> {
+        return this.customInfoFromJson(await this.apiGetDebug(), count);
     }
 
-    static async fetchLazy(searchFilter: string, count: number, dataCenter: string, statusFn?: (_: string) => void): Promise<CustomInfo> {
-        const lazyInfo = await this.apiPutLazy(searchFilter, dataCenter);
+    static async fetch(searchFilter: string, count: number, dataCenter: string, statusFn?: (_: string) => void): Promise<CustomInfo> {
+        const lazyInfo = await this.apiPut(searchFilter, dataCenter);
         const id = lazyInfo.id;
         statusFn ??= () => {};
 
         let info = null;
         while(info === null || info === undefined) {
             await Util.sleep(500);
-            const lazyGetInfo = await this.apiGetLazy(id);
+            const lazyGetInfo = await this.apiGet(id);
             statusFn(lazyGetInfo.status ?? '');
-            info = lazyGetInfo.output;
+            info = lazyGetInfo.output_info;
         }
         statusFn('');
 
+        return this.customInfoFromJson(info, count);
+    }
+
+    private static customInfoFromJson(info: CustomInfoJson, count: number): CustomInfo {
         info.item_info = Object.fromEntries(Object.entries(info.item_info).map(([key, value]) => [Number.parseInt(key), value]));
 
         for (const [_, item] of Object.entries(info.item_info)) {
@@ -108,16 +96,12 @@ export default class CustomInfo {
         return new CustomInfo(info, count);
     }
 
-    private static async apiGet(searchFilter: string, dataCenter: string): Promise<CustomInfoJson> {
-        return Api.call(this.api.filters.get, { filters: searchFilter, data_center: dataCenter, retain_num_days: 7.0 });
+    private static async apiGet(id: string): Promise<CustomInfoLazyJson> {
+        return Api.call(this.api.get, { id });
     }
 
-    private static async apiGetLazy(id: string): Promise<CustomInfoLazyJson> {
-        return Api.call(this.api.lazy.get, { id });
-    }
-
-    private static async apiPutLazy(searchFilter: string, dataCenter: string): Promise<CustomInfoLazyJson> {
-        return Api.call(this.api.lazy.put, {}, { filters: searchFilter, data_center: dataCenter, retain_num_days: 14.0 });
+    private static async apiPut(searchFilter: string, dataCenter: string): Promise<CustomInfoLazyJson> {
+        return Api.call(this.api.put, {}, { filters: searchFilter, data_center: dataCenter, retain_num_days: 14.0 });
     }
 
     private static async apiGetDebug(): Promise<CustomInfoJson> {
@@ -146,17 +130,8 @@ export default class CustomInfo {
         };
 
         return {
-            get filters() {
-                return {
-                    get: { endpoint: 'v1/custom-filter', options: { method: 'GET', ...commonHeaders } },
-                }
-            },
-            get lazy() {
-                return {
-                    get: { endpoint: 'v1/custom', options: { method: 'GET', ...commonHeaders } },
-                    put: { endpoint: 'v1/custom', options: { method: 'PUT', ...commonHeaders } },
-                }
-            }
+            get: { endpoint: 'v1/custom', options: { method: 'GET', ...commonHeaders } },
+            put: { endpoint: 'v1/custom', options: { method: 'PUT', ...commonHeaders } },
         }
     }
 }
