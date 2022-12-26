@@ -1,11 +1,12 @@
 import CustomInfo, { Id, IdChain, Listing } from './custom_info.js';
 import RecStatistics, { RecStatisticsCollection, RecStatisticsSkip } from './rec_statistics.js';
 
-import Elem from '../util/elem.js';
+import Elem, { ElemAnyOpts } from '../util/elem.js';
 import Filters from '../util/filters.js';
 import Util from '../util/util.js';
 import CheckedTreeControl, { CtcRowData } from '../tables/checked_tree_control.js';
 import { calculatePurchases } from './purchases.js';
+import Statistics from './statistics.js';
 
 const savedFilters: any[] = [];
 
@@ -46,7 +47,7 @@ class CustomDlg {
         const headers = ['☑', 'Name', '#/day', '#/wk', '#/2wk', 'Count', 'Sell', 'Buy', 'Craft', 'Profit'];
         this.customTreeControl?.destroy();
         this.customTreeControl = new CheckedTreeControl(parentDiv, headers, treeData, collapsedIds);
-        this.customTreeControl.setOnRender(() => this.displayWorldInfoNew());
+        this.customTreeControl.setOnRender(() => this.onRender());
         this.customTreeControl.render();
     }
 
@@ -147,6 +148,9 @@ class CustomDlg {
             const velocity14 = statistics?.homeworldVelocityWeeks?.aq?.toFixed(2) ?? '-';
             const count = (stats?.count ?? 0 > 1) ? `${stats?.count}x ` : '';
             const depth = id.length;
+
+            const sellTooltip = this.sellTooltip(statistics, stats);
+
             rowData.push({
                 id: CustomDlg.rowId(id),
                 depth,
@@ -162,6 +166,14 @@ class CustomDlg {
                     stats?.minCraftPrice ?? "-",
                     this.itemProfit(stats),
                 ].map(v => v.toString()),
+                tooltip: [
+                    null,
+                    null, null, null,
+                    null,
+                    sellTooltip,
+                    'Testing Buy', 'Testing Craft',
+                    null,
+                ]
             });
         }
 
@@ -182,7 +194,69 @@ class CustomDlg {
         return collapsed;
     }
 
+    private sellTooltip(statistics?: Statistics, stats?: RecStatistics): ElemAnyOpts[] | null {
+        const gt = (a?: number, b?: number) => (a === undefined) ? false : (b === undefined) ? true : a > b;
+        const asFixed = (n?: number) => n?.toFixed(2) ?? '-';
+
+        if (stats?.medSellPrice === undefined) {
+            return null;
+        }
+
+        const sellHwPrice = statistics?.homeworldSellPrice?.aq;
+        const buyHwPrice = statistics?.homeworldMedBuyPrice?.aq;
+        const craftCost = (stats?.minCraftPrice) ? (stats.minCraftPrice / stats.count) : undefined;
+
+        let bestOption;
+        if (gt(buyHwPrice, sellHwPrice) || gt(craftCost, sellHwPrice)) {
+            bestOption = 'sell';
+        // } else if (gt(buyHwPrice, craftCost)) {
+        //     bestOption = 'craft';
+        } else {
+            bestOption = 'buy';
+        }
+
+        return [
+            { tag: 'div', children: [
+                { tag: 'span', innerText: 'Sell: ' },
+                { tag: 'span', innerText: asFixed(sellHwPrice), className: (bestOption === 'sell' ? 'bestOption' : '') },
+            ]},
+            { tag: 'div', children: [
+                { tag: 'span', innerText: 'Buy: ' },
+                { tag: 'span', innerText: asFixed(buyHwPrice), className: (bestOption === 'buy' ? 'bestOption' : '') },
+            ]},
+            { tag: 'div', children: [
+                { tag: 'span', innerText: 'Craft: ' },
+                { tag: 'span', innerText: asFixed(craftCost) },
+            ]},
+        ]
+    }
+
     /////////////////////////////////////////////////
+
+    private onRender() {
+        if (this.filteredTopIds && this.info && this.customTreeControl) {
+            const allIds = this.info.rec_statistics.allChainsOf(this.filteredTopIds);
+            for (const id of allIds) {
+                const row = CustomDlg.rowId(id);
+                let cell = this.customTreeControl.selectors.cell(row, 5);
+                let tooltip = this.customTreeControl.selectors.tooltip(row, 5);
+                if (cell) {
+                    cell.onmouseover = () => {
+                        if (tooltip) {
+                            tooltip.style.display = 'block';
+                        }
+                    }
+                    cell.onmouseleave = () => {
+                        if (tooltip) {
+                            tooltip.style.display = 'none';
+                        }
+                    }
+                }
+            }
+        }
+
+        this.displayWorldInfoNew();
+    }
 
     private displayWorldInfoNew() {
         if (!this.info || !this.customTreeControl) return;

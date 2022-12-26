@@ -1,4 +1,4 @@
-import Elem from "../util/elem.js";
+import Elem, { ElemAnyOpts } from "../util/elem.js";
 import Tables, { TableRow } from "./tables.js";
 
 export type CtcRowData = {
@@ -6,6 +6,7 @@ export type CtcRowData = {
     children: string[],
     depth: number,
     text: string[],
+    tooltip?: (string|ElemAnyOpts[]|null)[],
 };
 
 export default class CheckedTreeControl {
@@ -84,6 +85,13 @@ export default class CheckedTreeControl {
                 } else {
                     return this.row(id)?.querySelector(`:scope > td:nth-child(${index+2})`) as HTMLElement | undefined;
                 }
+            },
+            tooltip(id: string, index: number): HTMLElement | undefined {
+                if (index === 0) {
+                    return this.row(id)?.querySelector(':scope > td:nth-child(2) > span > .tooltip') as HTMLElement | undefined;
+                } else {
+                    return this.row(id)?.querySelector(`:scope > td:nth-child(${index+2}) > .tooltip`) as HTMLElement | undefined;
+                }
             }
         }
     }
@@ -114,12 +122,30 @@ export default class CheckedTreeControl {
                 td.append(Elem.makeButton({ innerText: ['-', '+'][Number(isCollapsed)], className: 'collapsable' }));
             }
             td.append(Elem.makeSpan({ innerText: data.text[0] }));
-        }
+        };
+
+        const _tooltipText = (text: string, tooltip: string | ElemAnyOpts[] | null | undefined) => (td: HTMLTableCellElement) => {
+            td.innerText = text;
+            if (tooltip != null) {
+                let elem;
+                if (typeof tooltip === 'string') {
+                    elem = Elem.makeDiv({ className: 'tooltip', innerText: tooltip });
+                } else {
+                    elem = Elem.makeDiv({ className: 'tooltip', children: tooltip });
+                }
+                td.prepend(elem);
+                td.classList.add('tooltip-container');
+            }
+        };
+
+        const textAndTooltips = data.text.map((text, index) => {
+            return _tooltipText(text, data.tooltip?.[index])
+        });
 
         return [
             _check,
             _text,
-            ...data.text.slice(1)
+            ...textAndTooltips.slice(1)
         ];
     }
 
