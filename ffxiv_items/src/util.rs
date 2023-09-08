@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-pub use crate::library::library;
-use crate::library::{Ingredient, ItemInfo};
+pub use crate::library;
+use crate::{Ingredient, ItemInfo};
 
 ////////////////////////////////////////////////////////////
 

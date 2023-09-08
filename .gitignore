@@ -3,4 +3,4 @@ csv/
 target/
 out/
 node_modules/
-src-web/js
+js/

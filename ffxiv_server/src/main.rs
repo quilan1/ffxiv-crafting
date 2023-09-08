@@ -2,7 +2,6 @@
 #![allow(clippy::module_name_repetitions)]
 
 mod cli;
-mod library;
 mod server;
 mod universalis;
 mod util;
@@ -13,7 +12,7 @@ use std::{error::Error, time::Instant};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     use cli::process_cli;
-    use library::Library;
+    use ffxiv_items::Library;
 
     setup()?;
     process_cli();

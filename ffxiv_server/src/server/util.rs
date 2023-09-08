@@ -1,6 +1,5 @@
 use itertools::Itertools;
-
-use crate::library::{library, Filter};
+use ffxiv_items::{library, Filter};
 
 pub fn get_ids_from_filters<S: AsRef<str>>(filters: S) -> (Vec<u32>, Vec<u32>) {
     fn push_ids(ids: &mut Vec<u32>, item_id: u32) {

@@ -1,5 +1,5 @@
 [package]
-name = "ffxiv-crafting"
+name = "ffxiv-server"
 version = "0.1.0"
 edition = "2021"
 
@@ -26,6 +26,7 @@ parking_lot = "0.12.1"
 console-subscriber = "0.1.8"
 log = "0.4.17"
 log4rs = "1.2.0"
+ffxiv_items = { version = "0.1.0", path = "../ffxiv_items" }
 
 [profile.docker]
 inherits="release"

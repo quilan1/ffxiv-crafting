@@ -1,7 +1,7 @@
 use anyhow::Result;
 use regex::Regex;
 
-use crate::library::ItemInfo;
+use crate::ItemInfo;
 use crate::util::{item_checked, library};
 
 type FilterOptions = Vec<String>;

@@ -5,7 +5,7 @@ use std::io::BufWriter;
 use std::path::Path;
 use std::{collections::HashSet, fs::DirBuilder, io::Write};
 
-use crate::cli::{settings, RunMode};
+// use crate::cli::{settings, RunMode};
 
 use super::parsers::{
     CraftLeveList, GatheringLevelList, GatheringList, ItemInfo, ItemList, JobCategoryList,
@@ -122,17 +122,10 @@ impl Library {
 
     #[allow(dead_code)]
     pub fn all_market_board_ids(&self) -> Vec<u32> {
-        let run_mode = &settings().run_mode;
         let mut ids = HashSet::new();
-        if [RunMode::OnlyCrafting, RunMode::All].contains(run_mode) {
-            ids.extend(self.all_crafts.all_craft_item_ids());
-        }
-        if [RunMode::OnlyCustom, RunMode::All].contains(run_mode) {
-            ids.extend(self.all_custom_crafts.all_craft_item_ids());
-        }
-        if [RunMode::OnlyGathering, RunMode::All].contains(run_mode) {
-            ids.extend(self.all_gatherable_items().iter().map(|item| item.id));
-        }
+        ids.extend(self.all_crafts.all_craft_item_ids());
+        ids.extend(self.all_custom_crafts.all_craft_item_ids());
+        ids.extend(self.all_gatherable_items().iter().map(|item| item.id));
         ids.into_iter().collect::<Vec<_>>()
     }
 }
