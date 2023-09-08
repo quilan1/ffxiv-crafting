@@ -11,17 +11,11 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--profile=release-debug",
-                    "--bin=ffxiv-crafting",
-                    "--package=ffxiv-crafting"
-                ],
-                "filter": {
-                    "name": "ffxiv-crafting",
-                    "kind": "bin"
-                }
+                    "--profile=release-debug"
+                ]
             },
             "args": [],
-            "cwd": "${workspaceFolder}/crafting-server"
+            "cwd": "${workspaceFolder}/ffxiv_server"
         },
         {
             "type": "lldb",
@@ -30,16 +24,10 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=ffxiv-crafting",
-                    "--package=ffxiv-crafting"
                 ],
-                "filter": {
-                    "name": "ffxiv-crafting",
-                    "kind": "bin"
-                }
             },
             "args": [],
-            "cwd": "${workspaceFolder}/crafting-server"
+            "cwd": "${workspaceFolder}/ffxiv_server"
         }
     ]
 }
