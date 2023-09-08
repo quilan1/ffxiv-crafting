@@ -95,7 +95,7 @@ impl Future for AsyncProcessor {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // Set the waker, so it can be re-polled
-        self.waker.replace(cx.waker().clone());
+        self.waker.replace(Some(cx.waker().clone()));
 
         // Move from queue
         self.move_from_queue_to_active();

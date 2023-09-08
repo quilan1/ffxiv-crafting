@@ -20,8 +20,8 @@ pub struct AsyncCounter {
 impl AsyncCounter {
     pub fn new(count: u32) -> Self {
         Self {
-            count: AmValue::with_value(count),
-            waker: AmoValue::new(),
+            count: AmValue::new(count),
+            waker: AmValue::new(None),
         }
     }
 

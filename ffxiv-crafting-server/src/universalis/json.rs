@@ -5,7 +5,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use super::{ItemListing, MarketItemInfoMap};
+use super::ItemListing;
 
 #[derive(Debug, Clone, Deserialize)]
 struct MultipleListingView {
@@ -46,38 +46,42 @@ struct HistoryView {
     entries: Vec<ItemListingView>,
 }
 
+pub type ItemListingMap = BTreeMap<u32, Vec<ItemListing>>;
+
+////////////////////////////////////////////////////////////
+
 pub struct UniversalisJson;
 
 impl UniversalisJson {
-    pub fn parse(
-        listings_json: &str,
-        history_json: &str,
-        mb_info_map: &mut MarketItemInfoMap,
+    pub fn parse_listing(json: String, retain_num_days: f32) -> Result<ItemListingMap> {
+        Self::parse_gen_listing::<MultipleListingView, ListingView>(&json, retain_num_days)
+    }
+
+    pub fn parse_history(json: String, retain_num_days: f32) -> Result<ItemListingMap> {
+        Self::parse_gen_listing::<MultipleHistoryView, HistoryView>(&json, retain_num_days)
+    }
+
+    fn parse_gen_listing<
+        'a,
+        MultipleView: ItemsMapTrait<String, View> + Deserialize<'a>,
+        View: ItemsTrait,
+    >(
+        json: &'a str,
         retain_num_days: f32,
-    ) -> Result<()> {
-        let MultipleListingView { items } =
-            serde_json::from_str::<MultipleListingView>(listings_json)?;
-        for (id, info) in items {
-            let mut listings = parse_recent_listings(info.listings, retain_num_days);
+    ) -> Result<ItemListingMap> {
+        let json_map = serde_json::from_str::<MultipleView>(json)?.items();
+
+        let mut map = ItemListingMap::new();
+        for (id, info) in json_map {
+            let mut listings = parse_recent_listings(info.items(), retain_num_days);
 
             let id = id.parse::<u32>()?;
-            let entry = mb_info_map.entry(id).or_default();
-            entry.listings.append(&mut listings);
-            entry.listings.sort_by(|a, b| a.price.cmp(&b.price));
+            let entry = map.entry(id).or_default();
+            entry.append(&mut listings);
+            entry.sort_by(|a, b| a.price.cmp(&b.price));
         }
 
-        let MultipleHistoryView { items } =
-            serde_json::from_str::<MultipleHistoryView>(history_json)?;
-        for (id, info) in items {
-            let mut listings = parse_recent_listings(info.entries, retain_num_days);
-
-            let id = id.parse::<u32>()?;
-            let entry = mb_info_map.entry(id).or_default();
-            entry.history.append(&mut listings);
-            entry.history.sort_by(|a, b| a.price.cmp(&b.price));
-        }
-
-        Ok(())
+        Ok(map)
     }
 }
 
@@ -108,4 +112,42 @@ fn parse_recent_listings(
                 .unwrap_or(listing.timestamp.unwrap_or_default()),
         })
         .collect::<Vec<_>>()
+}
+
+////////////////////////////////////////////////////////////
+
+trait ItemsMapTrait<K, V> {
+    fn items(self) -> BTreeMap<K, V>;
+}
+
+trait ItemsTrait {
+    fn items(self) -> Vec<ItemListingView>;
+}
+
+////////////////////////////////////////////////////////////
+
+impl ItemsMapTrait<String, HistoryView> for MultipleHistoryView {
+    fn items(self) -> BTreeMap<String, HistoryView> {
+        self.items.into_iter().collect()
+    }
+}
+
+impl ItemsTrait for HistoryView {
+    fn items(self) -> Vec<ItemListingView> {
+        self.entries
+    }
+}
+
+////////////////////////////////////////////////////////////
+
+impl ItemsMapTrait<String, ListingView> for MultipleListingView {
+    fn items(self) -> BTreeMap<String, ListingView> {
+        self.items.into_iter().collect()
+    }
+}
+
+impl ItemsTrait for ListingView {
+    fn items(self) -> Vec<ItemListingView> {
+        self.listings
+    }
 }

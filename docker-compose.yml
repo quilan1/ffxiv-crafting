@@ -1,0 +1,35 @@
+services:
+  crafting-server:
+    image: rust:1.72
+    working_dir: /ffxiv-crafting
+    command: [ "cargo", "run", "--profile", "docker" ]
+    ports: [ "3001:3001" ]
+    volumes:
+      - ./ffxiv-crafting-server:/ffxiv-crafting
+
+  http-server:
+    image: httpd:2.4
+    ports: [ "8080:80" ]
+    depends_on:
+      typescript-watch:
+        condition: service_started
+    volumes:
+      - ./src-web:/usr/local/apache2/htdocs/
+
+  typescript-watch:
+    image: mcr.microsoft.com/devcontainers/typescript-node:20
+    working_dir: /src-ts
+    command: [ "tsc", "--watch" ]
+    depends_on:
+      typescript-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./src-ts:/src-ts
+      - ./src-web:/src-web
+
+  typescript-init:
+    image: mcr.microsoft.com/devcontainers/typescript-node:20
+    working_dir: /src-ts
+    command: [ "npm", "install" ]
+    volumes:
+      - ./src-ts:/src-ts

@@ -2,6 +2,7 @@ import RecStatistics, { RecStatisticsCollection } from "./rec_statistics.js";
 import Statistics from "./statistics.js";
 import Util from "../util/util.js";
 import Api from "../util/api.js";
+import { identity } from "lodash";
 
 ////////////////////////////////////////////////////
 
@@ -40,12 +41,27 @@ export type ItemInfo = {
 export type CustomInfoJson = {
     item_info: Record<Id, ItemInfo>,
     top_ids: number[],
+    failure_ids: number[],
 }
 
 export type CustomInfoLazyJson = {
     id: string,
     status?: string,
     output_info?: CustomInfoJson,
+}
+
+export type RecipeJson = {
+    top_ids: number[],
+    item_info: Record<Id, ItemInfo>,
+};
+
+export type ListingJson = {
+    id: string,
+    status?: string,
+    output_info?: {
+        failures: number[],
+        listings: Record<number, Listing[]>,
+    }
 }
 
 ////////////////////////////////////////////////////
@@ -67,21 +83,39 @@ export default class CustomInfo {
     }
 
     static async fetch(searchFilter: string, dataCenter: string, countFn?: () => number, statusFn?: (_: string) => void): Promise<CustomInfo> {
-        const lazyInfo = await this.apiPut(searchFilter, dataCenter);
-        const id = lazyInfo.id;
+        const [recipe, listingId, historyId] = await Promise.all([
+            this.apiRecipeGet(searchFilter),
+            this.apiListingsPut(searchFilter, dataCenter),
+            this.apiHistoryPut(searchFilter, dataCenter)
+        ]);
         statusFn ??= () => {};
         countFn ??= () => 1;
 
-        let info = null;
-        while(info === null || info === undefined) {
+        let listingInfo = null;
+        while(listingInfo === null || listingInfo === undefined) {
             await Util.sleep(500);
-            const lazyGetInfo = await this.apiGet(id);
-            statusFn(lazyGetInfo.status ?? '');
-            info = lazyGetInfo.output_info;
+            const getInfo = await this.apiListingsGet(listingId);
+            statusFn(`Listings: ${getInfo.status ?? ''}`);
+            listingInfo = getInfo.output_info;
         }
         statusFn('');
 
-        return this.customInfoFromJson(info, countFn());
+        let historyInfo = null;
+        while(historyInfo === null || historyInfo === undefined) {
+            await Util.sleep(500);
+            const getInfo = await this.apiHistoryGet(historyId);
+            statusFn(`History: ${getInfo.status ?? ''}`);
+            historyInfo = getInfo.output_info;
+        }
+        statusFn('');
+
+        let info = recipe;
+        for (const [id, item] of Object.entries(recipe.item_info)) {
+            item.listings = listingInfo.listings[id as any] ?? [];
+            item.history = historyInfo.listings[id as any] ?? [];
+        }
+
+        return this.customInfoFromJson(info as CustomInfoJson, countFn());
     }
 
     private static customInfoFromJson(info: CustomInfoJson, count: number): CustomInfo {
@@ -97,13 +131,33 @@ export default class CustomInfo {
         return new CustomInfo(info, count);
     }
 
-    private static async apiGet(id: string): Promise<CustomInfoLazyJson> {
-        return Api.call(this.api.get, { id });
+    ////////////////////////////////////////////////////
+
+    private static apiRecipeGet(searchFilter: string): Promise<RecipeJson> {
+        return Api.call(this.api.recipe.get, { filters: searchFilter });
     }
 
-    private static async apiPut(searchFilter: string, dataCenter: string): Promise<CustomInfoLazyJson> {
-        return Api.call(this.api.put, {}, { filters: searchFilter, data_center: dataCenter, retain_num_days: 14.0 });
+    private static async apiGenListingsPut(api: any, searchFilter: string, dataCenter: string): Promise<string> {
+        return Api.call(api, {}, { filters: searchFilter, data_center: dataCenter, retain_num_days: 14.0 });
     }
+
+    private static async apiListingsPut(searchFilter: string, dataCenter: string): Promise<string> {
+        return this.apiGenListingsPut(this.api.listings.put, searchFilter, dataCenter);
+    }
+
+    private static async apiHistoryPut(searchFilter: string, dataCenter: string): Promise<string> {
+        return this.apiGenListingsPut(this.api.history.put, searchFilter, dataCenter);
+    }
+
+    private static async apiListingsGet(id: string): Promise<ListingJson> {
+        return Api.call(this.api.listings.get, { id });
+    }
+
+    private static async apiHistoryGet(id: string): Promise<ListingJson> {
+        return Api.call(this.api.history.get, { id });
+    }
+
+    ////////////////////////////////////////////////////
 
     private static async apiGetDebug(): Promise<CustomInfoJson> {
         try {
@@ -131,8 +185,17 @@ export default class CustomInfo {
         };
 
         return {
-            get: { endpoint: 'v1/custom', options: { method: 'GET', ...commonHeaders } },
-            put: { endpoint: 'v1/custom', options: { method: 'PUT', ...commonHeaders } },
+            listings: {
+                get: { endpoint: 'v1/listings', options: { method: 'GET', ...commonHeaders } },
+                put: { endpoint: 'v1/listings', options: { method: 'PUT', ...commonHeaders } },
+            },
+            history: {
+                get: { endpoint: 'v1/history', options: { method: 'GET', ...commonHeaders } },
+                put: { endpoint: 'v1/history', options: { method: 'PUT', ...commonHeaders } },
+            },
+            recipe: {
+                get: { endpoint: 'v1/recipe', options: { method: 'GET', ...commonHeaders } },
+            },
         }
     }
 }

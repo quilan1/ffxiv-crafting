@@ -11,7 +11,7 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--release",
+                    "--profile=release-debug",
                     "--bin=ffxiv-crafting",
                     "--package=ffxiv-crafting"
                 ],
@@ -21,7 +21,7 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}/crafting-server"
         },
         {
             "type": "lldb",
@@ -39,7 +39,7 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}/crafting-server"
         }
     ]
 }

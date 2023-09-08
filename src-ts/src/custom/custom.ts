@@ -473,6 +473,7 @@ class FiltersDlg {
             get count() { return document.querySelector('#custom-count') as HTMLInputElement; },
             get dataCenter() { return document.querySelector('#custom-data-center') as HTMLSelectElement; },
             get status() { return document.querySelector('#custom-filters-status') as HTMLElement; },
+            get isHq() { return document.querySelector('#is-hq') as HTMLInputElement; },
         }
     }
 
@@ -486,6 +487,10 @@ class FiltersDlg {
 
     static get dataCenter(): string {
         return this.selectors.dataCenter.value;
+    }
+
+    static get isHq(): boolean {
+        return this.selectors.isHq.value as any;
     }
 
     static async withDisabledRefresh(func: () => Promise<void>): Promise<void> {

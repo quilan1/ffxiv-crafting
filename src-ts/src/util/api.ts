@@ -35,8 +35,12 @@ export default class Api {
 
         try {
             let request = await this.fetch(`${call.endpoint}?${formDataStr}`, options);
-            let json = await request.json();
-            return json;
+            let text = await request.text();
+            try {
+                return await JSON.parse(text);
+            } catch (err) {
+                return text as any;
+            }
         } catch (err) {
             console.error(err);
             throw err;

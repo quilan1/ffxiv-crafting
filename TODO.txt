@@ -1,0 +1,4 @@
+Dockerize things
+
+Make searching for housing items faster
+

@@ -58,3 +58,6 @@ fn setup() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {}
