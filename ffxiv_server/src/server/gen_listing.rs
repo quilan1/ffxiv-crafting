@@ -5,14 +5,12 @@ use axum_macros::debug_handler;
 use futures::{future::BoxFuture, FutureExt};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-
-use crate::{
-    server::server::ServerState,
-    universalis::{
-        GenListing, History, ItemListingMap, Listing, UniversalisProcessor, UniversalisStatus,
-    },
-    util::ProcessType,
+use ffxiv_universalis::{
+    util::ProcessType, GenListing, History, ItemListingMap, Listing, UniversalisProcessor,
+    UniversalisStatus,
 };
+
+use crate::server::server::ServerState;
 
 use super::{make_builder, not_found, ok_json, ok_text, util};
 
@@ -62,7 +60,7 @@ pub async fn put_item_history(
     State(state): State<Arc<ServerState>>,
     Json(payload): Json<PutInput>,
 ) -> impl IntoResponse {
-    ok_text(put_item_gen_listing_data::<History>(state, payload))
+    ok_text(put_item_gen_listing_data::<History>(&state, payload))
 }
 
 #[debug_handler]
@@ -71,7 +69,7 @@ pub async fn put_item_listings(
     State(state): State<Arc<ServerState>>,
     Json(payload): Json<PutInput>,
 ) -> impl IntoResponse {
-    ok_text(put_item_gen_listing_data::<Listing>(state, payload))
+    ok_text(put_item_gen_listing_data::<Listing>(&state, payload))
 }
 
 #[debug_handler]
@@ -79,7 +77,7 @@ pub async fn get_item_history(
     State(state): State<Arc<ServerState>>,
     Form(payload): Form<GetInput>,
 ) -> impl IntoResponse {
-    get_gen_listings::<Listing>(state, payload).await
+    get_gen_listings(state, payload).await
 }
 
 #[debug_handler]
@@ -87,16 +85,16 @@ pub async fn get_item_listings(
     State(state): State<Arc<ServerState>>,
     Form(payload): Form<GetInput>,
 ) -> impl IntoResponse {
-    get_gen_listings::<Listing>(state, payload).await
+    get_gen_listings(state, payload).await
 }
 
 #[allow(clippy::unused_async)]
-pub async fn get_gen_listings<T: GenListing + 'static>(
+pub async fn get_gen_listings(
     state: Arc<ServerState>,
     payload: GetInput,
 ) -> impl IntoResponse {
     let uuid = payload.id.clone();
-    let current_status = get_item_gen_listing_data::<T>(state.clone(), payload);
+    let current_status = get_item_gen_listing_data(&state.clone(), payload);
 
     match current_status {
         GetStatus::Error(err) => not_found(err).into_response(),
@@ -114,7 +112,7 @@ pub async fn get_gen_listings<T: GenListing + 'static>(
 ////////////////////////////////////////////////////////////
 
 pub fn put_item_gen_listing_data<T: GenListing + 'static>(
-    state: Arc<ServerState>,
+    state: &Arc<ServerState>,
     payload: PutInput,
 ) -> String {
     let (top_ids, all_ids) = util::get_ids_from_filters(payload.filters);
@@ -124,7 +122,7 @@ pub fn put_item_gen_listing_data<T: GenListing + 'static>(
         UniversalisProcessor::new(state.async_processor.clone(), builder.data_centers, all_ids);
 
     // Queue up the future
-    let status = UniversalisStatus::new();
+    let status = UniversalisStatus::default();
     let future = processor.process_listings::<T>(status.clone()).boxed();
 
     // Send it off for processing, via the unlimited queue
@@ -150,8 +148,8 @@ pub fn put_item_gen_listing_data<T: GenListing + 'static>(
     uuid
 }
 
-pub fn get_item_gen_listing_data<T: GenListing + 'static>(
-    state: Arc<ServerState>,
+pub fn get_item_gen_listing_data(
+    state: &Arc<ServerState>,
     payload: GetInput,
 ) -> GetStatus {
     let uuid = payload.id;

@@ -7,6 +7,7 @@ services:
     volumes:
       - ./ffxiv_server:/ffxiv_server
       - ./ffxiv_items:/ffxiv_items
+      - ./ffxiv_universalis:/ffxiv_universalis
 
   http-server:
     image: httpd:2.4

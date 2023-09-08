@@ -1,15 +1,13 @@
-use crate::cli::settings;
-
 pub struct UniversalisBuilder {
     pub homeworld: String,
     pub data_centers: Vec<String>,
 }
 
 impl UniversalisBuilder {
-    pub fn new() -> Self {
+    pub fn new(homeworld: &str, data_centers: &[String]) -> Self {
         Self {
-            homeworld: settings().homeworld.clone(),
-            data_centers: settings().data_centers.clone(),
+            homeworld: homeworld.into(),
+            data_centers: data_centers.into(),
         }
     }
 

@@ -5,9 +5,11 @@ mod server;
 mod util;
 
 pub use server::Server;
+use crate::cli::settings;
 
-pub(super) fn make_builder(data_center: Option<String>) -> crate::universalis::UniversalisBuilder {
-    let builder = crate::universalis::UniversalisBuilder::new();
+pub(super) fn make_builder(data_center: Option<String>) -> ffxiv_universalis::UniversalisBuilder {
+    let settings = settings();
+    let builder = ffxiv_universalis::UniversalisBuilder::new(&settings.homeworld, &settings.data_centers);
     match data_center {
         None => builder,
         Some(data_center) => builder.data_centers(data_center.split(',').collect::<Vec<_>>()),

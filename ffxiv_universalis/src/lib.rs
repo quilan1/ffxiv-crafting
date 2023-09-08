@@ -5,6 +5,7 @@ mod gen_listing;
 mod json;
 mod processor;
 mod status;
+pub mod util;
 
 pub use builder::UniversalisBuilder;
 pub use gen_listing::{GenListing, History, Listing};

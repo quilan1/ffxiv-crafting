@@ -1,15 +1,13 @@
 use anyhow::Result;
 use axum::{http::Method, routing::get, Router};
+use ffxiv_universalis::util::{AmValue, AsyncProcessor};
 use futures::join;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::{
-    server::{
-        gen_listing::{get_item_history, get_item_listings, put_item_history, put_item_listings},
-        recipe::get_recipe_info,
-    },
-    util::{AmValue, AsyncProcessor},
+use crate::server::{
+    gen_listing::{get_item_history, get_item_listings, put_item_history, put_item_listings},
+    recipe::get_recipe_info,
 };
 
 use super::gen_listing::ListingInfo;

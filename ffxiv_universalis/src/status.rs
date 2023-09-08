@@ -18,9 +18,7 @@ enum UniversalisStatusValue {
 // Some utility functions for the status, to prevent accidentally deadlocking via the mutex (oops)
 impl UniversalisStatus {
     pub fn new() -> Self {
-        Self {
-            data: AmValue::new(UniversalisStatusValue::Queued),
-        }
+        Self::default()
     }
 
     #[allow(dead_code)]
@@ -51,6 +49,14 @@ impl UniversalisStatus {
     pub fn set_finished(&self) {
         let mut data = self.data.lock();
         *data = UniversalisStatusValue::Finished;
+    }
+}
+
+impl Default for UniversalisStatus {
+    fn default() -> Self {
+        Self {
+            data: AmValue::new(UniversalisStatusValue::Queued),
+        }
     }
 }
 

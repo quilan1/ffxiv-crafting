@@ -2,14 +2,11 @@ use std::time::Duration;
 
 use super::{gen_listing::GenListing, UniversalisStatus};
 use crate::{
-    universalis::json::ItemListingMap,
     util::{AsyncProcessor, ProcessType},
+    ItemListingMap,
 };
 
-use futures::{
-    future::{join_all, BoxFuture},
-    FutureExt,
-};
+use futures::{future::join_all, FutureExt};
 use itertools::Itertools;
 use log::{error, info, warn};
 use tokio::time::sleep;

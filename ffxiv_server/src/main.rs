@@ -3,8 +3,6 @@
 
 mod cli;
 mod server;
-mod universalis;
-mod util;
 
 use std::{error::Error, time::Instant};
 
@@ -42,8 +40,6 @@ fn setup() -> Result<(), Box<dyn Error>> {
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "info");
     }
-
-    console_subscriber::init();
 
     let logfile = FileAppender::builder()
         .encoder(Box::new(PatternEncoder::new("{({d}):35} - {l} - {m}{n}")))
