@@ -1,58 +1,12 @@
-use anyhow::Result;
 use regex::Regex;
 
-use crate::{library, util::item_checked, ItemInfo, parsers::{UiCategoryList, RecipeLevel, Recipe}};
+use crate::{
+    library,
+    parsers::{Recipe, RecipeLevel, UiCategoryList},
+    ItemInfo,
+};
 
 type FilterOptions = Vec<String>;
-
-#[derive(PartialEq)]
-pub enum QualityFilter {
-    Any,
-    NQ,
-    HQ,
-}
-
-impl Default for QualityFilter {
-    fn default() -> Self {
-        Self::Any
-    }
-}
-
-#[derive(Default)]
-pub struct AnalysisFilters {
-    pub quality: QualityFilter,
-    pub count: Option<u32>,
-    pub limit: Option<u32>,
-    pub min_velocity: Option<f32>,
-    pub always_top: bool,
-}
-
-impl AnalysisFilters {
-    #[allow(dead_code)]
-    pub fn new(group_filters: &[Filter], item_filters: &[Filter]) -> Result<Self> {
-        let mut all_filters = group_filters.to_owned();
-        all_filters.extend(item_filters.to_owned());
-        Self::from_filters(&all_filters)
-    }
-
-    #[allow(dead_code)]
-    pub fn from_filters(all_filters: &Vec<Filter>) -> Result<Self> {
-        let mut filters = AnalysisFilters::default();
-        for Filter { ftype, options } in all_filters {
-            match &ftype[..] {
-                ":count" => filters.count = Some(options.join("").parse::<u32>()?),
-                ":limit" => filters.limit = Some(options.join("").parse::<u32>()?),
-                ":min_velocity" => filters.min_velocity = Some(options.join("").parse::<f32>()?),
-                ":only_hq" => filters.quality = QualityFilter::HQ,
-                ":as_nq" => filters.quality = QualityFilter::NQ,
-                ":always_top" => filters.always_top = true,
-                _ => {}
-            }
-        }
-
-        Ok(filters)
-    }
-}
 
 #[derive(Clone)]
 pub struct Filter {
@@ -182,7 +136,8 @@ impl Filter {
         items.retain(|item| {
             Recipe::get(item.id).map_or(false, |recipe| {
                 recipe.inputs.iter().any(|input| {
-                    item_checked(input).map_or(false, |input_item| re.is_match(&input_item.name))
+                    ItemInfo::get_checked(input)
+                        .map_or(false, |input_item| re.is_match(&input_item.name))
                 })
             })
         });

@@ -2,7 +2,7 @@
 
 use itertools::Itertools;
 
-use crate::{library, Ingredient, ItemInfo, Filter, parsers::ItemList};
+use crate::{library, Filter, Ingredient, ItemInfo};
 
 ////////////////////////////////////////////////////////////
 
@@ -41,16 +41,6 @@ pub fn item_name<I: ItemId>(obj: &I) -> &'static str {
     &library().all_items[&id].name
 }
 
-pub fn item<I: ItemId>(obj: &I) -> &'static ItemInfo {
-    let id = obj.item_id();
-    &library().all_items[&id]
-}
-
-pub fn item_checked<I: ItemId>(obj: &I) -> Option<&'static ItemInfo> {
-    let id = obj.item_id();
-    library().all_items.items.get(&id)
-}
-
 ////////////////////////////////////////////////////////////
 
 pub fn get_ids_from_filters<S: AsRef<str>>(filters: S) -> (Vec<u32>, Vec<u32>) {
@@ -66,7 +56,7 @@ pub fn get_ids_from_filters<S: AsRef<str>>(filters: S) -> (Vec<u32>, Vec<u32>) {
     }
 
     fn inner(filters: &str) -> (Vec<u32>, Vec<u32>) {
-        let (items, _) = Filter::apply_filters(ItemList::all_items(), filters);
+        let (items, _) = Filter::apply_filters(ItemInfo::all_items(), filters);
         let top_level_item_ids = items.into_iter().map(|item| item.id).collect::<Vec<_>>();
         let all_item_ids = top_level_item_ids
             .iter()

@@ -2,7 +2,7 @@ use anyhow::Result;
 use csv::ReaderBuilder;
 use std::{collections::BTreeMap, ops::Index, path::Path};
 
-use crate::{library, util::item_checked};
+use crate::{ItemInfo, Library};
 
 #[derive(Default)]
 pub struct GatheringList {
@@ -17,7 +17,7 @@ pub struct GatheringInfo {
 }
 
 impl GatheringList {
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
+    pub fn from_path<P: AsRef<Path>>(library: &mut Library, path: P) -> Result<Self> {
         let mut gathering = BTreeMap::new();
         let mut by_item = BTreeMap::<u32, Vec<u32>>::new();
 
@@ -26,8 +26,8 @@ impl GatheringList {
             item_id = U[1];
             level = U[1 + 1];
 
-            let level = library().all_gathering_levels[&level];
-            match item_checked(&item_id).map(|item| item.name.is_empty()) {
+            let level = library.all_gathering_levels[&level];
+            match ItemInfo::get_checked(&item_id).map(|item| item.name.is_empty()) {
                 None | Some(true) => continue,
                 _ => {},
             };

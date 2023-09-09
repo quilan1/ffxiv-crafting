@@ -2,9 +2,9 @@
 #![allow(clippy::module_name_repetitions)]
 
 mod cli;
-mod server;
-mod recipe;
 mod gen_listing;
+mod recipe;
+mod server;
 mod util;
 
 use std::{error::Error, time::Instant};
@@ -58,7 +58,6 @@ fn setup() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
-
 
 #[cfg(test)]
 mod tests {}

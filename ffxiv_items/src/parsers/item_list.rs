@@ -2,7 +2,7 @@ use anyhow::Result;
 use csv::ReaderBuilder;
 use std::{collections::BTreeMap, ops::Index, path::Path};
 
-use crate::library;
+use crate::{library, util::ItemId};
 
 #[derive(Default)]
 pub struct ItemList {
@@ -17,6 +17,21 @@ pub struct ItemInfo {
     pub ilevel: u32,
     pub equip_level: u32,
     pub is_untradable: bool,
+}
+
+impl ItemInfo {
+    pub fn get<I: ItemId>(obj: &I) -> &'static ItemInfo {
+        let id = obj.item_id();
+        &library().all_items[&id]
+    }
+
+    pub fn get_checked<I: ItemId>(obj: &I) -> Option<&'static ItemInfo> {
+        library().all_items.items.get(&obj.item_id())
+    }
+
+    pub fn all_items() -> Vec<&'static ItemInfo> {
+        library().all_items.items.values().collect::<Vec<_>>()
+    }
 }
 
 impl ItemList {
@@ -65,10 +80,6 @@ impl ItemList {
                 Some(v).filter(|item| library().all_gathering.contains_item_id(item.id))
             })
             .collect::<Vec<_>>()
-    }
-
-    pub fn all_items() -> Vec<&'static ItemInfo> {
-        library().all_items.items.values().collect::<Vec<_>>()
     }
 }
 

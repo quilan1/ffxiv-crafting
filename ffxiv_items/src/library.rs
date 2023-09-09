@@ -3,15 +3,12 @@ use futures::future::join_all;
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
-use std::{collections::HashSet, fs::DirBuilder, io::Write};
-
-// use crate::cli::{settings, RunMode};
+use std::{fs::DirBuilder, io::Write};
 
 use super::parsers::{
     CraftLeveList, GatheringLevelList, GatheringList, ItemInfo, ItemList, JobCategoryList,
     LeveList, RecipeLevelTable, RecipeList, UiCategoryList,
 };
-use super::CraftList;
 
 #[derive(Default)]
 pub struct Library {
@@ -21,8 +18,6 @@ pub struct Library {
     pub all_recipes: RecipeList,
     pub all_gathering_levels: GatheringLevelList,
     pub all_gathering: GatheringList,
-    pub all_crafts: CraftList,
-    pub all_custom_crafts: CraftList,
     pub all_crafting_leves: CraftLeveList,
     pub all_leves: LeveList,
     pub all_job_categories: JobCategoryList,
@@ -54,13 +49,10 @@ impl Library {
         library.all_recipes = RecipeList::from_path("./csv/Recipe.csv")?;
         library.all_gathering_levels =
             GatheringLevelList::from_path("./csv/GatheringItemLevelConvertTable.csv")?;
-        library.all_gathering = GatheringList::from_path("./csv/GatheringItem.csv")?;
+        library.all_gathering = GatheringList::from_path(library, "./csv/GatheringItem.csv")?;
         library.all_job_categories = JobCategoryList::from_path("./csv/ClassJobCategory.csv")?;
         library.all_crafting_leves = CraftLeveList::from_path("./csv/CraftLeve.csv")?;
-        library.all_leves = LeveList::from_path("./csv/Leve.csv")?;
-
-        library.all_crafts = CraftList::from_path("./in_crafting_list.txt", false)?;
-        library.all_custom_crafts = CraftList::from_path("./in_custom_list.txt", true)?;
+        library.all_leves = LeveList::from_path(library, "./csv/Leve.csv")?;
 
         Ok(())
     }
@@ -113,19 +105,5 @@ impl Library {
 
     pub fn all_craftable_items(&self) -> Vec<&ItemInfo> {
         self.all_items.all_craftable_items()
-    }
-
-    #[allow(dead_code)]
-    pub fn all_gatherable_items(&self) -> Vec<&ItemInfo> {
-        self.all_items.all_gatherable_items()
-    }
-
-    #[allow(dead_code)]
-    pub fn all_market_board_ids(&self) -> Vec<u32> {
-        let mut ids = HashSet::new();
-        ids.extend(self.all_crafts.all_craft_item_ids());
-        ids.extend(self.all_custom_crafts.all_craft_item_ids());
-        ids.extend(self.all_gatherable_items().iter().map(|item| item.id));
-        ids.into_iter().collect::<Vec<_>>()
     }
 }
