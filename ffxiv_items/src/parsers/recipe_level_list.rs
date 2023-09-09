@@ -3,10 +3,18 @@ use std::{collections::BTreeMap, ops::Index, path::Path};
 use anyhow::Result;
 use csv::ReaderBuilder;
 
+use crate::library;
+
 pub struct RecipeLevel {
     pub id: u32,
     pub level: u32,
     pub stars: u32,
+}
+
+impl RecipeLevel {
+    pub fn get_unchecked(level_id: u32) -> &'static Self {
+        &library().all_recipe_levels[&level_id]
+    }
 }
 
 #[derive(Default)]

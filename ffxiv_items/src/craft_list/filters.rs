@@ -1,7 +1,7 @@
 use anyhow::Result;
 use regex::Regex;
 
-use crate::{library, util::item_checked, ItemInfo};
+use crate::{library, util::item_checked, ItemInfo, parsers::{UiCategoryList, RecipeLevel, Recipe}};
 
 type FilterOptions = Vec<String>;
 
@@ -128,12 +128,10 @@ impl Filter {
         let max_level = *levels.last().unwrap();
 
         items.retain(|item| {
-            if let Some(recipe) = library().all_recipes.get(item.id) {
-                let recipe_level = &library().all_recipe_levels[&recipe.level_id];
+            Recipe::get(item.id).map_or(false, |recipe| {
+                let recipe_level = RecipeLevel::get_unchecked(recipe.level_id);
                 recipe_level.level >= min_level && recipe_level.level <= max_level
-            } else {
-                false
-            }
+            })
         });
     }
 
@@ -160,9 +158,8 @@ impl Filter {
     }
 
     fn filter_ui_category(options: &FilterOptions, items: &mut Vec<&'static ItemInfo>) {
-        let categories = options;
-
-        items.retain(|item| categories.contains(&library().all_ui_categories[&item.ui_category]));
+        let categories = options.iter().map(|cat| cat.as_str()).collect::<Vec<_>>();
+        items.retain(|item| categories.contains(&UiCategoryList::get_unchecked(item.ui_category)));
     }
 
     fn filter_leve(options: &FilterOptions, items: &mut Vec<&'static ItemInfo>) {
@@ -175,7 +172,7 @@ impl Filter {
             leve_ids
                 .iter()
                 .map(|leve_id| &library().all_leves[leve_id].jobs)
-                .any(|jobs| library().all_job_categories[jobs].matches_any(&categories))
+                .any(|jobs| library().all_job_categories[jobs].matches_any(categories))
         });
     }
 
@@ -183,7 +180,7 @@ impl Filter {
         let re = Regex::new(&options.join("|")).unwrap();
 
         items.retain(|item| {
-            library().all_recipes.get(item.id).map_or(false, |recipe| {
+            Recipe::get(item.id).map_or(false, |recipe| {
                 recipe.inputs.iter().any(|input| {
                     item_checked(input).map_or(false, |input_item| re.is_match(&input_item.name))
                 })

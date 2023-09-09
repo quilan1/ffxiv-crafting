@@ -66,6 +66,10 @@ impl ItemList {
             })
             .collect::<Vec<_>>()
     }
+
+    pub fn all_items() -> Vec<&'static ItemInfo> {
+        library().all_items.items.values().collect::<Vec<_>>()
+    }
 }
 
 impl Index<&u32> for ItemList {

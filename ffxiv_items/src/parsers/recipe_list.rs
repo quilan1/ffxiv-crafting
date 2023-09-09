@@ -3,6 +3,8 @@ use csv::ReaderBuilder;
 use itertools::Itertools;
 use std::{collections::BTreeMap, ops::Index, path::Path};
 
+use crate::library::library;
+
 pub trait AsIngredient {
     fn as_ingredient(&self) -> Ingredient;
 }
@@ -32,6 +34,12 @@ pub struct Recipe {
     pub output: Ingredient,
     pub inputs: Vec<Ingredient>,
     pub level_id: u32,
+}
+
+impl Recipe {
+    pub fn get(id: u32) -> Option<&'static Recipe> {
+        library().all_recipes.recipes.get(&id)
+    }
 }
 
 #[derive(Default)]
@@ -75,10 +83,6 @@ impl RecipeList {
 
     pub fn contains_item_id(&self, id: u32) -> bool {
         self.recipes.contains_key(&id)
-    }
-
-    pub fn get(&self, id: u32) -> Option<&Recipe> {
-        self.recipes.get(&id)
     }
 }
 

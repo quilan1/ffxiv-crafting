@@ -2,10 +2,10 @@ use std::collections::BTreeMap;
 
 use axum::{extract::Form, response::IntoResponse};
 use axum_macros::debug_handler;
+use ffxiv_items::item_name;
 use serde::{Deserialize, Serialize};
-use ffxiv_items::{library, item_name};
 
-use super::{ok_json, util};
+use crate::util::ok_json;
 
 #[derive(Deserialize)]
 pub struct GetInput {
@@ -47,7 +47,7 @@ pub async fn get_recipe_info(Form(payload): Form<GetInput>) -> impl IntoResponse
 }
 
 pub fn get_recipe_info_data(payload: GetInput) -> GetOutput {
-    let (top_ids, all_ids) = util::get_ids_from_filters(payload.filters);
+    let (top_ids, all_ids) = ffxiv_items::get_ids_from_filters(payload.filters);
     let item_info = all_ids
         .into_iter()
         .map(|id| {
@@ -68,7 +68,7 @@ pub fn get_recipe_info_data(payload: GetInput) -> GetOutput {
 ////////////////////////////////////////////////////////////
 
 fn recipe_info(id: u32) -> Option<Recipe> {
-    library().all_recipes.get(id).map(|recipe| Recipe {
+    ffxiv_items::Recipe::get(id).map(|recipe| Recipe {
         outputs: recipe.output.count,
         inputs: recipe
             .inputs

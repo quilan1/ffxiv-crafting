@@ -3,8 +3,13 @@
 
 mod cli;
 mod server;
+mod recipe;
+mod gen_listing;
+mod util;
 
 use std::{error::Error, time::Instant};
+
+use crate::server::Server;
 
 // #[tokio::main(flavor = "current_thread")]
 #[tokio::main]
@@ -19,7 +24,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Library::create().await?;
     println!("Initialized in {} ms", start.elapsed().as_millis());
 
-    server::Server::run().await?;
+    Server::run().await?;
 
     Ok(())
 }
@@ -53,6 +58,7 @@ fn setup() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
+
 
 #[cfg(test)]
 mod tests {}
