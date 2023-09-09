@@ -2,7 +2,7 @@ use anyhow::Result;
 use csv::ReaderBuilder;
 use std::{collections::BTreeMap, ops::Index, path::Path};
 
-use crate::util::library;
+use crate::library;
 
 #[derive(Default)]
 pub struct ItemList {

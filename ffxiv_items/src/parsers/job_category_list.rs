@@ -45,10 +45,11 @@ impl JobCategoryList {
 }
 
 impl Jobs {
-    pub fn matches_any(&self, jobs: &Vec<&str>) -> bool {
+    pub fn matches_any<S: AsRef<str>>(&self, jobs: &Vec<S>) -> bool {
         let mut bits = 0;
         for job in jobs {
-            match &job[..] {
+            let job = job.as_ref();
+            match job {
                 "crp" | "CRP" => bits |= 1 << 0,
                 "bsm" | "BSM" => bits |= 1 << 1,
                 "arm" | "ARM" => bits |= 1 << 2,

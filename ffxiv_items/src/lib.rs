@@ -1,10 +1,11 @@
 mod craft_list;
-#[allow(clippy::module_inception)]
 mod library;
 mod parsers;
-pub mod util;
+mod util;
 
 use craft_list::CraftList;
-pub use craft_list::{AnalysisFilters, Filter};
+use parsers::{Ingredient, ItemInfo};
+
+pub use craft_list::Filter;
 pub use library::{library, Library};
-pub use parsers::{AsIngredient, Ingredient, ItemInfo};
+pub use util::item_name;

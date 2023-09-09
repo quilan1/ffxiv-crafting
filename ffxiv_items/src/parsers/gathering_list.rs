@@ -2,7 +2,7 @@ use anyhow::Result;
 use csv::ReaderBuilder;
 use std::{collections::BTreeMap, ops::Index, path::Path};
 
-use crate::util::{item_checked, library};
+use crate::{library, util::item_checked};
 
 #[derive(Default)]
 pub struct GatheringList {

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::{collections::BTreeSet, fs::read_to_string, path::Path};
 
-use crate::util::{item, library};
+use crate::{library, util::item};
 
 use super::Filter;
 

@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use axum::{extract::Form, response::IntoResponse};
 use axum_macros::debug_handler;
 use serde::{Deserialize, Serialize};
-use ffxiv_items::{library, util::item_name};
+use ffxiv_items::{library, item_name};
 
 use super::{ok_json, util};
 
