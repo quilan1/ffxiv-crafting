@@ -1,31 +1,31 @@
 use anyhow::Result;
 use futures::future::join_all;
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
 use std::{fs::DirBuilder, io::Write};
 
+use crate::recipe::RecipeLevelInfo;
+use crate::Recipe;
+
 use super::parsers::{
-    CraftLeveList, GatheringLevelList, GatheringList, ItemInfo, ItemList, JobCategoryList,
-    LeveList, RecipeLevelTable, RecipeList, UiCategoryList,
+    CraftLeveList, ItemList, JobCategoryList, LeveList, RecipeLevelTable, RecipeList,
+    UiCategoryList,
 };
 
 #[derive(Default)]
 pub struct Library {
-    pub all_items: ItemList,
-    pub all_ui_categories: UiCategoryList,
-    pub all_recipe_levels: RecipeLevelTable,
-    pub all_recipes: RecipeList,
-    pub all_gathering_levels: GatheringLevelList,
-    pub all_gathering: GatheringList,
-    pub all_crafting_leves: CraftLeveList,
-    pub all_leves: LeveList,
-    pub all_job_categories: JobCategoryList,
+    pub(crate) all_items: ItemList,
+    pub(crate) all_ui_categories: UiCategoryList,
+    pub(crate) all_crafting_leves: CraftLeveList,
+    pub(crate) all_leves: LeveList,
+    pub(crate) all_job_categories: JobCategoryList,
 }
 
 static mut LIBRARY: Option<Library> = None;
 
-pub fn library() -> &'static Library {
+pub(crate) fn library() -> &'static Library {
     unsafe { LIBRARY.as_ref().expect("LIBRARY has not been set!") }
 }
 
@@ -45,19 +45,49 @@ impl Library {
 
         library.all_items = ItemList::from_path("./csv/Item.csv")?;
         library.all_ui_categories = UiCategoryList::from_path("./csv/ItemUICategory.csv")?;
-        library.all_recipe_levels = RecipeLevelTable::from_path("./csv/RecipeLevelTable.csv")?;
-        library.all_recipes = RecipeList::from_path("./csv/Recipe.csv")?;
-        library.all_gathering_levels =
-            GatheringLevelList::from_path("./csv/GatheringItemLevelConvertTable.csv")?;
-        library.all_gathering = GatheringList::from_path(library, "./csv/GatheringItem.csv")?;
-        library.all_job_categories = JobCategoryList::from_path("./csv/ClassJobCategory.csv")?;
+
         library.all_crafting_leves = CraftLeveList::from_path("./csv/CraftLeve.csv")?;
         library.all_leves = LeveList::from_path(library, "./csv/Leve.csv")?;
+        library.all_job_categories = JobCategoryList::from_path("./csv/ClassJobCategory.csv")?;
+
+        let recipe_info = Self::parse_recipes()?;
+        for (_, recipe) in recipe_info {
+            if let Some(item) = library.all_items.items.get_mut(&recipe.output.item_id) {
+                item.recipe = Some(recipe);
+            }
+        }
 
         Ok(())
     }
 
-    pub async fn download_files() -> Result<()> {
+    fn parse_recipes() -> Result<BTreeMap<u32, Recipe>> {
+        let all_recipe_levels = RecipeLevelTable::from_path("./csv/RecipeLevelTable.csv")?;
+        let all_recipes = RecipeList::from_path("./csv/Recipe.csv")?;
+
+        let mut map = BTreeMap::new();
+        for (id, recipe_parsed) in all_recipes.0 {
+            let level_info = all_recipe_levels
+                .0
+                .get(&recipe_parsed.level_id)
+                .map(|level_info| RecipeLevelInfo {
+                    level: level_info.level,
+                    stars: level_info.stars,
+                });
+
+            map.insert(
+                id,
+                Recipe {
+                    output: recipe_parsed.output,
+                    inputs: recipe_parsed.inputs,
+                    level_info,
+                },
+            );
+        }
+
+        Ok(map)
+    }
+
+    async fn download_files() -> Result<()> {
         async fn download_url(url: &str) -> Result<String> {
             Ok(reqwest::get(url).await?.text().await?)
         }
@@ -85,8 +115,6 @@ impl Library {
         let files = [
             "ClassJobCategory.csv",
             "CraftLeve.csv",
-            "GatheringItem.csv",
-            "GatheringItemLevelConvertTable.csv",
             "Item.csv",
             "ItemUICategory.csv",
             "Leve.csv",
@@ -101,9 +129,5 @@ impl Library {
             .for_each(|err| panic!("{}", err));
 
         Ok(())
-    }
-
-    pub fn all_craftable_items(&self) -> Vec<&ItemInfo> {
-        self.all_items.all_craftable_items()
     }
 }

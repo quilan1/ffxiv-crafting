@@ -1,10 +1,6 @@
 use regex::Regex;
 
-use crate::{
-    library,
-    parsers::{Recipe, RecipeLevel, UiCategoryList},
-    ItemInfo,
-};
+use crate::{library, parsers::UiCategoryList, ItemInfo, Recipe};
 
 type FilterOptions = Vec<String>;
 
@@ -82,10 +78,13 @@ impl Filter {
         let max_level = *levels.last().unwrap();
 
         items.retain(|item| {
-            Recipe::get(item.id).map_or(false, |recipe| {
-                let recipe_level = RecipeLevel::get_unchecked(recipe.level_id);
-                recipe_level.level >= min_level && recipe_level.level <= max_level
-            })
+            item.recipe
+                .as_ref()
+                .map_or(false, |Recipe { level_info, .. }| {
+                    level_info.as_ref().map_or(false, |info| {
+                        info.level >= min_level && info.level <= max_level
+                    })
+                })
         });
     }
 
@@ -134,7 +133,7 @@ impl Filter {
         let re = Regex::new(&options.join("|")).unwrap();
 
         items.retain(|item| {
-            Recipe::get(item.id).map_or(false, |recipe| {
+            item.recipe.as_ref().map_or(false, |recipe| {
                 recipe.inputs.iter().any(|input| {
                     ItemInfo::get_checked(input)
                         .map_or(false, |input_item| re.is_match(&input_item.name))

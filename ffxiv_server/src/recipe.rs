@@ -68,15 +68,17 @@ pub fn get_recipe_info_data(payload: GetInput) -> GetOutput {
 ////////////////////////////////////////////////////////////
 
 fn recipe_info(id: u32) -> Option<Recipe> {
-    ffxiv_items::Recipe::get(id).map(|recipe| Recipe {
-        outputs: recipe.output.count,
-        inputs: recipe
-            .inputs
-            .iter()
-            .map(|input| RecipeData {
-                item_id: input.item_id,
-                count: input.count,
-            })
-            .collect(),
-    })
+    ffxiv_items::ItemInfo::get_checked(&id)
+        .and_then(|item| item.recipe.as_ref())
+        .map(|recipe| Recipe {
+            outputs: recipe.output.count,
+            inputs: recipe
+                .inputs
+                .iter()
+                .map(|input| RecipeData {
+                    item_id: input.item_id,
+                    count: input.count,
+                })
+                .collect(),
+        })
 }

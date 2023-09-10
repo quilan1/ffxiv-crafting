@@ -46,12 +46,16 @@ pub fn item_name<I: ItemId>(obj: &I) -> &'static str {
 pub fn get_ids_from_filters<S: AsRef<str>>(filters: S) -> (Vec<u32>, Vec<u32>) {
     fn push_ids(ids: &mut Vec<u32>, item_id: u32) {
         ids.push(item_id);
-        if !library().all_recipes.contains_item_id(item_id) {
-            return;
-        }
 
-        for input in &library().all_recipes[&item_id].inputs {
-            push_ids(ids, input.item_id);
+        if let Some(recipe) = library()
+            .all_items
+            .items
+            .get(&item_id)
+            .and_then(|item| item.recipe.as_ref())
+        {
+            for input in &recipe.inputs {
+                push_ids(ids, input.item_id);
+            }
         }
     }
 

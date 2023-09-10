@@ -1,51 +1,18 @@
 use anyhow::Result;
 use csv::ReaderBuilder;
 use itertools::Itertools;
-use std::{collections::BTreeMap, ops::Index, path::Path};
+use std::{collections::BTreeMap, path::Path};
 
-use crate::library::library;
+use crate::Ingredient;
 
-pub trait AsIngredient {
-    fn as_ingredient(&self) -> Ingredient;
-}
-
-#[derive(Clone, Default)]
-pub struct Ingredient {
-    pub count: u32,
-    pub item_id: u32,
-}
-
-impl AsIngredient for u32 {
-    fn as_ingredient(&self) -> Ingredient {
-        Ingredient {
-            item_id: *self,
-            count: 1,
-        }
-    }
-}
-
-impl AsIngredient for &Ingredient {
-    fn as_ingredient(&self) -> Ingredient {
-        (*self).clone()
-    }
-}
-
-pub struct Recipe {
+pub struct RecipeParsed {
     pub output: Ingredient,
     pub inputs: Vec<Ingredient>,
     pub level_id: u32,
 }
 
-impl Recipe {
-    pub fn get(id: u32) -> Option<&'static Recipe> {
-        library().all_recipes.recipes.get(&id)
-    }
-}
-
 #[derive(Default)]
-pub struct RecipeList {
-    pub recipes: BTreeMap<u32, Recipe>,
-}
+pub struct RecipeList(pub BTreeMap<u32, RecipeParsed>);
 
 impl RecipeList {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -70,7 +37,7 @@ impl RecipeList {
             let inputs = inputs.to_vec();
             recipes.insert(
                 output.item_id,
-                Recipe {
+                RecipeParsed {
                     output: output.clone(),
                     inputs: inputs.clone(),
                     level_id,
@@ -78,21 +45,6 @@ impl RecipeList {
             );
         });
 
-        Ok(Self { recipes })
-    }
-
-    pub fn contains_item_id(&self, id: u32) -> bool {
-        self.recipes.contains_key(&id)
-    }
-}
-
-impl Index<&u32> for RecipeList {
-    type Output = Recipe;
-
-    fn index(&self, index: &u32) -> &Self::Output {
-        match self.recipes.get(index) {
-            None => panic!("Missing item id: {index}"),
-            Some(value) => value,
-        }
+        Ok(Self(recipes))
     }
 }

@@ -1,26 +1,16 @@
-use std::{collections::BTreeMap, ops::Index, path::Path};
+use std::{collections::BTreeMap, path::Path};
 
 use anyhow::Result;
 use csv::ReaderBuilder;
 
-use crate::library;
-
-pub struct RecipeLevel {
+pub struct RecipeLevelParsed {
     pub id: u32,
     pub level: u32,
     pub stars: u32,
 }
 
-impl RecipeLevel {
-    pub fn get_unchecked(level_id: u32) -> &'static Self {
-        &library().all_recipe_levels[&level_id]
-    }
-}
-
 #[derive(Default)]
-pub struct RecipeLevelTable {
-    level_table: BTreeMap<u32, RecipeLevel>,
-}
+pub struct RecipeLevelTable(pub BTreeMap<u32, RecipeLevelParsed>);
 
 impl RecipeLevelTable {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -30,18 +20,9 @@ impl RecipeLevelTable {
             id = U[0];
             level = U[1];
             stars = U[1 + 1];
-            level_table.insert(id, RecipeLevel { id, level, stars });
+            level_table.insert(id, RecipeLevelParsed { id, level, stars });
         });
 
-        Ok(Self { level_table })
-    }
-}
-
-impl Index<&u32> for RecipeLevelTable {
-    type Output = RecipeLevel;
-
-    fn index(&self, index: &u32) -> &Self::Output {
-        // println!("Looking for RecipeLevelTable {}", index);
-        self.level_table.get(index).unwrap()
+        Ok(Self(level_table))
     }
 }

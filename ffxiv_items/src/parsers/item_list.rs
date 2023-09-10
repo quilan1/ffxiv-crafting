@@ -2,36 +2,12 @@ use anyhow::Result;
 use csv::ReaderBuilder;
 use std::{collections::BTreeMap, ops::Index, path::Path};
 
-use crate::{library, util::ItemId};
+use crate::ItemInfo;
 
 #[derive(Default)]
 pub struct ItemList {
     pub name_to_id: BTreeMap<String, u32>,
     pub items: BTreeMap<u32, ItemInfo>,
-}
-
-pub struct ItemInfo {
-    pub id: u32,
-    pub name: String,
-    pub ui_category: u32,
-    pub ilevel: u32,
-    pub equip_level: u32,
-    pub is_untradable: bool,
-}
-
-impl ItemInfo {
-    pub fn get<I: ItemId>(obj: &I) -> &'static ItemInfo {
-        let id = obj.item_id();
-        &library().all_items[&id]
-    }
-
-    pub fn get_checked<I: ItemId>(obj: &I) -> Option<&'static ItemInfo> {
-        library().all_items.items.get(&obj.item_id())
-    }
-
-    pub fn all_items() -> Vec<&'static ItemInfo> {
-        library().all_items.items.values().collect::<Vec<_>>()
-    }
 }
 
 impl ItemList {
@@ -54,6 +30,7 @@ impl ItemList {
                 ilevel,
                 equip_level,
                 is_untradable,
+                ..Default::default()
             };
 
             items.insert(id, item);
@@ -61,25 +38,6 @@ impl ItemList {
         });
 
         Ok(Self { name_to_id, items })
-    }
-
-    pub fn all_craftable_items(&self) -> Vec<&ItemInfo> {
-        self.items
-            .iter()
-            .filter_map(|(_, v)| {
-                Some(v).filter(|item| library().all_recipes.contains_item_id(item.id))
-            })
-            .collect::<Vec<_>>()
-    }
-
-    #[allow(dead_code)]
-    pub fn all_gatherable_items(&self) -> Vec<&ItemInfo> {
-        self.items
-            .iter()
-            .filter_map(|(_, v)| {
-                Some(v).filter(|item| library().all_gathering.contains_item_id(item.id))
-            })
-            .collect::<Vec<_>>()
     }
 }
 
