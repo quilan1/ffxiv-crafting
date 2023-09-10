@@ -4,7 +4,7 @@ use axum::{extract::State, response::IntoResponse, Form, Json};
 use axum_macros::debug_handler;
 use ffxiv_items::get_ids_from_filters;
 use ffxiv_universalis::{
-    util::ProcessType, GenListing, History, ItemListingMap, Listing, UniversalisProcessor,
+    GenListing, History, ItemListingMap, Listing, ProcessType, UniversalisProcessor,
     UniversalisStatus,
 };
 use futures::{future::BoxFuture, FutureExt};

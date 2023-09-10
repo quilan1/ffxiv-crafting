@@ -1,6 +1,6 @@
 use anyhow::Result;
 use axum::{http::Method, routing::get, Router};
-use ffxiv_universalis::util::{AmValue, AsyncProcessor};
+use ffxiv_universalis::{AmValue, AsyncProcessor};
 use futures::join;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tower_http::cors::{Any, CorsLayer};
