@@ -85,6 +85,17 @@ impl AsyncProcessor {
                    'await'ing somewhere. Might cause orphan futures.");
         }
     }
+
+    #[allow(dead_code, unused_must_use)]
+    async fn process_all(&self) {
+        while !self.is_empty() {
+            futures::poll!(self.clone());
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.active.lock().is_empty() && self.queue.lock().is_empty()
+    }
 }
 
 ////////////////////////////////////////////////////////////
@@ -105,6 +116,12 @@ impl Future for AsyncProcessor {
     }
 }
 
+impl AsyncProcessorData {
+    fn is_empty(&self) -> bool {
+        self.limited.is_empty() && self.unlimited.is_empty()
+    }
+}
+
 // Polls the active lists and retains only those futures that are unfinished
 impl Future for AsyncProcessorData {
     type Output = ();
@@ -117,5 +134,90 @@ impl Future for AsyncProcessorData {
             .retain_mut(|fut| fut.poll_unpin(cx).is_pending());
 
         Poll::Pending
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use tokio::{runtime::Builder, time::sleep};
+
+    use super::*;
+
+    fn block(f: impl Future<Output = ()>) {
+        Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(f);
+    }
+
+    #[test]
+    fn test_limited() {
+        const MAX_CONCURRENT: usize = 2;
+
+        block(async {
+            let mut proc = AsyncProcessor::new(MAX_CONCURRENT);
+            let count = AmValue::new(0);
+            let ran_future = AmValue::new(false);
+
+            async fn future(count: AmValue<usize>, ran_future: AmValue<bool>) {
+                *ran_future.lock() = true;
+                *count.lock() += 1;
+                assert!(*count.lock() <= MAX_CONCURRENT);
+                sleep(Duration::from_millis(10)).await;
+                *count.lock() -= 1;
+            }
+
+            // The futures need to be stored, or else they're thrown away & never run
+            let _futures = (0..4)
+                .map(|_| {
+                    proc.process_future(
+                        future(count.clone(), ran_future.clone()),
+                        ProcessType::Limited,
+                    )
+                })
+                .collect::<Vec<_>>();
+            proc.process_all().await;
+            assert!(*ran_future.lock());
+        });
+    }
+
+    #[test]
+    fn test_unlimited() {
+        const MAX_CONCURRENT: usize = 2;
+
+        block(async {
+            let mut proc = AsyncProcessor::new(MAX_CONCURRENT);
+            let count = AmValue::new(0);
+            let ran_future = AmValue::new(false);
+            let was_above_max = AmValue::new(false);
+
+            async fn future(
+                count: AmValue<usize>,
+                is_above_max: AmValue<bool>,
+                ran_future: AmValue<bool>,
+            ) {
+                *ran_future.lock() = true;
+                *count.lock() += 1;
+                *is_above_max.lock() |= *count.lock() > MAX_CONCURRENT;
+                sleep(Duration::from_millis(10)).await;
+                *count.lock() -= 1;
+            }
+
+            // The futures need to be stored, or else they're thrown away & never run
+            let _futures = (0..4)
+                .map(|_| {
+                    proc.process_future(
+                        future(count.clone(), was_above_max.clone(), ran_future.clone()),
+                        ProcessType::Unlimited,
+                    )
+                })
+                .collect::<Vec<_>>();
+            proc.process_all().await;
+            assert!(*was_above_max.lock());
+            assert!(*ran_future.lock());
+        });
     }
 }
