@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::util::AmValue;
+use crate::AmValue;
 
 #[derive(Clone)]
 pub struct UniversalisStatus {
@@ -21,7 +21,6 @@ impl UniversalisStatus {
         Self::default()
     }
 
-    #[allow(dead_code)]
     pub fn is_finished(&self) -> bool {
         let data = self.data.lock();
         data.is_finished()
@@ -67,7 +66,6 @@ impl Display for UniversalisStatus {
     }
 }
 
-#[allow(dead_code)]
 impl UniversalisStatusValue {
     fn is_finished(&self) -> bool {
         matches!(*self, UniversalisStatusValue::Finished)

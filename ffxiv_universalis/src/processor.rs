@@ -1,9 +1,7 @@
 use std::time::Duration;
 
-use super::{gen_listing::GenListing, UniversalisStatus};
 use crate::{
-    util::{AsyncProcessor, ProcessType},
-    ItemListingMap,
+    AsyncProcessType, AsyncProcessor, FetchListingType, ItemListingMap, UniversalisStatus,
 };
 
 use futures::{future::join_all, FutureExt};
@@ -30,7 +28,7 @@ impl UniversalisProcessor {
         }
     }
 
-    pub async fn process_listings<T: GenListing + 'static>(
+    pub async fn process_listings<T: FetchListingType + 'static>(
         self,
         status: UniversalisStatus,
     ) -> (ItemListingMap, Vec<u32>) {
@@ -57,7 +55,7 @@ impl UniversalisProcessor {
         (listing_map, failure_ids)
     }
 
-    async fn _process_listings<T: GenListing + 'static>(
+    async fn _process_listings<T: FetchListingType + 'static>(
         &self,
         status: UniversalisStatus,
     ) -> Vec<Option<ItemListingMap>> {
@@ -117,7 +115,7 @@ impl UniversalisProcessor {
 
 // Uses the AsyncProcessor to queue the listing & history API calls to Universalis. Once
 // they return, it yields the full request back.
-async fn process_listing<T: GenListing + 'static>(
+async fn process_listing<T: FetchListingType + 'static>(
     mut processor: AsyncProcessor,
     world: String,
     ids: String,
@@ -133,12 +131,12 @@ async fn process_listing<T: GenListing + 'static>(
     );
 
     processor
-        .process_future(future.boxed(), ProcessType::Limited)
+        .process_future(future.boxed(), AsyncProcessType::Limited)
         .await
 }
 
 // Grab the JSON string from a listing API from Universalis
-async fn fetch_listing<T: GenListing + 'static>(
+async fn fetch_listing<T: FetchListingType + 'static>(
     url: String,
     signature: String,
     status: UniversalisStatus,

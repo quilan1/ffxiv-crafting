@@ -1,11 +1,19 @@
 use anyhow::Result;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
     time::{Duration, SystemTime},
 };
 
-use super::ItemListing;
+#[derive(Debug, Default, Serialize)]
+pub struct ItemListing {
+    pub price: u32,
+    pub count: u32,
+    pub is_hq: bool,
+    pub world: String,
+    pub name: String,
+    pub posting: u64,
+}
 
 #[derive(Debug, Clone, Deserialize)]
 struct MultipleListingView {
@@ -93,13 +101,11 @@ fn parse_recent_listings(
         .into_iter()
         .filter(|listing| {
             // Only history listings have a timestamp, so limit those to the last week
-            if let Some(timestamp) = listing.timestamp {
+            listing.timestamp.map_or(true, |timestamp| {
                 let days = SystemTime::UNIX_EPOCH + Duration::from_secs(timestamp);
                 let days = days.elapsed().unwrap().as_secs_f32() / (3600.0 * 24.0);
                 days <= retain_num_days
-            } else {
-                true
-            }
+            })
         })
         .map(|listing| ItemListing {
             price: listing.pricePerUnit,

@@ -1,4 +1,3 @@
-#[allow(dead_code)]
 pub struct Settings {
     pub listings_ratio: f32,
     pub max_crafting_allowed_recursive_loss: u32,

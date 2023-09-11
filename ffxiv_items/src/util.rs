@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use itertools::Itertools;
 
 use crate::{library, Filter, Ingredient, ItemInfo};

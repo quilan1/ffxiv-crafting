@@ -2,7 +2,7 @@ services:
   ffxiv-server:
     image: rust:1.72
     working_dir: /ffxiv_server
-    command: [ "cargo", "run", "--profile", "docker" ]
+    command: [ "sh", "startup.sh" ]
     ports: [ "3001:3001" ]
     volumes:
       - ./ffxiv_server:/ffxiv_server

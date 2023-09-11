@@ -1,26 +1,17 @@
-mod builder;
-mod gen_listing;
-mod json;
+mod am_value;
+mod async_processor;
+mod fetch_listing_type;
 mod processor;
-mod status;
-mod util;
+mod universalis_json;
+mod universalis_status;
 
-pub use builder::UniversalisBuilder;
-pub use gen_listing::{GenListing, History, Listing};
-pub use json::ItemListingMap;
+use universalis_json::UniversalisJson;
+
+pub use am_value::{AmValue, AmoValue};
+pub use async_processor::{AsyncProcessType, AsyncProcessor};
+pub use fetch_listing_type::{FetchListingType, History, Listing};
 pub use processor::UniversalisProcessor;
-pub use status::UniversalisStatus;
-pub use util::{AmValue, AsyncProcessor, ProcessType};
+pub use universalis_json::ItemListingMap;
+pub use universalis_status::UniversalisStatus;
 
 ////////////////////////////////////////////////////////////
-
-// Directly exported as json
-#[derive(Debug, Default, serde::Serialize)]
-pub struct ItemListing {
-    pub price: u32,
-    pub count: u32,
-    pub is_hq: bool,
-    pub world: String,
-    pub name: String,
-    pub posting: u64,
-}

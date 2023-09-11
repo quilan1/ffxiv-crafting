@@ -4,15 +4,16 @@ use axum::{extract::State, response::IntoResponse, Form, Json};
 use axum_macros::debug_handler;
 use ffxiv_items::get_ids_from_filters;
 use ffxiv_universalis::{
-    GenListing, History, ItemListingMap, Listing, ProcessType, UniversalisProcessor,
+    AsyncProcessType, FetchListingType, History, ItemListingMap, Listing, UniversalisProcessor,
     UniversalisStatus,
 };
 use futures::{future::BoxFuture, FutureExt};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::cli::settings;
 use crate::server::ServerState;
-use crate::util::{make_builder, not_found, ok_json, ok_text};
+use crate::util::{not_found, ok_json, ok_text};
 
 #[derive(Deserialize)]
 pub struct PutInput {
@@ -108,15 +109,17 @@ pub async fn get_gen_listings(state: Arc<ServerState>, payload: GetInput) -> imp
 
 ////////////////////////////////////////////////////////////
 
-pub fn put_item_gen_listing_data<T: GenListing + 'static>(
+pub fn put_item_gen_listing_data<T: FetchListingType + 'static>(
     state: &Arc<ServerState>,
     payload: PutInput,
 ) -> String {
     let (top_ids, all_ids) = get_ids_from_filters(payload.filters);
-    let builder = make_builder(payload.data_center);
+    let data_centers = match payload.data_center {
+        None => settings().data_centers.clone(),
+        Some(data_center) => data_center.split(',').map(ToString::to_string).collect(),
+    };
 
-    let processor =
-        UniversalisProcessor::new(state.async_processor.clone(), builder.data_centers, all_ids);
+    let processor = UniversalisProcessor::new(state.async_processor.clone(), data_centers, all_ids);
 
     // Queue up the future
     let status = UniversalisStatus::default();
@@ -126,7 +129,7 @@ pub fn put_item_gen_listing_data<T: GenListing + 'static>(
     let output = state
         .async_processor
         .clone()
-        .process_future(future, ProcessType::Unlimited);
+        .process_future(future, AsyncProcessType::Unlimited);
 
     let retain_num_days = payload.retain_num_days.unwrap_or(7.0);
 

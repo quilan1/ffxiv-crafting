@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::sync::Arc;
 
 use parking_lot::{Mutex, MutexGuard};
@@ -22,14 +20,6 @@ impl<O> AmValue<O> {
         self.data.lock()
     }
 
-    pub fn take(&self) -> O
-    where
-        O: Default,
-    {
-        let mut output = self.data.lock();
-        std::mem::take(&mut output)
-    }
-
     pub fn replace(&self, value: O) -> O {
         let mut output = self.data.lock();
         std::mem::replace(&mut output, value)
@@ -41,5 +31,38 @@ impl<O> Clone for AmValue<O> {
         Self {
             data: self.data.clone(),
         }
+    }
+}
+
+////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_lock() {
+        let i = AmValue::new(3);
+        assert_eq!(*i.lock(), 3);
+        *i.lock() = 4;
+        assert_eq!(*i.lock(), 4);
+    }
+
+    #[test]
+    fn test_replace() {
+        let i = AmValue::new(3);
+        assert_eq!(*i.lock(), 3);
+        i.replace(4);
+        assert_eq!(*i.lock(), 4);
+    }
+
+    #[test]
+    fn test_clone() {
+        let i = AmValue::new(3);
+        let _i = i.clone();
+
+        struct NoClone {}
+        let i = AmoValue::new(Some(NoClone {}));
+        let _i = i.clone();
     }
 }

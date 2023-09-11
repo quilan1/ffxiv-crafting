@@ -1,17 +1,17 @@
 use anyhow::Result;
 
-use super::{json::UniversalisJson, ItemListingMap};
+use crate::{ItemListingMap, UniversalisJson};
 
 pub struct Listing;
 pub struct History;
 
-pub trait GenListing {
+pub trait FetchListingType {
     fn url<S: AsRef<str>>(world: S, ids: S) -> String;
     fn fetch_type() -> &'static str;
     fn parse_json(json: String, retain_num_days: f32) -> Result<ItemListingMap>;
 }
 
-impl GenListing for Listing {
+impl FetchListingType for Listing {
     fn url<S: AsRef<str>>(world: S, ids: S) -> String {
         format!(
             "https://universalis.app/api/v2/{}/{}?entries=0",
@@ -29,7 +29,7 @@ impl GenListing for Listing {
     }
 }
 
-impl GenListing for History {
+impl FetchListingType for History {
     fn url<S: AsRef<str>>(world: S, ids: S) -> String {
         format!(
             "https://universalis.app/api/v2/history/{}/{}",

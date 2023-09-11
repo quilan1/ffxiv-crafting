@@ -6,7 +6,7 @@ use std::{
 use futures::{future::BoxFuture, Future, FutureExt};
 use log::error;
 
-use super::{AmValue, AmoValue};
+use crate::{AmValue, AmoValue};
 
 #[derive(Clone, Default)]
 pub struct AsyncProcessor {
@@ -23,7 +23,7 @@ struct AsyncProcessorData {
 }
 
 #[derive(Clone, Copy)]
-pub enum ProcessType {
+pub enum AsyncProcessType {
     Limited,
     Unlimited,
 }
@@ -43,7 +43,7 @@ impl AsyncProcessor {
     pub fn process_future<Fut>(
         &mut self,
         future: Fut,
-        process_type: ProcessType,
+        process_type: AsyncProcessType,
     ) -> BoxFuture<'static, Fut::Output>
     where
         Fut: Future + Send + 'static,
@@ -51,8 +51,8 @@ impl AsyncProcessor {
     {
         let (future, remote) = future.remote_handle();
         match process_type {
-            ProcessType::Limited => self.queue.lock().limited.push(future.boxed()),
-            ProcessType::Unlimited => self.queue.lock().unlimited.push(future.boxed()),
+            AsyncProcessType::Limited => self.queue.lock().limited.push(future.boxed()),
+            AsyncProcessType::Unlimited => self.queue.lock().unlimited.push(future.boxed()),
         };
         self.wake();
         remote.boxed()
@@ -137,6 +137,8 @@ impl Future for AsyncProcessorData {
     }
 }
 
+////////////////////////////////////////////////////////////
+
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
@@ -155,6 +157,7 @@ mod tests {
 
     #[test]
     fn test_limited() {
+        // Test that only MAX_CONCURRENT futures will run concurrently at a time, if stored as limited
         const MAX_CONCURRENT: usize = 2;
 
         block(async {
@@ -175,7 +178,7 @@ mod tests {
                 .map(|_| {
                     proc.process_future(
                         future(count.clone(), ran_future.clone()),
-                        ProcessType::Limited,
+                        AsyncProcessType::Limited,
                     )
                 })
                 .collect::<Vec<_>>();
@@ -186,6 +189,7 @@ mod tests {
 
     #[test]
     fn test_unlimited() {
+        // Test that more than MAX_CONCURRENT futures will run concurrently at a time, if stored as unlimited
         const MAX_CONCURRENT: usize = 2;
 
         block(async {
@@ -211,7 +215,7 @@ mod tests {
                 .map(|_| {
                     proc.process_future(
                         future(count.clone(), was_above_max.clone(), ran_future.clone()),
-                        ProcessType::Unlimited,
+                        AsyncProcessType::Unlimited,
                     )
                 })
                 .collect::<Vec<_>>();
