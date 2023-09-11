@@ -5,9 +5,9 @@ services:
     command: [ "sh", "startup.sh" ]
     ports: [ "3001:3001" ]
     volumes:
-      - ./ffxiv_server:/ffxiv_server
-      - ./ffxiv_items:/ffxiv_items
-      - ./ffxiv_universalis:/ffxiv_universalis
+      - ./crates/ffxiv_server:/ffxiv_server
+      - ./crates/ffxiv_items:/ffxiv_items
+      - ./crates/ffxiv_universalis:/ffxiv_universalis
 
   http-server:
     image: httpd:2.4
@@ -17,23 +17,24 @@ services:
         condition: service_started
         required: false
     volumes:
-      - ./frontend:/usr/local/apache2/htdocs/
+      - ./frontend/src-js:/usr/local/apache2/htdocs/
 
   typescript-watch:
     image: mcr.microsoft.com/devcontainers/typescript-node:20
-    working_dir: /frontend-ts
+    working_dir: /src-ts
     command: [ "tsc", "--watch" ]
     depends_on:
       typescript-init:
         condition: service_completed_successfully
-    profiles: [ dev ]
+    profiles: [ watch ]
     volumes:
-      - ./frontend-ts:/frontend-ts
-      - ./frontend:/frontend
+      - ./frontend/src-ts:/src-ts
+      - ./frontend/src-js:/src-js
 
   typescript-init:
     image: mcr.microsoft.com/devcontainers/typescript-node:20
-    working_dir: /frontend-ts
-    command: [ "npm", "install" ]
+    working_dir: /src-ts
+    command: [ "sh", "startup.sh" ]
     volumes:
-      - ./frontend-ts:/frontend-ts
+      - ./frontend/src-ts:/src-ts
+      - ./frontend/src-js:/src-js
