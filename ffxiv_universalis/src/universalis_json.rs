@@ -15,12 +15,12 @@ pub struct ItemListing {
     pub posting: u64,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 struct MultipleListingView {
     items: BTreeMap<String, ListingView>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[allow(dead_code, non_snake_case)]
 struct ListingView {
     itemID: u32,
@@ -32,8 +32,8 @@ struct ListingView {
     recentHistory: Vec<ItemListingView>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code, non_snake_case)]
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
 struct ItemListingView {
     pricePerUnit: u32,
     hq: bool,
@@ -44,12 +44,12 @@ struct ItemListingView {
     retainerName: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 struct MultipleHistoryView {
     items: BTreeMap<String, HistoryView>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 struct HistoryView {
     entries: Vec<ItemListingView>,
 }

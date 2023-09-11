@@ -86,13 +86,15 @@ impl AsyncProcessor {
         }
     }
 
-    #[allow(dead_code, unused_must_use)]
+    #[cfg(test)]
+    #[allow(unused_must_use)]
     async fn process_all(&self) {
         while !self.is_empty() {
             futures::poll!(self.clone());
         }
     }
 
+    #[cfg(test)]
     fn is_empty(&self) -> bool {
         self.active.lock().is_empty() && self.queue.lock().is_empty()
     }
@@ -117,6 +119,7 @@ impl Future for AsyncProcessor {
 }
 
 impl AsyncProcessorData {
+    #[cfg(test)]
     fn is_empty(&self) -> bool {
         self.limited.is_empty() && self.unlimited.is_empty()
     }

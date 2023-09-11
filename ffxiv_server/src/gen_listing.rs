@@ -122,8 +122,7 @@ pub fn put_item_gen_listing_data<T: FetchListingType + 'static>(
     let processor = UniversalisProcessor::new(state.async_processor.clone(), data_centers, all_ids);
 
     // Queue up the future
-    let status = UniversalisStatus::default();
-    let future = processor.process_listings::<T>(status.clone()).boxed();
+    let (future, status) = processor.process_listings::<T>();
 
     // Send it off for processing, via the unlimited queue
     let output = state
@@ -138,7 +137,7 @@ pub fn put_item_gen_listing_data<T: FetchListingType + 'static>(
     state.insert_listing(
         &uuid,
         ListingInfo {
-            status: status.clone(),
+            status,
             output,
             top_ids,
             retain_num_days,
