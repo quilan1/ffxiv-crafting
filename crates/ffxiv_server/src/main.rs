@@ -1,3 +1,4 @@
+#![warn(unused_crate_dependencies)]
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
 
@@ -9,6 +10,7 @@ mod util;
 
 use std::{error::Error, time::Instant};
 
+use crate::gen_listing::ListingInfo;
 use crate::server::Server;
 
 // #[tokio::main(flavor = "current_thread")]

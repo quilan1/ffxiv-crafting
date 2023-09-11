@@ -1,3 +1,5 @@
+#![warn(unused_crate_dependencies)]
+
 mod filter;
 mod item_info;
 mod library;

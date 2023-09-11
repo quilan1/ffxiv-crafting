@@ -1,6 +1,6 @@
 use anyhow::Result;
+use async_processor::{AmValue, AsyncProcessor};
 use axum::{http::Method, routing::get, Router};
-use ffxiv_universalis::{AmValue, AsyncProcessor};
 use futures::join;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tower_http::cors::{Any, CorsLayer};
@@ -10,7 +10,7 @@ use crate::{
     recipe::get_recipe_info,
 };
 
-use super::gen_listing::ListingInfo;
+use crate::ListingInfo;
 
 pub struct Server;
 

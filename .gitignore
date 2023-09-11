@@ -1,6 +1,2 @@
 .vscode/
-csv/
 target/
-out/
-node_modules/
-js/

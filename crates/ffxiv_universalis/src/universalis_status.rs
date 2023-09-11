@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::AmValue;
+use async_processor::AmValue;
 
 #[derive(Clone)]
 pub struct UniversalisStatus {

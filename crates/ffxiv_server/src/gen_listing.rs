@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
+use async_processor::AsyncProcessType;
 use axum::{extract::State, response::IntoResponse, Form, Json};
 use axum_macros::debug_handler;
 use ffxiv_items::get_ids_from_filters;
 use ffxiv_universalis::{
-    AsyncProcessType, FetchListingType, History, ItemListingMap, Listing, UniversalisProcessor,
-    UniversalisStatus,
+    FetchListingType, History, ItemListingMap, Listing, UniversalisProcessor, UniversalisStatus,
 };
 use futures::{future::BoxFuture, FutureExt};
 use serde::{Deserialize, Serialize};

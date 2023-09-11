@@ -1,13 +1,11 @@
 services:
   ffxiv-server:
     image: rust:1.72
-    working_dir: /ffxiv_server
+    working_dir: /crates
     command: [ "sh", "startup.sh" ]
     ports: [ "3001:3001" ]
     volumes:
-      - ./crates/ffxiv_server:/ffxiv_server
-      - ./crates/ffxiv_items:/ffxiv_items
-      - ./crates/ffxiv_universalis:/ffxiv_universalis
+      - ./crates:/crates
 
   http-server:
     image: httpd:2.4

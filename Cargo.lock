@@ -65,6 +65,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "async_processor"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "log",
+ "parking_lot",
+ "tokio",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -318,12 +328,12 @@ name = "ffxiv_server"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async_processor",
  "axum",
  "axum-macros",
  "ffxiv_items",
  "ffxiv_universalis",
  "futures",
- "itertools",
  "log",
  "log4rs",
  "reqwest",
@@ -338,10 +348,10 @@ name = "ffxiv_universalis"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async_processor",
  "futures",
  "itertools",
  "log",
- "parking_lot",
  "reqwest",
  "serde",
  "serde_json",

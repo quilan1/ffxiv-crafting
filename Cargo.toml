@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/ffxiv_items", "crates/ffxiv_server", "crates/ffxiv_universalis"]
+members = ["crates/ffxiv_items", "crates/ffxiv_server", "crates/ffxiv_universalis", "crates/async_processor"]
 resolver = "2"
 
 [profile.release-debug]

@@ -1,10 +1,12 @@
 use std::time::Duration;
 
-use crate::{
-    AsyncProcessType, AsyncProcessor, FetchListingType, ItemListingMap, UniversalisStatus,
-};
+use crate::{FetchListingType, ItemListingMap, UniversalisStatus};
 
-use futures::{future::{join_all, BoxFuture}, FutureExt};
+use async_processor::{AsyncProcessType, AsyncProcessor};
+use futures::{
+    future::{join_all, BoxFuture},
+    FutureExt,
+};
 use itertools::Itertools;
 use log::{error, info, warn};
 use tokio::time::sleep;
@@ -30,9 +32,16 @@ impl UniversalisProcessor {
 
     pub fn process_listings<T: FetchListingType + 'static>(
         self,
-    ) -> (BoxFuture<'static, (ItemListingMap, Vec<u32>)>, UniversalisStatus) {
+    ) -> (
+        BoxFuture<'static, (ItemListingMap, Vec<u32>)>,
+        UniversalisStatus,
+    ) {
         let status = UniversalisStatus::new();
-        (self.process_listings_with_status::<T>(status.clone()).boxed(), status)
+        (
+            self.process_listings_with_status::<T>(status.clone())
+                .boxed(),
+            status,
+        )
     }
 
     async fn process_listings_with_status<T: FetchListingType + 'static>(
