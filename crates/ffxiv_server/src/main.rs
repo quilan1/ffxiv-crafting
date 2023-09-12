@@ -2,7 +2,6 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
 
-mod cli;
 mod gen_listing;
 mod recipe;
 mod server;
@@ -16,11 +15,9 @@ use crate::server::Server;
 // #[tokio::main(flavor = "current_thread")]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    use cli::process_cli;
     use ffxiv_items::Library;
 
     setup()?;
-    process_cli();
 
     let start = Instant::now();
     Library::create().await?;
@@ -38,6 +35,15 @@ fn setup() -> Result<(), Box<dyn Error>> {
         config::{Appender, Root},
         encode::pattern::PatternEncoder,
         Config,
+    };
+
+    if let Ok(val) = std::env::var("FFXIV_DATA_CENTERS") {
+        println!("FFXIV_DATA_CENTERS is currently set to {val}");
+    } else {
+        println!(
+            "FFXIV_DATA_CENTERS environment variable not currently set. Defaulting to Dynamis."
+        );
+        std::env::set_var("FFXIV_DATA_CENTERS", "Dynamis");
     };
 
     if std::env::var("RUST_LIB_BACKTRACE").is_err() {

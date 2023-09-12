@@ -15,6 +15,9 @@
                 ]
             },
             "args": [],
+            "env": {
+                "FFXIV_DATA_CENTERS": "Dynamis"
+            },
             "cwd": "${workspaceFolder}/ffxiv_server"
         },
         {
@@ -27,6 +30,9 @@
                 ],
             },
             "args": [],
+            "env": {
+                "FFXIV_DATA_CENTERS": "Dynamis"
+            },
             "cwd": "${workspaceFolder}/ffxiv_server"
         }
     ]

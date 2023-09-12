@@ -11,7 +11,6 @@ use futures::{future::BoxFuture, FutureExt};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::cli::settings;
 use crate::server::ServerState;
 use crate::util::{not_found, ok_json, ok_text};
 
@@ -114,10 +113,13 @@ pub fn put_item_gen_listing_data<T: FetchListingType + 'static>(
     payload: PutInput,
 ) -> String {
     let (top_ids, all_ids) = get_ids_from_filters(payload.filters);
-    let data_centers = match payload.data_center {
-        None => settings().data_centers.clone(),
-        Some(data_center) => data_center.split(',').map(ToString::to_string).collect(),
-    };
+    let data_centers = payload
+        .data_center
+        .or(std::env::var("FFXIV_DATA_CENTERS").ok())
+        .unwrap()
+        .split(',')
+        .map(ToString::to_string)
+        .collect();
 
     let processor = UniversalisProcessor::new(state.async_processor.clone(), data_centers, all_ids);
 

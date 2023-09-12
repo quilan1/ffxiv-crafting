@@ -2,8 +2,10 @@ services:
   ffxiv-server:
     image: rust:1.72
     working_dir: /crates
-    command: [ "sh", "startup.sh" ]
+    command: [ "./startup.sh" ]
     ports: [ "3001:3001" ]
+    environment:
+      - FFXIV_DATA_CENTERS=Dynamis
     volumes:
       - ./crates:/crates
 
