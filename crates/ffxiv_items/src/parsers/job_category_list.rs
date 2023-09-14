@@ -45,7 +45,7 @@ impl JobCategoryList {
 }
 
 impl Jobs {
-    pub fn matches_any<S: AsRef<str>>(&self, jobs: &Vec<S>) -> bool {
+    pub fn matches_any<S: AsRef<str>>(&self, jobs: &[S]) -> bool {
         let mut bits = 0;
         for job in jobs {
             let job = job.as_ref();

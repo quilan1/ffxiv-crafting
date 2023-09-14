@@ -319,6 +319,7 @@ dependencies = [
  "csv",
  "futures",
  "itertools",
+ "log",
  "regex",
  "reqwest",
 ]

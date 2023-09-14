@@ -1,6 +1,8 @@
+use itertools::Itertools;
+
 use crate::{library, util::ItemId, Recipe};
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct ItemInfo {
     pub id: u32,
     pub name: String,
@@ -23,5 +25,26 @@ impl ItemInfo {
 
     pub fn all_items() -> Vec<&'static ItemInfo> {
         library().all_items.items.values().collect::<Vec<_>>()
+    }
+
+    pub fn all_recipe_input_ids<I: ItemId>(&self, item: I) -> Vec<u32> {
+        fn inner(id: u32, results: &mut Vec<u32>) {
+            let item = ItemInfo::get(&id);
+            results.push(item.id);
+
+            if let Some(recipe) = &item.recipe {
+                for input in &recipe.inputs {
+                    inner(input.item_id(), results);
+                }
+            }
+        }
+
+        let mut results = Vec::new();
+        if let Some(recipe) = &ItemInfo::get(&item).recipe {
+            for input in &recipe.inputs {
+                inner(input.item_id(), &mut results);
+            }
+        }
+        results.into_iter().unique().collect()
     }
 }

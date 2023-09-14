@@ -38,6 +38,7 @@ impl Server {
                 get(get_item_listings).put(put_item_listings),
             )
             .with_state(app_state)
+            .route("/v1/health", get(get_health_check))
             .layer(
                 CorsLayer::new()
                     .allow_methods(vec![Method::GET, Method::PUT])
@@ -55,4 +56,10 @@ impl Server {
 
         Ok(())
     }
+}
+
+#[allow(clippy::unused_async)]
+#[axum_macros::debug_handler]
+pub async fn get_health_check() -> impl axum::response::IntoResponse {
+    "OK"
 }

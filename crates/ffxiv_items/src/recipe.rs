@@ -23,13 +23,16 @@ impl AsIngredient for &Ingredient {
     }
 }
 
+#[derive(Clone)]
 pub struct RecipeLevelInfo {
     pub level: u32,
     pub stars: u32,
 }
 
+#[derive(Clone)]
 pub struct Recipe {
     pub output: Ingredient,
     pub inputs: Vec<Ingredient>,
-    pub level_info: Option<RecipeLevelInfo>,
+    pub level: u32,
+    pub stars: u32,
 }

@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     setup()?;
 
     let start = Instant::now();
-    Library::create().await?;
+    unsafe { Library::create().await? }; // Safety: Initializing the singleton once
     println!("Initialized in {} ms", start.elapsed().as_millis());
 
     Server::run().await?;

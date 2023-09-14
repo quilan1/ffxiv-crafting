@@ -7,6 +7,9 @@ mod parsers;
 mod recipe;
 mod util;
 
+#[cfg(test)]
+mod library_test_data;
+
 use filter::Filter;
 use library::library;
 use recipe::{Ingredient, Recipe};

@@ -34,7 +34,9 @@ fn library_mut() -> &'static mut Library {
 }
 
 impl Library {
-    pub async fn create() -> Result<()> {
+    /// # Safety
+    /// May not be called concurrently
+    pub async unsafe fn create() -> Result<()> {
         unsafe {
             LIBRARY = Some(Library::default());
         }
@@ -57,7 +59,20 @@ impl Library {
             }
         }
 
+        library.validate_items();
+
         Ok(())
+    }
+
+    #[cfg(test)]
+    pub(crate) unsafe fn create_mut() -> Option<&'static mut Self> {
+        unsafe {
+            if LIBRARY.is_some() {
+                return None;
+            }
+            LIBRARY = Some(Library::default());
+        }
+        Some(library_mut())
     }
 
     fn parse_recipes() -> Result<BTreeMap<u32, Recipe>> {
@@ -72,14 +87,16 @@ impl Library {
                 .map(|level_info| RecipeLevelInfo {
                     level: level_info.level,
                     stars: level_info.stars,
-                });
+                })
+                .unwrap();
 
             map.insert(
                 id,
                 Recipe {
                     output: recipe_parsed.output,
                     inputs: recipe_parsed.inputs,
-                    level_info,
+                    level: level_info.level,
+                    stars: level_info.stars,
                 },
             );
         }
@@ -129,5 +146,17 @@ impl Library {
             .for_each(|err| panic!("{}", err));
 
         Ok(())
+    }
+
+    fn validate_items(&self) {
+        for item in self.all_items.items.values() {
+            if let Some(recipe) = &item.recipe {
+                for input in &recipe.inputs {
+                    if crate::ItemInfo::get_checked(input).is_none() {
+                        println!("[Library] *WARN*: Item '{}' missing recipe references invalid item_id: {}", item.id, input.item_id);
+                    }
+                }
+            }
+        }
     }
 }

@@ -32,6 +32,18 @@ impl ItemId for &Ingredient {
     }
 }
 
+impl ItemId for ItemInfo {
+    fn item_id(&self) -> u32 {
+        self.id
+    }
+}
+
+impl ItemId for &ItemInfo {
+    fn item_id(&self) -> u32 {
+        self.id
+    }
+}
+
 ////////////////////////////////////////////////////////////
 
 pub fn item_name<I: ItemId>(obj: &I) -> &'static str {
@@ -58,7 +70,7 @@ pub fn get_ids_from_filters<S: AsRef<str>>(filters: S) -> (Vec<u32>, Vec<u32>) {
     }
 
     fn inner(filters: &str) -> (Vec<u32>, Vec<u32>) {
-        let (items, _) = Filter::apply_filters(ItemInfo::all_items(), filters);
+        let items = Filter::apply_filter_str(filters, ItemInfo::all_items());
         let top_level_item_ids = items.into_iter().map(|item| item.id).collect::<Vec<_>>();
         let all_item_ids = top_level_item_ids
             .iter()

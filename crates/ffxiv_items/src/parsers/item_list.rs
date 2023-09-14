@@ -41,6 +41,20 @@ impl ItemList {
     }
 }
 
+impl From<Vec<ItemInfo>> for ItemList {
+    fn from(item_vec: Vec<ItemInfo>) -> Self {
+        let mut items = BTreeMap::new();
+        let mut name_to_id = BTreeMap::new();
+
+        for item in item_vec {
+            name_to_id.insert(item.name.clone(), item.id);
+            items.insert(item.id, item);
+        }
+
+        Self { name_to_id, items }
+    }
+}
+
 impl Index<&u32> for ItemList {
     type Output = ItemInfo;
 
