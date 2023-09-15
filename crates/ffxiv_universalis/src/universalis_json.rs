@@ -62,17 +62,17 @@ pub struct UniversalisJson;
 
 impl UniversalisJson {
     pub fn parse_listing(json: String, retain_num_days: f32) -> Result<ItemListingMap> {
-        Self::parse_gen_listing::<MultipleListingView, ListingView>(&json, retain_num_days)
+        Self::parse_general_listing::<MultipleListingView, ListingView>(&json, retain_num_days)
     }
 
     pub fn parse_history(json: String, retain_num_days: f32) -> Result<ItemListingMap> {
-        Self::parse_gen_listing::<MultipleHistoryView, HistoryView>(&json, retain_num_days)
+        Self::parse_general_listing::<MultipleHistoryView, HistoryView>(&json, retain_num_days)
     }
 
-    fn parse_gen_listing<
+    fn parse_general_listing<
         'a,
         MultipleView: ItemsMapTrait<String, View> + Deserialize<'a>,
-        View: ItemsTrait,
+        View: GeneralListingsTrait,
     >(
         json: &'a str,
         retain_num_days: f32,
@@ -80,8 +80,9 @@ impl UniversalisJson {
         let json_map = serde_json::from_str::<MultipleView>(json)?.items();
 
         let mut map = ItemListingMap::new();
-        for (id, info) in json_map {
-            let mut listings = parse_recent_listings(info.items(), retain_num_days);
+        for (id, mut info) in json_map {
+            info.retain_recent_listings(retain_num_days);
+            let mut listings = info.into_item_listings();
 
             let id = id.parse::<u32>()?;
             let entry = map.entry(id).or_default();
@@ -93,41 +94,33 @@ impl UniversalisJson {
     }
 }
 
-fn parse_recent_listings(
-    item_listing_view: Vec<ItemListingView>,
-    retain_num_days: f32,
-) -> Vec<ItemListing> {
-    item_listing_view
-        .into_iter()
-        .filter(|listing| {
-            // Only history listings have a timestamp, so limit those to the last week
-            listing.timestamp.map_or(true, |timestamp| {
-                let days = SystemTime::UNIX_EPOCH + Duration::from_secs(timestamp);
-                let days = days.elapsed().unwrap().as_secs_f32() / (3600.0 * 24.0);
-                days <= retain_num_days
-            })
-        })
-        .map(|listing| ItemListing {
-            price: listing.pricePerUnit,
-            count: listing.quantity,
-            is_hq: listing.hq,
-            world: listing.worldName.unwrap_or_default(),
-            name: listing.retainerName.unwrap_or_default(),
-            posting: listing
-                .lastReviewTime
-                .unwrap_or(listing.timestamp.unwrap_or_default()),
-        })
-        .collect::<Vec<_>>()
-}
-
 ////////////////////////////////////////////////////////////
 
 trait ItemsMapTrait<K, V> {
     fn items(self) -> BTreeMap<K, V>;
 }
 
-trait ItemsTrait {
+trait GeneralListingsTrait
+where
+    Self: Sized,
+{
     fn items(self) -> Vec<ItemListingView>;
+    fn retain_recent_listings(&mut self, _retain_num_days: f32) {}
+    fn into_item_listings(self) -> Vec<ItemListing> {
+        self.items()
+            .into_iter()
+            .map(|listing| ItemListing {
+                price: listing.pricePerUnit,
+                count: listing.quantity,
+                is_hq: listing.hq,
+                world: listing.worldName.unwrap_or_default(),
+                name: listing.retainerName.unwrap_or_default(),
+                posting: listing
+                    .lastReviewTime
+                    .unwrap_or(listing.timestamp.unwrap_or_default()),
+            })
+            .collect()
+    }
 }
 
 ////////////////////////////////////////////////////////////
@@ -138,9 +131,18 @@ impl ItemsMapTrait<String, HistoryView> for MultipleHistoryView {
     }
 }
 
-impl ItemsTrait for HistoryView {
+impl GeneralListingsTrait for HistoryView {
     fn items(self) -> Vec<ItemListingView> {
         self.entries
+    }
+
+    fn retain_recent_listings(&mut self, retain_num_days: f32) {
+        self.entries.retain(|listing| {
+            let timestamp = listing.timestamp.unwrap();
+            let days = SystemTime::UNIX_EPOCH + Duration::from_secs(timestamp);
+            let days = days.elapsed().unwrap().as_secs_f32() / (3600.0 * 24.0);
+            days <= retain_num_days
+        });
     }
 }
 
@@ -152,7 +154,7 @@ impl ItemsMapTrait<String, ListingView> for MultipleListingView {
     }
 }
 
-impl ItemsTrait for ListingView {
+impl GeneralListingsTrait for ListingView {
     fn items(self) -> Vec<ItemListingView> {
         self.listings
     }
