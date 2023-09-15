@@ -143,6 +143,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "axum-server-timing"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68bb3635b412e609176ea4d8ab740abc68626548b512f2a27336468dc80d8f2f"
+dependencies = [
+ "axum",
+ "pin-project-lite",
+ "tower",
+]
+
+[[package]]
 name = "backtrace"
 version = "0.3.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -333,6 +344,7 @@ dependencies = [
  "async_processor",
  "axum",
  "axum-macros",
+ "axum-server-timing",
  "ffxiv_items",
  "ffxiv_universalis",
  "futures",

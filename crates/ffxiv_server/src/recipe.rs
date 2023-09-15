@@ -4,6 +4,7 @@ use axum::{extract::Form, response::IntoResponse};
 use axum_macros::debug_handler;
 use ffxiv_items::item_name;
 use serde::{Deserialize, Serialize};
+use tokio::spawn;
 
 use crate::util::ok_json;
 
@@ -43,7 +44,11 @@ pub struct RecipeData {
 #[allow(clippy::unused_async)]
 #[debug_handler]
 pub async fn get_recipe_info(Form(payload): Form<GetInput>) -> impl IntoResponse {
-    ok_json(get_recipe_info_data(payload))
+    ok_json(
+        spawn(async move { get_recipe_info_data(payload) })
+            .await
+            .unwrap(),
+    )
 }
 
 pub fn get_recipe_info_data(payload: GetInput) -> GetOutput {

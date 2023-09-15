@@ -2,14 +2,14 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
 
-mod gen_listing;
+mod general_listing;
 mod recipe;
 mod server;
 mod util;
 
 use std::{error::Error, time::Instant};
 
-use crate::gen_listing::ListingInfo;
+use crate::general_listing::ListingInfo;
 use crate::server::Server;
 
 // #[tokio::main(flavor = "current_thread")]

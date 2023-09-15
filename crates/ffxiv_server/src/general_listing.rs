@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use async_processor::AsyncProcessType;
 use axum::{extract::State, response::IntoResponse, Form, Json};
 use axum_macros::debug_handler;
 use ffxiv_items::get_ids_from_filters;
@@ -61,7 +60,7 @@ pub async fn put_item_history(
     State(state): State<Arc<ServerState>>,
     Json(payload): Json<PutInput>,
 ) -> impl IntoResponse {
-    let uuid = spawn(async move { put_item_gen_listing_data::<History>(&state, payload) })
+    let uuid = spawn(async move { put_item_general_listing_data::<History>(&state, payload) })
         .await
         .unwrap();
     ok_text(uuid)
@@ -73,7 +72,7 @@ pub async fn put_item_listings(
     State(state): State<Arc<ServerState>>,
     Json(payload): Json<PutInput>,
 ) -> impl IntoResponse {
-    let uuid = spawn(async move { put_item_gen_listing_data::<Listing>(&state, payload) })
+    let uuid = spawn(async move { put_item_general_listing_data::<Listing>(&state, payload) })
         .await
         .unwrap();
     ok_text(uuid)
@@ -84,7 +83,7 @@ pub async fn get_item_history(
     State(state): State<Arc<ServerState>>,
     Form(payload): Form<GetInput>,
 ) -> impl IntoResponse {
-    get_gen_listings(state, payload).await
+    get_general_listing_status(state, payload).await
 }
 
 #[debug_handler]
@@ -92,13 +91,16 @@ pub async fn get_item_listings(
     State(state): State<Arc<ServerState>>,
     Form(payload): Form<GetInput>,
 ) -> impl IntoResponse {
-    get_gen_listings(state, payload).await
+    get_general_listing_status(state, payload).await
 }
 
 #[allow(clippy::unused_async)]
-pub async fn get_gen_listings(state: Arc<ServerState>, payload: GetInput) -> impl IntoResponse {
+pub async fn get_general_listing_status(
+    state: Arc<ServerState>,
+    payload: GetInput,
+) -> impl IntoResponse {
     let uuid = payload.id.clone();
-    let current_status = get_item_gen_listing_data(&state.clone(), payload);
+    let current_status = get_item_general_listing_data(&state.clone(), payload);
 
     match current_status {
         GetStatus::Error(err) => not_found(err).into_response(),
@@ -115,7 +117,7 @@ pub async fn get_gen_listings(state: Arc<ServerState>, payload: GetInput) -> imp
 
 ////////////////////////////////////////////////////////////
 
-pub fn put_item_gen_listing_data<T: FetchListingType + 'static>(
+pub fn put_item_general_listing_data<T: FetchListingType + 'static>(
     state: &Arc<ServerState>,
     payload: PutInput,
 ) -> String {
@@ -128,17 +130,13 @@ pub fn put_item_gen_listing_data<T: FetchListingType + 'static>(
         .map(ToString::to_string)
         .collect();
 
-    let processor = UniversalisProcessor::new(state.async_processor.clone(), data_centers, all_ids);
-
-    // Queue up the future
-    let (future, status) = processor.process_listings::<T>();
-
-    // Send it off for processing, via the unlimited queue
-    let output = state
-        .async_processor
-        .clone()
-        .process_future(future, AsyncProcessType::Unlimited)
-        .future;
+    // Send the request over to the async processor
+    let processor = UniversalisProcessor::new(
+        state.universalis_async_processor.clone(),
+        data_centers,
+        all_ids,
+    );
+    let (output, status) = processor.process_listings::<T>();
 
     let retain_num_days = payload.retain_num_days.unwrap_or(7.0);
 
@@ -157,13 +155,13 @@ pub fn put_item_gen_listing_data<T: FetchListingType + 'static>(
     uuid
 }
 
-pub fn get_item_gen_listing_data(state: &Arc<ServerState>, payload: GetInput) -> GetStatus {
+pub fn get_item_general_listing_data(state: &Arc<ServerState>, payload: GetInput) -> GetStatus {
     let uuid = payload.id;
     state.with_listing(&uuid, |info| match info {
         None => GetStatus::Error(format!("Id not found: {uuid}")),
         Some(info) => match (&mut info.output).now_or_never() {
             Some((info, failures)) => GetStatus::Finished(info, failures),
-            None => GetStatus::InProgress(info.status.text(&state.async_processor)),
+            None => GetStatus::InProgress(info.status.text(&state.universalis_async_processor)),
         },
     })
 }

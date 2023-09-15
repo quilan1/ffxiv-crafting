@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::{FetchListingType, ItemListingMap, UniversalisStatus, UniversalisStatusValue};
 
-use async_processor::{AsyncProcessType, AsyncProcessor, IdFuture, SyncBoxFuture};
+use async_processor::{AsyncProcessor, IdFuture, SyncBoxFuture};
 use futures::future::join_all;
 use itertools::Itertools;
 use log::{error, info, warn};
@@ -139,8 +139,9 @@ fn process_listing<T: FetchListingType + 'static>(
     chunk_id: usize,
     max_chunks: usize,
 ) -> IdFuture<Option<ItemListingMap>> {
-    let future = fetch_listing::<T>(T::url(&world, &ids), format!("{}/{}", chunk_id, max_chunks));
-    processor.process_future(Box::pin(future), AsyncProcessType::Limited)
+    let url = T::url(&world, &ids);
+    let signature = format!("{}/{}", chunk_id, max_chunks);
+    processor.process_future(fetch_listing::<T>(url, signature))
 }
 
 // Grab the JSON string from a listing API from Universalis
