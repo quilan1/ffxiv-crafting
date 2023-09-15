@@ -9,6 +9,7 @@ use ffxiv_universalis::{
 };
 use futures::{future::BoxFuture, FutureExt};
 use serde::{Deserialize, Serialize};
+use tokio::spawn;
 use uuid::Uuid;
 
 use crate::server::ServerState;
@@ -60,7 +61,10 @@ pub async fn put_item_history(
     State(state): State<Arc<ServerState>>,
     Json(payload): Json<PutInput>,
 ) -> impl IntoResponse {
-    ok_text(put_item_gen_listing_data::<History>(&state, payload))
+    let uuid = spawn(async move { put_item_gen_listing_data::<History>(&state, payload) })
+        .await
+        .unwrap();
+    ok_text(uuid)
 }
 
 #[debug_handler]
@@ -69,7 +73,10 @@ pub async fn put_item_listings(
     State(state): State<Arc<ServerState>>,
     Json(payload): Json<PutInput>,
 ) -> impl IntoResponse {
-    ok_text(put_item_gen_listing_data::<Listing>(&state, payload))
+    let uuid = spawn(async move { put_item_gen_listing_data::<Listing>(&state, payload) })
+        .await
+        .unwrap();
+    ok_text(uuid)
 }
 
 #[debug_handler]
@@ -130,7 +137,8 @@ pub fn put_item_gen_listing_data<T: FetchListingType + 'static>(
     let output = state
         .async_processor
         .clone()
-        .process_future(future, AsyncProcessType::Unlimited);
+        .process_future(future, AsyncProcessType::Unlimited)
+        .future;
 
     let retain_num_days = payload.retain_num_days.unwrap_or(7.0);
 
@@ -155,7 +163,7 @@ pub fn get_item_gen_listing_data(state: &Arc<ServerState>, payload: GetInput) ->
         None => GetStatus::Error(format!("Id not found: {uuid}")),
         Some(info) => match (&mut info.output).now_or_never() {
             Some((info, failures)) => GetStatus::Finished(info, failures),
-            None => GetStatus::InProgress(info.status.to_string()),
+            None => GetStatus::InProgress(info.status.text(&state.async_processor)),
         },
     })
 }

@@ -1,15 +1,12 @@
 use std::time::Duration;
 
-use crate::{FetchListingType, ItemListingMap, UniversalisStatus};
+use crate::{FetchListingType, ItemListingMap, UniversalisStatus, UniversalisStatusValue};
 
-use async_processor::{AsyncProcessType, AsyncProcessor};
-use futures::{
-    future::{join_all, BoxFuture},
-    FutureExt,
-};
+use async_processor::{AsyncProcessType, AsyncProcessor, IdFuture, SyncBoxFuture};
+use futures::future::join_all;
 use itertools::Itertools;
 use log::{error, info, warn};
-use tokio::time::sleep;
+use tokio::{task::spawn, time::sleep};
 
 const MAX_CHUNK_SIZE: usize = 100;
 
@@ -32,14 +29,10 @@ impl UniversalisProcessor {
 
     pub fn process_listings<T: FetchListingType + 'static>(
         self,
-    ) -> (
-        BoxFuture<'static, (ItemListingMap, Vec<u32>)>,
-        UniversalisStatus,
-    ) {
+    ) -> (SyncBoxFuture<(ItemListingMap, Vec<u32>)>, UniversalisStatus) {
         let status = UniversalisStatus::new();
         (
-            self.process_listings_with_status::<T>(status.clone())
-                .boxed(),
+            Box::pin(self.process_listings_with_status::<T>(status.clone())),
             status,
         )
     }
@@ -49,22 +42,28 @@ impl UniversalisProcessor {
         status: UniversalisStatus,
     ) -> (ItemListingMap, Vec<u32>) {
         let results = self._process_listings::<T>(status.clone()).await;
+        status.set_value(UniversalisStatusValue::Cleanup);
 
-        let mut failure_ids = Vec::new();
-        let mut listing_map = ItemListingMap::new();
-        for (result, ids) in results.into_iter().zip(self.id_chunks()) {
-            match result {
-                Some(value) => {
-                    value.into_iter().for_each(|(key, mut listings)| {
-                        let entry = listing_map.entry(key).or_default();
-                        entry.append(&mut listings);
-                    });
+        let (listing_map, failure_ids) = spawn(async move {
+            let mut failure_ids = Vec::new();
+            let mut listing_map = ItemListingMap::new();
+            for (result, ids) in results.into_iter().zip(self.id_chunks()) {
+                match result {
+                    Some(value) => {
+                        value.into_iter().for_each(|(key, mut listings)| {
+                            let entry = listing_map.entry(key).or_default();
+                            entry.append(&mut listings);
+                        });
+                    }
+                    None => failure_ids.append(&mut ids.clone()),
                 }
-                None => failure_ids.append(&mut ids.clone()),
             }
-        }
+            (listing_map, failure_ids)
+        })
+        .await
+        .unwrap();
 
-        status.set_finished();
+        status.set_value(UniversalisStatusValue::Finished);
         info!("[process_{}] Done!", T::fetch_type());
 
         let failure_ids = failure_ids.into_iter().unique().collect::<Vec<_>>();
@@ -79,26 +78,28 @@ impl UniversalisProcessor {
         let id_chunks = self.id_chunks();
 
         let mut chunk_id = 1;
-        let mut futures = Vec::new();
+        let mut id_futures = Vec::new();
         for ids in &id_chunks {
             for world in &self.worlds {
                 let ids_string = ids.iter().map(|id| id.to_string()).join(",");
 
-                futures.push(
-                    process_listing::<T>(
-                        self.processor.clone(),
-                        world.clone(),
-                        ids_string,
-                        status.clone(),
-                        chunk_id,
-                        max_chunks,
-                    )
-                    .boxed(),
-                );
+                id_futures.push(process_listing::<T>(
+                    self.processor.clone(),
+                    world.clone(),
+                    ids_string,
+                    chunk_id,
+                    max_chunks,
+                ));
                 chunk_id += 1;
             }
         }
 
+        let (ids, futures): (Vec<_>, Vec<_>) = id_futures
+            .into_iter()
+            .map(|id_future| (id_future.id, id_future.future))
+            .unzip();
+
+        status.set_value(UniversalisStatusValue::Processing(ids));
         join_all(futures).await
     }
 
@@ -131,38 +132,25 @@ impl UniversalisProcessor {
 
 // Uses the AsyncProcessor to queue the listing & history API calls to Universalis. Once
 // they return, it yields the full request back.
-async fn process_listing<T: FetchListingType + 'static>(
+fn process_listing<T: FetchListingType + 'static>(
     mut processor: AsyncProcessor,
     world: String,
     ids: String,
-    status: UniversalisStatus,
     chunk_id: usize,
     max_chunks: usize,
-) -> Option<ItemListingMap> {
-    let future = fetch_listing::<T>(
-        T::url(&world, &ids),
-        format!("{}/{}", chunk_id, max_chunks),
-        status.clone(),
-        max_chunks,
-    );
-
-    processor
-        .process_future(future.boxed(), AsyncProcessType::Limited)
-        .await
+) -> IdFuture<Option<ItemListingMap>> {
+    let future = fetch_listing::<T>(T::url(&world, &ids), format!("{}/{}", chunk_id, max_chunks));
+    processor.process_future(Box::pin(future), AsyncProcessType::Limited)
 }
 
 // Grab the JSON string from a listing API from Universalis
 async fn fetch_listing<T: FetchListingType + 'static>(
     url: String,
     signature: String,
-    status: UniversalisStatus,
-    max_chunks: usize,
 ) -> Option<ItemListingMap> {
     let fetch_type = T::fetch_type();
     let num_attempts = 10;
     info!("[Fetch {signature}] {url}");
-
-    status.try_set_count(max_chunks);
 
     for attempt in 0..num_attempts {
         let listing = reqwest::get(&url).await.ok()?.text().await.ok()?;
@@ -175,12 +163,12 @@ async fn fetch_listing<T: FetchListingType + 'static>(
         }
 
         info!("[Fetch {signature}] {fetch_type} done");
-        status.dec_count();
-        return T::parse_json(listing, 7.0 * 28.0).ok();
+        return spawn(async move { T::parse_json(listing, 7.0 * 28.0).ok() })
+            .await
+            .unwrap();
     }
 
     error!("[Fetch {signature}] Failed to fetch: {url}");
-    status.dec_count();
     None
 }
 

@@ -1,31 +1,49 @@
 use std::{
+    collections::HashMap,
     pin::Pin,
     task::{Context, Poll, Waker},
 };
 
-use futures::{future::BoxFuture, Future, FutureExt};
+use futures::{Future, FutureExt};
 use log::error;
+use uuid::Uuid;
 
-use crate::{AmValue, AmoValue};
+use crate::{AmoValue, ArwValue};
 
 #[derive(Clone, Default)]
 pub struct AsyncProcessor {
-    active: AmValue<AsyncProcessorData>,
-    queue: AmValue<AsyncProcessorData>,
+    active: ArwValue<AsyncProcessorData>,
+    queue: ArwValue<AsyncProcessorData>,
     waker: AmoValue<Waker>,
     max_active: usize,
 }
 
 #[derive(Default)]
-struct AsyncProcessorData {
-    limited: Vec<BoxFuture<'static, ()>>,
-    unlimited: Vec<BoxFuture<'static, ()>>,
+pub struct AsyncProcessorData {
+    limited: Vec<IdFuture<()>>,
+    unlimited: Vec<IdFuture<()>>,
+}
+
+pub type SyncBoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send + Sync + 'static>>;
+
+pub struct IdFuture<T>
+where
+    T: Send,
+{
+    pub id: String,
+    pub future: SyncBoxFuture<T>,
 }
 
 #[derive(Clone, Copy)]
 pub enum AsyncProcessType {
     Limited,
     Unlimited,
+}
+
+#[derive(Clone)]
+pub enum AsyncProcessStatus {
+    Queued(usize),
+    Active,
 }
 
 ////////////////////////////////////////////////////////////
@@ -44,24 +62,35 @@ impl AsyncProcessor {
         &mut self,
         future: Fut,
         process_type: AsyncProcessType,
-    ) -> BoxFuture<'static, Fut::Output>
+    ) -> IdFuture<Fut::Output>
     where
-        Fut: Future + Send + 'static,
+        Fut: Future + Send + Sync + 'static,
         Fut::Output: Send,
     {
+        let id = Uuid::new_v4().to_string();
         let (future, remote) = future.remote_handle();
-        match process_type {
-            AsyncProcessType::Limited => self.queue.lock().limited.push(future.boxed()),
-            AsyncProcessType::Unlimited => self.queue.lock().unlimited.push(future.boxed()),
+
+        let id_future = IdFuture {
+            id: id.clone(),
+            future: Box::pin(future),
         };
+
+        match process_type {
+            AsyncProcessType::Limited => self.queue.write().limited.push(id_future),
+            AsyncProcessType::Unlimited => self.queue.write().unlimited.push(id_future),
+        };
+
         self.wake();
-        remote.boxed()
+        IdFuture {
+            id,
+            future: Box::pin(remote),
+        }
     }
 
     // Move stuff from the queues to the active lists
     fn move_from_queue_to_active(&mut self) {
-        let mut active = self.active.lock();
-        let mut queue = self.queue.lock();
+        let mut active = self.active.write();
+        let mut queue = self.queue.write();
 
         // Keep the number of active futures limited to at most max_active
         let avail_slots = queue
@@ -86,6 +115,77 @@ impl AsyncProcessor {
         }
     }
 
+    pub fn status(&self) -> HashMap<String, AsyncProcessStatus> {
+        let active_ids = self
+            .active
+            .read()
+            .limited
+            .iter()
+            .map(|id_future| id_future.id.clone())
+            .collect::<Vec<_>>();
+
+        let queued_ids = self
+            .queue
+            .read()
+            .limited
+            .iter()
+            .enumerate()
+            .map(|(index, id_future)| (index, id_future.id.clone()))
+            .collect::<Vec<_>>();
+
+        let mut id_map = HashMap::new();
+        id_map.extend(
+            active_ids
+                .into_iter()
+                .map(|id| (id, AsyncProcessStatus::Active)),
+        );
+        id_map.extend(
+            queued_ids
+                .into_iter()
+                .map(|(index, id)| (id, AsyncProcessStatus::Queued(index))),
+        );
+        id_map
+    }
+
+    // Polls the active futures, without holding the lock during the polling
+    fn poll_active(&mut self, cx: &mut Context<'_>) -> Poll<()> {
+        use std::mem::swap;
+
+        // There are two mildly difficult aspects to this, that need to be handled
+        // 1) The active queue needs to maintain a list of the correct ids
+        // 2) The polled futures must not be called while under lock
+        //
+        // Therefore, I've created a replacement AsyncProcessorData object, to have
+        // the futures swapped into. This way, the actual 'active' object will have dummy
+        // futures, and the 'data' object will have the real futures.
+        // Once 'data' has been polled, then we swap back 'data' with the 'active' object.
+
+        fn swap_out_id_futures(from: &mut Vec<IdFuture<()>>, to: &mut Vec<IdFuture<()>>) {
+            for id_future in from {
+                // Create a dummy future, which doesn't do anything
+                let mut temp_id_future = IdFuture {
+                    id: id_future.id.clone(),
+                    future: Box::pin(async {}),
+                };
+                swap(&mut temp_id_future, id_future);
+                to.push(temp_id_future);
+            }
+        }
+
+        let mut data = AsyncProcessorData::default();
+        {
+            let mut active = self.active.write();
+            swap_out_id_futures(&mut active.limited, &mut data.limited);
+            swap_out_id_futures(&mut active.unlimited, &mut data.unlimited);
+        }
+
+        let result = data.poll_unpin(cx);
+
+        std::mem::swap(&mut data, &mut *self.active.write());
+
+        result
+    }
+
     #[cfg(test)]
     #[allow(unused_must_use)]
     async fn process_all(&self) {
@@ -96,7 +196,7 @@ impl AsyncProcessor {
 
     #[cfg(test)]
     fn is_empty(&self) -> bool {
-        self.active.lock().is_empty() && self.queue.lock().is_empty()
+        self.active.read().is_empty() && self.queue.read().is_empty()
     }
 }
 
@@ -113,8 +213,8 @@ impl Future for AsyncProcessor {
         // Move from queue
         self.move_from_queue_to_active();
 
-        // Poll!
-        self.active.lock().poll_unpin(cx)
+        // Poll the active data
+        self.poll_active(cx)
     }
 }
 
@@ -132,9 +232,9 @@ impl Future for AsyncProcessorData {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // Keep only the unfinished futures
         self.limited
-            .retain_mut(|fut| fut.poll_unpin(cx).is_pending());
+            .retain_mut(|fut| fut.future.as_mut().poll_unpin(cx).is_pending());
         self.unlimited
-            .retain_mut(|fut| fut.poll_unpin(cx).is_pending());
+            .retain_mut(|fut| fut.future.as_mut().poll_unpin(cx).is_pending());
 
         Poll::Pending
     }
@@ -147,6 +247,8 @@ mod tests {
     use std::time::Duration;
 
     use tokio::{runtime::Builder, time::sleep};
+
+    use crate::AmValue;
 
     use super::*;
 

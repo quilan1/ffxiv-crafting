@@ -18,7 +18,7 @@
             "env": {
                 "FFXIV_DATA_CENTERS": "Dynamis"
             },
-            "cwd": "${workspaceFolder}/ffxiv_server"
+            "cwd": "${workspaceFolder}/crates"
         },
         {
             "type": "lldb",
@@ -33,7 +33,7 @@
             "env": {
                 "FFXIV_DATA_CENTERS": "Dynamis"
             },
-            "cwd": "${workspaceFolder}/ffxiv_server"
+            "cwd": "${workspaceFolder}/crates"
         }
     ]
 }

@@ -5,3 +5,8 @@ resolver = "2"
 [profile.release-debug]
 inherits="release"
 debug = true
+
+[profile.docker]
+inherits = "release"
+incremental = true
+lto = "thin"

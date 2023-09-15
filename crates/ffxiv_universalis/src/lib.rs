@@ -9,6 +9,6 @@ use universalis_json::UniversalisJson;
 pub use fetch_listing_type::{FetchListingType, History, Listing};
 pub use universalis_json::ItemListingMap;
 pub use universalis_processor::UniversalisProcessor;
-pub use universalis_status::UniversalisStatus;
+pub use universalis_status::{UniversalisStatus, UniversalisStatusValue};
 
 ////////////////////////////////////////////////////////////

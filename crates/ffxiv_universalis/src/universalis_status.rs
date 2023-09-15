@@ -1,15 +1,15 @@
-use std::fmt::Display;
-
-use async_processor::AmValue;
+use async_processor::{AmValue, AsyncProcessStatus, AsyncProcessor};
 
 #[derive(Clone)]
 pub struct UniversalisStatus {
     data: AmValue<UniversalisStatusValue>,
 }
 
-enum UniversalisStatusValue {
+#[derive(Clone)]
+pub enum UniversalisStatusValue {
     Queued,
-    Remaining(usize),
+    Processing(Vec<String>),
+    Cleanup,
     Finished,
 }
 
@@ -21,40 +21,42 @@ impl UniversalisStatus {
         }
     }
 
-    pub(crate) fn try_set_count(&self, count: usize) {
-        let mut data = self.data.lock();
-        if let UniversalisStatusValue::Queued = *data {
-            *data = UniversalisStatusValue::Remaining(count);
+    pub(crate) fn set_value(&self, value: UniversalisStatusValue) {
+        *self.data.lock() = value;
+    }
+
+    pub fn value(&self) -> UniversalisStatusValue {
+        (*self.data.lock()).clone()
+    }
+
+    pub fn text(&self, processor: &AsyncProcessor) -> String {
+        let ids = match self.value() {
+            UniversalisStatusValue::Queued => return "Queued...".into(),
+            UniversalisStatusValue::Cleanup => return "Cleaning up...".into(),
+            UniversalisStatusValue::Finished => return "Finished".into(),
+            UniversalisStatusValue::Processing(ids) => ids,
+        };
+
+        let proc_status = processor.status();
+
+        let mut queued = Vec::new();
+        let mut processing = 0;
+        let mut done = 0;
+        for id in &ids {
+            match proc_status.get(id) {
+                Some(AsyncProcessStatus::Active) => processing += 1,
+                Some(AsyncProcessStatus::Queued(index)) => queued.push(index),
+                None => done += 1,
+            }
         }
-    }
 
-    pub(crate) fn dec_count(&self) {
-        let mut data = self.data.lock();
-        if let UniversalisStatusValue::Remaining(count) = *data {
-            *data = UniversalisStatusValue::Remaining(count - 1);
-        }
-    }
-
-    pub(crate) fn set_finished(&self) {
-        let mut data = self.data.lock();
-        *data = UniversalisStatusValue::Finished;
-    }
-}
-
-impl Display for UniversalisStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let data = self.data.lock();
-        write!(f, "{data}")
-    }
-}
-
-// String value for the status
-impl Display for UniversalisStatusValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {
-            UniversalisStatusValue::Queued => write!(f, "Queued..."),
-            UniversalisStatusValue::Remaining(count) => write!(f, "Remaining: {count}"),
-            UniversalisStatusValue::Finished => write!(f, "Finished"),
+        if processing > 0 {
+            format!("Processing: {}, Done: {}/{}", processing, done, ids.len())
+        } else if queued.is_empty() {
+            "Cleaning up...".into()
+        } else {
+            let min_index = queued.into_iter().min().unwrap();
+            format!("Queued @ {min_index}")
         }
     }
 }
