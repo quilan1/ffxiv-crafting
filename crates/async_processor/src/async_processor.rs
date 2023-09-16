@@ -6,13 +6,18 @@ use std::{
 
 use futures::{Future, FutureExt};
 use log::error;
+#[cfg(feature = "tokio")]
+use tokio::task::JoinHandle;
 use uuid::Uuid;
 
 use crate::{AmoValue, ArwValue};
 
 #[derive(Clone, Default)]
 pub struct AsyncProcessor {
+    #[cfg(not(feature = "tokio"))]
     active: ArwValue<Vec<IdFuture<()>>>,
+    #[cfg(feature = "tokio")]
+    active: ArwValue<Vec<IdJoinHandle<()>>>,
     queue: ArwValue<Vec<IdFuture<()>>>,
     active_limited_ids: ArwValue<Vec<String>>,
     waker: AmoValue<Waker>,
@@ -27,6 +32,15 @@ where
 {
     pub id: String,
     pub future: SyncBoxFuture<T>,
+}
+
+#[cfg(feature = "tokio")]
+struct IdJoinHandle<T>
+where
+    T: Send,
+{
+    id: String,
+    join_handle: JoinHandle<T>,
 }
 
 #[derive(Clone)]
@@ -55,9 +69,15 @@ impl AsyncProcessor {
         let id = Uuid::new_v4().to_string();
         let (future, remote) = future.remote_handle();
 
+        let waker = self.waker.clone();
         self.queue.write().push(IdFuture {
             id: id.clone(),
-            future: Box::pin(future),
+            future: Box::pin(async move {
+                future.await;
+                if let Some(waker) = waker.lock().as_ref() {
+                    waker.wake_by_ref();
+                }
+            }),
         });
 
         self.wake();
@@ -111,17 +131,16 @@ impl AsyncProcessor {
             .retain(|id| !ids.contains(id));
         self.queue.write().retain(|id| !ids.contains(&id.id));
         self.active.write().retain(|id| !ids.contains(&id.id));
+        self.wake();
     }
 
-    #[cfg(test)]
     #[allow(unused_must_use)]
-    async fn process_all(&self) {
+    pub async fn process_all(&self) {
         while !self.is_empty() {
             futures::poll!(self.clone());
         }
     }
 
-    #[cfg(test)]
     fn is_empty(&self) -> bool {
         self.active.read().is_empty() && self.queue.read().is_empty()
     }
@@ -138,21 +157,48 @@ impl Future for AsyncProcessor {
         self.waker.replace(Some(cx.waker().clone()));
 
         // Keep the number of active futures limited to at most max_active
-        let avail_slots = self
+        let num_avail_slots = self
             .queue
             .read()
             .len()
             .min(self.max_active - self.active.read().len());
 
         // Move from queue to active
-        self.active
-            .write()
-            .extend(self.queue.write().drain(..avail_slots));
+        if num_avail_slots > 0 {
+            #[cfg(not(feature = "tokio"))]
+            self.active
+                .write()
+                .extend(self.queue.write().drain(..num_avail_slots));
+
+            // Place each new future in tokio's scheduler
+            #[cfg(feature = "tokio")]
+            self.active
+                .write()
+                .extend(
+                    self.queue
+                        .write()
+                        .drain(..num_avail_slots)
+                        .map(|id_future| IdJoinHandle {
+                            id: id_future.id,
+                            join_handle: tokio::spawn(id_future.future),
+                        }),
+                );
+        }
+
+        let num_active = self.active.read().len();
 
         // Poll the active data
-        self.active
-            .write()
-            .retain_mut(|fut| fut.future.as_mut().poll_unpin(cx).is_pending());
+        if num_active > 0 {
+            #[cfg(not(feature = "tokio"))]
+            self.active
+                .write()
+                .retain_mut(|fut| fut.future.as_mut().poll_unpin(cx).is_pending());
+
+            #[cfg(feature = "tokio")]
+            self.active
+                .write()
+                .retain_mut(|fut| !fut.join_handle.is_finished());
+        }
 
         // Update the active IDs for status
         let active_ids = self
@@ -160,7 +206,7 @@ impl Future for AsyncProcessor {
             .read()
             .iter()
             .map(|id_future| id_future.id.clone())
-            .collect();
+            .collect::<Vec<_>>();
         *self.active_limited_ids.write() = active_ids;
 
         Poll::Pending
@@ -172,7 +218,6 @@ impl Future for AsyncProcessor {
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
-
     use tokio::{runtime::Builder, time::sleep};
 
     use crate::AmValue;
