@@ -2,17 +2,15 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
 
-mod general_listing;
+mod market;
 mod recipe;
 mod server;
 mod util;
 
 use std::{error::Error, time::Instant};
 
-use crate::general_listing::ListingInfo;
 use crate::server::Server;
 
-// #[tokio::main(flavor = "current_thread")]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     use ffxiv_items::Library;
@@ -66,6 +64,3 @@ fn setup() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {}

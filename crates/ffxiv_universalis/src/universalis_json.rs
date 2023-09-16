@@ -5,6 +5,10 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+use crate::universalis_json_types::{
+    HistoryView, ItemListingView, ListingView, MultipleHistoryView, MultipleListingView,
+};
+
 #[derive(Debug, Default, Serialize)]
 pub struct ItemListing {
     pub price: u32,
@@ -15,57 +19,18 @@ pub struct ItemListing {
     pub posting: u64,
 }
 
-#[derive(Debug, Deserialize)]
-struct MultipleListingView {
-    items: BTreeMap<String, ListingView>,
-}
-
-#[derive(Debug, Deserialize)]
-#[allow(dead_code, non_snake_case)]
-struct ListingView {
-    itemID: u32,
-    averagePrice: f32,
-    averagePriceNQ: f32,
-    averagePriceHQ: f32,
-    minPriceHQ: u32,
-    listings: Vec<ItemListingView>,
-    recentHistory: Vec<ItemListingView>,
-}
-
-#[derive(Debug, Deserialize)]
-#[allow(non_snake_case)]
-struct ItemListingView {
-    pricePerUnit: u32,
-    hq: bool,
-    quantity: u32,
-    lastReviewTime: Option<u64>,
-    timestamp: Option<u64>,
-    worldName: Option<String>,
-    retainerName: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct MultipleHistoryView {
-    items: BTreeMap<String, HistoryView>,
-}
-
-#[derive(Debug, Deserialize)]
-struct HistoryView {
-    entries: Vec<ItemListingView>,
-}
-
-pub type ItemListingMap = BTreeMap<u32, Vec<ItemListing>>;
+pub type ItemMarketInfoMap = BTreeMap<u32, Vec<ItemListing>>;
 
 ////////////////////////////////////////////////////////////
 
 pub struct UniversalisJson;
 
 impl UniversalisJson {
-    pub fn parse_listing(json: String, retain_num_days: f32) -> Result<ItemListingMap> {
+    pub fn parse_listing(json: String, retain_num_days: f32) -> Result<ItemMarketInfoMap> {
         Self::parse_general_listing::<MultipleListingView, ListingView>(&json, retain_num_days)
     }
 
-    pub fn parse_history(json: String, retain_num_days: f32) -> Result<ItemListingMap> {
+    pub fn parse_history(json: String, retain_num_days: f32) -> Result<ItemMarketInfoMap> {
         Self::parse_general_listing::<MultipleHistoryView, HistoryView>(&json, retain_num_days)
     }
 
@@ -76,10 +41,10 @@ impl UniversalisJson {
     >(
         json: &'a str,
         retain_num_days: f32,
-    ) -> Result<ItemListingMap> {
+    ) -> Result<ItemMarketInfoMap> {
         let json_map = serde_json::from_str::<MultipleView>(json)?.items();
 
-        let mut map = ItemListingMap::new();
+        let mut map = ItemMarketInfoMap::new();
         for (id, mut info) in json_map {
             info.retain_recent_listings(retain_num_days);
             let mut listings = info.into_item_listings();
@@ -110,13 +75,13 @@ where
         self.items()
             .into_iter()
             .map(|listing| ItemListing {
-                price: listing.pricePerUnit,
+                price: listing.price_per_unit,
                 count: listing.quantity,
                 is_hq: listing.hq,
-                world: listing.worldName.unwrap_or_default(),
-                name: listing.retainerName.unwrap_or_default(),
+                world: listing.world_name.unwrap_or_default(),
+                name: listing.retainer_name.unwrap_or_default(),
                 posting: listing
-                    .lastReviewTime
+                    .last_review_time
                     .unwrap_or(listing.timestamp.unwrap_or_default()),
             })
             .collect()

@@ -2,7 +2,7 @@ import RecStatistics, { RecStatisticsCollection } from "./rec_statistics.js";
 import Statistics from "./statistics.js";
 import Util from "../util/util.js";
 import Api from "../util/api.js";
-import { identity } from "lodash";
+import { CancelData } from "./custom.js";
 
 ////////////////////////////////////////////////////
 
@@ -64,6 +64,8 @@ export type ListingJson = {
     }
 }
 
+export class CancelError extends Error { }
+
 ////////////////////////////////////////////////////
 
 export default class CustomInfo {
@@ -82,17 +84,28 @@ export default class CustomInfo {
         return this.customInfoFromJson(await this.apiGetDebug(), count);
     }
 
-    static async fetch(searchFilter: string, dataCenter: string, countFn?: () => number, statusFn?: (_: string) => void): Promise<CustomInfo> {
+    static async fetch(searchFilter: string, dataCenter: string, countFn?: () => number, statusFn?: (_: string) => void, cancelData?: CancelData): Promise<CustomInfo> {
         const [recipe, listingId, historyId] = await Promise.all([
             this.apiRecipeGet(searchFilter),
             this.apiListingsPut(searchFilter, dataCenter),
             this.apiHistoryPut(searchFilter, dataCenter)
         ]);
-        statusFn ??= () => {};
+        statusFn ??= () => { };
         countFn ??= () => 1;
 
+        const checkCancel = async (): Promise<void> => {
+            if (cancelData?.cancelled !== true)
+                return;
+
+            await this.apiCancel(listingId);
+            await this.apiCancel(historyId);
+            statusFn!('');
+            throw new CancelError("Cancelled transaction");
+        }
+
         let listingInfo = null;
-        while(listingInfo === null || listingInfo === undefined) {
+        while (listingInfo === null || listingInfo === undefined) {
+            await checkCancel();
             await Util.sleep(500);
             const getInfo = await this.apiListingsGet(listingId);
             statusFn(`Listings: ${getInfo.status ?? ''}`);
@@ -101,7 +114,8 @@ export default class CustomInfo {
         statusFn('');
 
         let historyInfo = null;
-        while(historyInfo === null || historyInfo === undefined) {
+        while (historyInfo === null || historyInfo === undefined) {
+            await checkCancel();
             await Util.sleep(500);
             const getInfo = await this.apiHistoryGet(historyId);
             statusFn(`History: ${getInfo.status ?? ''}`);
@@ -112,10 +126,14 @@ export default class CustomInfo {
         let info = recipe;
         for (const [id, item] of Object.entries(recipe.item_info)) {
             item.listings = listingInfo.listings[id as any] ?? [];
-            item.history = historyInfo.listings[id as any] ?? [];
+            item.history = historyInfo?.listings[id as any] ?? [];
         }
 
         return this.customInfoFromJson(info as CustomInfoJson, countFn());
+    }
+
+    static async apiCancel(id: string): Promise<void> {
+        await Api.call(this.api.cancel.put(id));
     }
 
     private static customInfoFromJson(info: CustomInfoJson, count: number): CustomInfo {
@@ -150,11 +168,11 @@ export default class CustomInfo {
     }
 
     private static async apiListingsGet(id: string): Promise<ListingJson> {
-        return Api.call(this.api.listings.get, { id });
+        return Api.call(this.api.listings.get(id));
     }
 
     private static async apiHistoryGet(id: string): Promise<ListingJson> {
-        return Api.call(this.api.history.get, { id });
+        return Api.call(this.api.history.get(id));
     }
 
     ////////////////////////////////////////////////////
@@ -186,16 +204,19 @@ export default class CustomInfo {
 
         return {
             listings: {
-                get: { endpoint: 'v1/listings', options: { method: 'GET', ...commonHeaders } },
-                put: { endpoint: 'v1/listings', options: { method: 'PUT', ...commonHeaders } },
+                get: (id: string) => ({ endpoint: `v1/market/${id}`, options: { method: 'GET', ...commonHeaders } }),
+                put: { endpoint: 'v1/market/listings', options: { method: 'PUT', ...commonHeaders } },
             },
             history: {
-                get: { endpoint: 'v1/history', options: { method: 'GET', ...commonHeaders } },
-                put: { endpoint: 'v1/history', options: { method: 'PUT', ...commonHeaders } },
+                get: (id: string) => ({ endpoint: `v1/market/${id}`, options: { method: 'GET', ...commonHeaders } }),
+                put: { endpoint: 'v1/market/history', options: { method: 'PUT', ...commonHeaders } },
             },
             recipe: {
                 get: { endpoint: 'v1/recipe', options: { method: 'GET', ...commonHeaders } },
             },
+            cancel: {
+                put: (id: string) => ({ endpoint: `v1/market/${id}/cancel`, options: { method: 'PUT', ...commonHeaders } }),
+            }
         }
     }
 }

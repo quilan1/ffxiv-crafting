@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{BTreeSet, HashMap},
     pin::Pin,
     task::{Context, Poll, Waker},
 };
@@ -101,6 +101,16 @@ impl AsyncProcessor {
         );
 
         id_map
+    }
+
+    pub fn cancel(&self, ids: Vec<String>) {
+        let ids = ids.into_iter().collect::<BTreeSet<_>>();
+        self.active_limited_ids
+            .write()
+            .clone()
+            .retain(|id| !ids.contains(id));
+        self.queue.write().retain(|id| !ids.contains(&id.id));
+        self.active.write().retain(|id| !ids.contains(&id.id));
     }
 
     #[cfg(test)]

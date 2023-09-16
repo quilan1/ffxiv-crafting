@@ -12,6 +12,11 @@ const savedFilters: any[] = [];
 
 const _regexNameSkip = /(Fire|Ice|Wind|Earth|Lightning|Water) (Shard|Crystal|Cluster)/;
 
+export interface CancelData {
+    cancelled: boolean;
+    [_: string]: any;
+}
+
 class CustomDlg {
     customTreeControl: CheckedTreeControl | null;
     info: CustomInfo | null;
@@ -28,13 +33,13 @@ class CustomDlg {
     }
 
     async onRefreshClick(debug?: boolean) {
-        await FiltersDlg.withDisabledRefresh(async () => {
+        await FiltersDlg.withCancelRefresh(async (cancelData: CancelData) => {
             const countFn = () => FiltersDlg.countValue;
             const statusFn = (status: string) => FiltersDlg.setStatus(status);
             if (debug === true) {
                 this.info = await CustomInfo.fetchDebug(FiltersDlg.countValue) as CustomInfo;
             } else {
-                this.info = await CustomInfo.fetch(FiltersDlg.searchValue, FiltersDlg.dataCenter, countFn, statusFn) as CustomInfo;
+                this.info = await CustomInfo.fetch(FiltersDlg.searchValue, FiltersDlg.dataCenter, countFn, statusFn, cancelData) as CustomInfo;
             }
         });
 
@@ -209,25 +214,31 @@ class CustomDlg {
         let bestOption;
         if (gt(buyHwPrice, sellHwPrice) || gt(craftCost, sellHwPrice)) {
             bestOption = 'sell';
-        // } else if (gt(buyHwPrice, craftCost)) {
-        //     bestOption = 'craft';
+            // } else if (gt(buyHwPrice, craftCost)) {
+            //     bestOption = 'craft';
         } else {
             bestOption = 'buy';
         }
 
         return [
-            { tag: 'div', children: [
-                { tag: 'span', innerText: 'Sell: ' },
-                { tag: 'span', innerText: asFixed(sellHwPrice), className: (bestOption === 'sell' ? 'bestOption' : '') },
-            ]},
-            { tag: 'div', children: [
-                { tag: 'span', innerText: 'Buy: ' },
-                { tag: 'span', innerText: asFixed(buyHwPrice), className: (bestOption === 'buy' ? 'bestOption' : '') },
-            ]},
-            { tag: 'div', children: [
-                { tag: 'span', innerText: 'Craft: ' },
-                { tag: 'span', innerText: asFixed(craftCost) },
-            ]},
+            {
+                tag: 'div', children: [
+                    { tag: 'span', innerText: 'Sell: ' },
+                    { tag: 'span', innerText: asFixed(sellHwPrice), className: (bestOption === 'sell' ? 'bestOption' : '') },
+                ]
+            },
+            {
+                tag: 'div', children: [
+                    { tag: 'span', innerText: 'Buy: ' },
+                    { tag: 'span', innerText: asFixed(buyHwPrice), className: (bestOption === 'buy' ? 'bestOption' : '') },
+                ]
+            },
+            {
+                tag: 'div', children: [
+                    { tag: 'span', innerText: 'Craft: ' },
+                    { tag: 'span', innerText: asFixed(craftCost) },
+                ]
+            },
         ]
     }
 
@@ -493,13 +504,27 @@ class FiltersDlg {
         return this.selectors.isHq.value as any;
     }
 
-    static async withDisabledRefresh(func: () => Promise<void>): Promise<void> {
-        this.selectors.refresh.disabled = true;
+    static async withCancelRefresh(func: (data: CancelData) => Promise<void>, data?: CancelData): Promise<void> {
+        const refreshButton = this.selectors.refresh;
+        const curClick = refreshButton.onclick;
+        const curInnerText = refreshButton.innerText;
+
+        const cancelData = { cancelled: false, ...data };
+        refreshButton.onclick = () => {
+            cancelData.cancelled = true;
+            refreshButton.disabled = true;
+        }
+        refreshButton.innerText = "Cancel";
 
         try {
-            await func();
+            await func(cancelData);
+        } catch (err: any) {
+            if (err?.name != 'CancelError')
+                throw err;
         } finally {
-            this.selectors.refresh.disabled = false;
+            refreshButton.onclick = curClick;
+            refreshButton.disabled = false;
+            refreshButton.innerText = curInnerText;
         }
     }
 

@@ -51,7 +51,7 @@ pub async fn get_recipe_info(Form(payload): Form<GetInput>) -> impl IntoResponse
     )
 }
 
-pub fn get_recipe_info_data(payload: GetInput) -> GetOutput {
+fn get_recipe_info_data(payload: GetInput) -> GetOutput {
     let (top_ids, all_ids) = ffxiv_items::get_ids_from_filters(payload.filters);
     let item_info = all_ids
         .into_iter()
