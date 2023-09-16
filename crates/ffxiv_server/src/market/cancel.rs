@@ -5,7 +5,7 @@ use axum::{
     response::IntoResponse,
 };
 use ffxiv_universalis::UniversalisStatusValue;
-use tokio::spawn;
+use tokio::task::spawn_blocking;
 
 use crate::util::{not_found, ok_text};
 
@@ -38,5 +38,5 @@ pub async fn put_market_cancel(
         ok_text("OK").into_response()
     }
 
-    spawn(async move { inner(&state, uuid) }).await.unwrap()
+    spawn_blocking(move || inner(&state, uuid)).await.unwrap()
 }

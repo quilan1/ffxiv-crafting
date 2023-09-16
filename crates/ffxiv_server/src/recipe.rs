@@ -1,10 +1,9 @@
 use std::collections::BTreeMap;
 
 use axum::{extract::Form, response::IntoResponse};
-use axum_macros::debug_handler;
 use ffxiv_items::item_name;
 use serde::{Deserialize, Serialize};
-use tokio::spawn;
+use tokio::task::spawn_blocking;
 
 use crate::util::ok_json;
 
@@ -41,11 +40,9 @@ pub struct RecipeData {
 ////////////////////////////////////////////////////////////
 
 // Return recipe info for a particular filter
-#[allow(clippy::unused_async)]
-#[debug_handler]
 pub async fn get_recipe_info(Form(payload): Form<GetInput>) -> impl IntoResponse {
     ok_json(
-        spawn(async move { get_recipe_info_data(payload) })
+        spawn_blocking(move || get_recipe_info_data(payload))
             .await
             .unwrap(),
     )

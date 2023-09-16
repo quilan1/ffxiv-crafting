@@ -5,7 +5,7 @@ use axum::{extract::State, response::IntoResponse};
 use ffxiv_universalis::ItemMarketInfoMap;
 use futures::FutureExt;
 use serde::Serialize;
-use tokio::spawn;
+use tokio::task::spawn_blocking;
 
 use crate::util::{not_found, ok_json};
 
@@ -37,7 +37,7 @@ pub async fn get_market_info(
     State(state): State<Arc<MarketState>>,
     Path(uuid): Path<String>,
 ) -> impl IntoResponse {
-    spawn(async move { get_market_request_status(&state, &uuid) })
+    spawn_blocking(move || get_market_request_status(&state, &uuid))
         .await
         .unwrap()
 }

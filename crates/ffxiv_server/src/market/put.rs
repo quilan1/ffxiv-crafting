@@ -4,7 +4,7 @@ use axum::{extract::State, response::IntoResponse, Json};
 use ffxiv_items::get_ids_from_filters;
 use ffxiv_universalis::{History, Listing, MarketRequestType, UniversalisProcessor};
 use serde::Deserialize;
-use tokio::spawn;
+use tokio::task::spawn_blocking;
 use uuid::Uuid;
 
 use crate::util::ok_text;
@@ -26,7 +26,7 @@ pub async fn put_market_history(
     State(state): State<Arc<MarketState>>,
     Json(payload): Json<PutInput>,
 ) -> impl IntoResponse {
-    let uuid = spawn(async move { put_market_request::<History>(&state, payload) })
+    let uuid = spawn_blocking(move || put_market_request::<History>(&state, payload))
         .await
         .unwrap();
     ok_text(uuid)
@@ -36,7 +36,7 @@ pub async fn put_market_listings(
     State(state): State<Arc<MarketState>>,
     Json(payload): Json<PutInput>,
 ) -> impl IntoResponse {
-    let uuid = spawn(async move { put_market_request::<Listing>(&state, payload) })
+    let uuid = spawn_blocking(move || put_market_request::<Listing>(&state, payload))
         .await
         .unwrap();
     ok_text(uuid)

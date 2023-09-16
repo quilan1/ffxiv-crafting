@@ -8,7 +8,7 @@ use async_processor::{AsyncProcessor, IdFuture, SyncBoxFuture};
 use futures::future::join_all;
 use itertools::Itertools;
 use log::{error, info, warn};
-use tokio::{task::spawn, time::sleep};
+use tokio::{task::spawn_blocking, time::sleep};
 
 const MAX_CHUNK_SIZE: usize = 100;
 
@@ -75,7 +75,7 @@ impl UniversalisProcessor {
 
             let chunks = data.id_chunks();
             let (listing_map, failure_ids) =
-                spawn(async move { Self::combine_returned_listings(chunks, all_listings) })
+                spawn_blocking(move || Self::combine_returned_listings(chunks, all_listings))
                     .await
                     .unwrap();
 
@@ -182,7 +182,7 @@ async fn fetch_listing_url<T: MarketRequestType + 'static>(
         }
 
         info!("[Fetch {signature}] {fetch_type} done");
-        return spawn(async move { T::parse_json(listing, retain_num_days).ok() })
+        return spawn_blocking(move || T::parse_json(listing, retain_num_days).ok())
             .await
             .unwrap();
     }
