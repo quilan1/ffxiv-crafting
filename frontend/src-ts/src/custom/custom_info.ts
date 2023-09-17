@@ -64,7 +64,12 @@ export type ListingJson = {
     }
 }
 
-export class CancelError extends Error { }
+export class CancelError extends Error {
+    constructor(message?: string, options?: ErrorOptions) {
+        super(message, options);
+        this.name = 'CancelError';
+    }
+}
 
 ////////////////////////////////////////////////////
 
@@ -97,29 +102,37 @@ export default class CustomInfo {
             if (cancelData?.cancelled !== true)
                 return;
 
-            await this.apiCancel(listingId);
-            await this.apiCancel(historyId);
+            try { await this.apiCancel(listingId); }
+            catch { }
+
+            try { await this.apiCancel(historyId); }
+            catch { }
+
             statusFn!('');
             throw new CancelError("Cancelled transaction");
         }
 
-        let listingInfo = null;
-        while (listingInfo === null || listingInfo === undefined) {
+        let listingInfo = null, historyInfo = null;
+        while (listingInfo == null || historyInfo == null) {
             await checkCancel();
             await Util.sleep(500);
-            const getInfo = await this.apiListingsGet(listingId);
-            statusFn(`Listings: ${getInfo.status ?? ''}`);
-            listingInfo = getInfo.output_info;
-        }
-        statusFn('');
 
-        let historyInfo = null;
-        while (historyInfo === null || historyInfo === undefined) {
-            await checkCancel();
-            await Util.sleep(500);
-            const getInfo = await this.apiHistoryGet(historyId);
-            statusFn(`History: ${getInfo.status ?? ''}`);
-            historyInfo = getInfo.output_info;
+            const listingPromise = listingInfo ? null : this.apiListingGet(listingId);
+            const historyPromise = historyInfo ? null : this.apiHistoryGet(historyId);
+
+            let listingStatus = 'Done', historyStatus = 'Done';
+            if (listingPromise != null) {
+                const info: ListingJson = await listingPromise;
+                listingInfo = info.output_info;
+                listingStatus = info?.status ?? '';
+            }
+            if (historyPromise != null) {
+                const info: ListingJson = await historyPromise;
+                historyInfo = info.output_info;
+                historyStatus = info?.status ?? '';
+            }
+
+            statusFn(`Listings: ${listingStatus}\nHistories: ${historyStatus}`);
         }
         statusFn('');
 
@@ -167,7 +180,7 @@ export default class CustomInfo {
         return this.apiGenListingsPut(this.api.history.put, searchFilter, dataCenter);
     }
 
-    private static async apiListingsGet(id: string): Promise<ListingJson> {
+    private static async apiListingGet(id: string): Promise<ListingJson> {
         return Api.call(this.api.listings.get(id));
     }
 
