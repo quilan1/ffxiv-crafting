@@ -1,15 +1,21 @@
 #![warn(unused_crate_dependencies)]
-mod fetch_listing_type;
-mod universalis_json;
-mod universalis_json_types;
-mod universalis_processor;
-mod universalis_status;
+mod handle;
+mod json;
+mod json_types;
+mod market_request_type;
+mod processor;
+mod processor_data;
+mod request;
+mod status;
 
-use universalis_json::{ItemListing, UniversalisJson};
+use json::{ItemListing, UniversalisJson};
+use processor_data::UniversalisProcessorData;
+use request::UniversalisRequest;
 
-pub use fetch_listing_type::{History, Listing, MarketRequestType};
-pub use universalis_json::ItemMarketInfoMap;
-pub use universalis_processor::UniversalisProcessor;
-pub use universalis_status::{UniversalisStatus, UniversalisStatusValue};
+pub use handle::UniversalisHandle;
+pub use json::ItemMarketInfoMap;
+pub use market_request_type::{History, Listing, MarketRequestType};
+pub use processor::UniversalisProcessor;
+pub use status::{UniversalisStatus, UniversalisStatusState};
 
 ////////////////////////////////////////////////////////////

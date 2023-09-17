@@ -5,7 +5,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use crate::universalis_json_types::{
+use crate::json_types::{
     HistoryView, ItemListingView, ListingView, MultipleHistoryView, MultipleListingView,
 };
 

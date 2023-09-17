@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use crate::util::ok_text;
 
-use super::{MarketInfo, MarketState};
+use super::MarketState;
 
 ////////////////////////////////////////////////////////////
 
@@ -59,7 +59,7 @@ pub fn put_market_request<T: MarketRequestType + 'static>(
 
     // Send the request over to the async processor
     let retain_num_days = payload.retain_num_days.unwrap_or(7.0);
-    let (output, status) = UniversalisProcessor::market_info::<T>(
+    let universalis_handle = UniversalisProcessor::market_info::<T>(
         state.async_processor.clone(),
         worlds,
         all_ids,
@@ -68,7 +68,7 @@ pub fn put_market_request<T: MarketRequestType + 'static>(
 
     // Save the placeholder & output into the server state
     let uuid = Uuid::new_v4().to_string();
-    state.insert_market_request(&uuid, MarketInfo { status, output });
+    state.insert_market_request(&uuid, universalis_handle);
 
     uuid
 }

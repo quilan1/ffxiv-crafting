@@ -4,7 +4,6 @@ use axum::{
     extract::{Path, State},
     response::IntoResponse,
 };
-use ffxiv_universalis::UniversalisStatusValue;
 use tokio::task::spawn_blocking;
 
 use crate::util::{not_found, ok_text};
@@ -16,24 +15,16 @@ pub async fn put_market_cancel(
     Path(uuid): Path<String>,
 ) -> impl IntoResponse {
     fn inner(state: &Arc<MarketState>, uuid: String) -> impl IntoResponse {
-        let status = state.with_market_request(&uuid, |info| match info {
-            Some(market_info) => Some(market_info.status.clone()),
-            None => None,
+        let status = state.with_market_request(&uuid, |info| {
+            info.map(|universalis_handle| universalis_handle.status())
         });
 
-        let status = match status {
-            None => return not_found(format!("UUID {uuid} not found!")).into_response(),
-            Some(s) => s,
+        let Some(status) = status else {
+            return not_found(format!("UUID {uuid} not found!")).into_response();
         };
 
-        let UniversalisStatusValue::Processing(ids) = status.value() else {
-            return ok_text("OK").into_response();
-        };
-
-        let id_count = ids.len();
-        state.async_processor.cancel(ids);
-        log::info!("[Cancel] {uuid} market call ended ({id_count} fetch requests)");
-
+        let id_count = status.get_num_futures();
+        log::info!("[Cancel] {uuid} market call cancelled ({id_count} requests)");
         state.remove_market_request(uuid);
         ok_text("OK").into_response()
     }

@@ -1,52 +1,25 @@
 use std::{
-    collections::{BTreeSet, HashMap},
     pin::Pin,
     task::{Context, Poll, Waker},
 };
 
-use futures::{Future, FutureExt};
-use log::error;
-#[cfg(feature = "tokio")]
-use tokio::task::JoinHandle;
-use uuid::Uuid;
+use futures::{
+    channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender},
+    future::{BoxFuture, RemoteHandle},
+    stream::BufferUnordered,
+    Future, FutureExt, StreamExt,
+};
 
-use crate::{AmoValue, ArwValue};
+use crate::{AmValue, AmoValue};
 
-#[derive(Clone, Default)]
-pub struct AsyncProcessor {
-    #[cfg(not(feature = "tokio"))]
-    active: ArwValue<Vec<IdFuture<()>>>,
-    #[cfg(feature = "tokio")]
-    active: ArwValue<Vec<IdJoinHandle<()>>>,
-    queue: ArwValue<Vec<IdFuture<()>>>,
-    active_limited_ids: ArwValue<Vec<String>>,
-    waker: AmoValue<Waker>,
-    max_active: usize,
-}
-
-pub type SyncBoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send + Sync + 'static>>;
-
-pub struct IdFuture<T>
-where
-    T: Send,
-{
-    pub id: String,
-    pub future: SyncBoxFuture<T>,
-}
-
-#[cfg(feature = "tokio")]
-struct IdJoinHandle<T>
-where
-    T: Send,
-{
-    id: String,
-    join_handle: JoinHandle<T>,
-}
+type FutureSender = UnboundedSender<BoxFuture<'static, ()>>;
+type FutureReceiver = BufferUnordered<UnboundedReceiver<BoxFuture<'static, ()>>>;
 
 #[derive(Clone)]
-pub enum AsyncProcessStatus {
-    Queued(usize),
-    Active,
+pub struct AsyncProcessor {
+    tx: AmValue<FutureSender>,
+    rx: AmValue<FutureReceiver>,
+    waker: AmoValue<Waker>,
 }
 
 ////////////////////////////////////////////////////////////
@@ -54,162 +27,49 @@ pub enum AsyncProcessStatus {
 // Consumer side of the API
 impl AsyncProcessor {
     pub fn new(max_active: usize) -> Self {
+        let (tx, rx) = unbounded();
+        let rx = rx.buffer_unordered(max_active);
         Self {
-            max_active,
-            ..Default::default()
+            tx: AmValue::new(tx),
+            rx: AmValue::new(rx),
+            waker: AmoValue::new(None),
         }
     }
 
     // Takes in future, queues it, and returns a future that you can poll for the result
-    pub fn process_future<Fut>(&mut self, future: Fut) -> IdFuture<Fut::Output>
+    pub fn process_future<Fut>(&self, future: Fut) -> RemoteHandle<Fut::Output>
     where
-        Fut: Future + Send + Sync + 'static,
+        Fut: Future + Send + 'static,
         Fut::Output: Send,
     {
-        let id = Uuid::new_v4().to_string();
         let (future, remote) = future.remote_handle();
-
         let waker = self.waker.clone();
-        self.queue.write().push(IdFuture {
-            id: id.clone(),
-            future: Box::pin(async move {
+        self.tx
+            .lock()
+            .unbounded_send(Box::pin(async move {
                 future.await;
                 if let Some(waker) = waker.lock().as_ref() {
-                    waker.wake_by_ref();
+                    waker.wake_by_ref()
                 }
-            }),
-        });
-
-        self.wake();
-        IdFuture {
-            id,
-            future: Box::pin(remote),
-        }
+            }))
+            .unwrap();
+        remote
     }
 
-    // Wake up the processor, so it can take a look at the queue & move them into active polling
-    fn wake(&self) {
-        if let Some(waker) = self.waker.lock().as_ref() {
-            waker.wake_by_ref();
-        } else {
-            error!("AsyncProcessorData waker does not exist?! This usually means the processor is not currently\
-                   'await'ing somewhere. Might cause orphan futures.");
-        }
-    }
-
-    pub fn status(&self) -> HashMap<String, AsyncProcessStatus> {
-        let active_ids = self.active_limited_ids.read().clone();
-
-        let queued_ids = self
-            .queue
-            .read()
-            .iter()
-            .enumerate()
-            .map(|(index, id_future)| (index, id_future.id.clone()))
-            .collect::<Vec<_>>();
-
-        let mut id_map = HashMap::new();
-        id_map.extend(
-            active_ids
-                .into_iter()
-                .map(|id| (id, AsyncProcessStatus::Active)),
-        );
-        id_map.extend(
-            queued_ids
-                .into_iter()
-                .map(|(index, id)| (id, AsyncProcessStatus::Queued(index))),
-        );
-
-        id_map
-    }
-
-    pub fn cancel(&self, ids: Vec<String>) {
-        let ids = ids.into_iter().collect::<BTreeSet<_>>();
-        self.active_limited_ids
-            .write()
-            .clone()
-            .retain(|id| !ids.contains(id));
-        self.queue.write().retain(|id| !ids.contains(&id.id));
-        self.active.write().retain(|id| !ids.contains(&id.id));
-        self.wake();
-    }
-
-    #[allow(unused_must_use)]
-    pub async fn process_all(&self) {
-        while !self.is_empty() {
-            futures::poll!(self.clone());
-        }
-    }
-
-    fn is_empty(&self) -> bool {
-        self.active.read().is_empty() && self.queue.read().is_empty()
+    pub fn disconnect(&self) {
+        self.tx.lock().disconnect();
     }
 }
 
-////////////////////////////////////////////////////////////
-
-// Moves items from the queue into the active lists, and then polls the active items
 impl Future for AsyncProcessor {
     type Output = ();
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        // Set the waker, so it can be re-polled
         self.waker.replace(Some(cx.waker().clone()));
-
-        // Keep the number of active futures limited to at most max_active
-        let num_avail_slots = self
-            .queue
-            .read()
-            .len()
-            .min(self.max_active - self.active.read().len());
-
-        // Move from queue to active
-        if num_avail_slots > 0 {
-            #[cfg(not(feature = "tokio"))]
-            self.active
-                .write()
-                .extend(self.queue.write().drain(..num_avail_slots));
-
-            // Place each new future in tokio's scheduler
-            #[cfg(feature = "tokio")]
-            self.active
-                .write()
-                .extend(
-                    self.queue
-                        .write()
-                        .drain(..num_avail_slots)
-                        .map(|id_future| IdJoinHandle {
-                            id: id_future.id,
-                            join_handle: tokio::spawn(id_future.future),
-                        }),
-                );
+        match self.rx.lock().poll_next_unpin(cx) {
+            Poll::Ready(None) => Poll::Ready(()),
+            _ => Poll::Pending,
         }
-
-        let num_active = self.active.read().len();
-
-        // Poll the active data
-        if num_active > 0 {
-            #[cfg(not(feature = "tokio"))]
-            self.active
-                .write()
-                .retain_mut(|fut| fut.future.as_mut().poll_unpin(cx).is_pending());
-
-            #[cfg(feature = "tokio")]
-            self.active
-                .write()
-                .retain_mut(|fut| !fut.join_handle.is_finished());
-        }
-
-        // Update the active IDs for status
-        let active_ids = self
-            .active
-            .read()
-            .iter()
-            .map(|id_future| id_future.id.clone())
-            .collect::<Vec<_>>();
-        *self.active_limited_ids.write() = active_ids;
-
-        Poll::Pending
     }
 }
 
@@ -238,7 +98,7 @@ mod tests {
         const MAX_CONCURRENT: usize = 2;
 
         block(async {
-            let mut proc = AsyncProcessor::new(MAX_CONCURRENT);
+            let proc = AsyncProcessor::new(MAX_CONCURRENT);
             let count = AmValue::new(0);
             let ran_future = AmValue::new(false);
 
@@ -250,11 +110,13 @@ mod tests {
                 *count.lock() -= 1;
             }
 
-            // The futures need to be stored, or else they're thrown away & never run
+            // The remote futures need to be stored, or else they're never run
             let _futures = (0..4)
                 .map(|_| proc.process_future(future(count.clone(), ran_future.clone())))
                 .collect::<Vec<_>>();
-            proc.process_all().await;
+
+            proc.disconnect();
+            proc.await;
             assert!(*ran_future.lock());
         });
     }

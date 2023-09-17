@@ -61,9 +61,10 @@ pub fn get_market_request_status(state: &Arc<MarketState>, uuid: &str) -> impl I
 pub fn get_market_request_data(state: &Arc<MarketState>, uuid: &str) -> GetStatus {
     state.with_market_request(uuid, |info| match info {
         None => GetStatus::Error(format!("Id not found: {uuid}")),
-        Some(info) => match (&mut info.output).now_or_never() {
-            Some((info, failures)) => GetStatus::Finished(info, failures),
-            None => GetStatus::InProgress(info.status.text(&state.async_processor)),
+        Some(universalis_handle) => match universalis_handle.now_or_never() {
+            Some(Ok((info, failures))) => GetStatus::Finished(info, failures),
+            Some(Err(err)) => GetStatus::Error(err.to_string()),
+            None => GetStatus::InProgress(universalis_handle.status().text()),
         },
     })
 }

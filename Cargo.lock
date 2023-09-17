@@ -69,10 +69,8 @@ name = "async_processor"
 version = "0.1.0"
 dependencies = [
  "futures",
- "log",
  "parking_lot",
  "tokio",
- "uuid",
 ]
 
 [[package]]
@@ -357,6 +355,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "uuid",
 ]
 
 [[package]]
