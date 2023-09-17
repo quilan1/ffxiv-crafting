@@ -2,16 +2,16 @@ use anyhow::Result;
 
 use crate::{ItemMarketInfoMap, UniversalisJson};
 
-pub struct Listing;
-pub struct History;
+pub struct UniversalisListing;
+pub struct UniversalisHistory;
 
-pub trait MarketRequestType {
+pub trait UniversalisRequestType {
     fn url<S: AsRef<str>>(world: S, ids: S) -> String;
     fn fetch_type() -> &'static str;
     fn parse_json(json: String, retain_num_days: f32) -> Result<ItemMarketInfoMap>;
 }
 
-impl MarketRequestType for Listing {
+impl UniversalisRequestType for UniversalisListing {
     fn url<S: AsRef<str>>(world: S, ids: S) -> String {
         format!(
             "https://universalis.app/api/v2/{}/{}?entries=0",
@@ -29,7 +29,7 @@ impl MarketRequestType for Listing {
     }
 }
 
-impl MarketRequestType for History {
+impl UniversalisRequestType for UniversalisHistory {
     fn url<S: AsRef<str>>(world: S, ids: S) -> String {
         format!(
             "https://universalis.app/api/v2/history/{}/{}",

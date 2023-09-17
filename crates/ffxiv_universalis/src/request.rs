@@ -4,11 +4,11 @@ use futures::future::RemoteHandle;
 use log::{error, info, warn};
 use tokio::{task::spawn_blocking, time::sleep};
 
-use crate::{processor_data::UniversalisProcessorData, ItemMarketInfoMap, MarketRequestType};
+use crate::{processor_data::UniversalisProcessorData, ItemMarketInfoMap, UniversalisRequestType};
 
 ////////////////////////////////////////////////////////////
 
-pub struct UniversalisRequest<T: MarketRequestType> {
+pub struct UniversalisRequest<T: UniversalisRequestType> {
     data: UniversalisProcessorData,
     url: String,
     signature: String,
@@ -17,7 +17,7 @@ pub struct UniversalisRequest<T: MarketRequestType> {
 
 ////////////////////////////////////////////////////////////
 
-impl<T: MarketRequestType> UniversalisRequest<T> {
+impl<T: UniversalisRequestType> UniversalisRequest<T> {
     pub fn new(
         data: UniversalisProcessorData,
         world: String,

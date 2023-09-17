@@ -2,10 +2,10 @@
 mod handle;
 mod json;
 mod json_types;
-mod market_request_type;
 mod processor;
 mod processor_data;
 mod request;
+mod request_type;
 mod status;
 
 use json::{ItemListing, UniversalisJson};
@@ -14,8 +14,8 @@ use request::UniversalisRequest;
 
 pub use handle::UniversalisHandle;
 pub use json::ItemMarketInfoMap;
-pub use market_request_type::{History, Listing, MarketRequestType};
-pub use processor::UniversalisProcessor;
+pub use processor::request_market_info;
+pub use request_type::{UniversalisHistory, UniversalisListing, UniversalisRequestType};
 pub use status::{UniversalisStatus, UniversalisStatusState};
 
 ////////////////////////////////////////////////////////////

@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use axum::{extract::State, response::IntoResponse, Json};
 use ffxiv_items::get_ids_from_filters;
-use ffxiv_universalis::{History, Listing, MarketRequestType, UniversalisProcessor};
+use ffxiv_universalis::{
+    request_market_info, UniversalisHistory, UniversalisListing, UniversalisRequestType,
+};
 use serde::Deserialize;
 use tokio::task::spawn_blocking;
 use uuid::Uuid;
@@ -26,7 +28,7 @@ pub async fn put_market_history(
     State(state): State<Arc<MarketState>>,
     Json(payload): Json<PutInput>,
 ) -> impl IntoResponse {
-    let uuid = spawn_blocking(move || put_market_request::<History>(&state, payload))
+    let uuid = spawn_blocking(move || put_market_request::<UniversalisHistory>(&state, payload))
         .await
         .unwrap();
     ok_text(uuid)
@@ -36,7 +38,7 @@ pub async fn put_market_listings(
     State(state): State<Arc<MarketState>>,
     Json(payload): Json<PutInput>,
 ) -> impl IntoResponse {
-    let uuid = spawn_blocking(move || put_market_request::<Listing>(&state, payload))
+    let uuid = spawn_blocking(move || put_market_request::<UniversalisListing>(&state, payload))
         .await
         .unwrap();
     ok_text(uuid)
@@ -44,7 +46,7 @@ pub async fn put_market_listings(
 
 ////////////////////////////////////////////////////////////
 
-pub fn put_market_request<T: MarketRequestType + 'static>(
+pub fn put_market_request<T: UniversalisRequestType>(
     state: &Arc<MarketState>,
     payload: PutInput,
 ) -> String {
@@ -59,7 +61,7 @@ pub fn put_market_request<T: MarketRequestType + 'static>(
 
     // Send the request over to the async processor
     let retain_num_days = payload.retain_num_days.unwrap_or(7.0);
-    let universalis_handle = UniversalisProcessor::market_info::<T>(
+    let universalis_handle = request_market_info::<T>(
         state.async_processor.clone(),
         worlds,
         all_ids,
