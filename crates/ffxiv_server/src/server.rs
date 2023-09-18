@@ -4,8 +4,9 @@ use axum::{
     routing::{get, put},
     Router,
 };
+use ffxiv_items::Library;
 use futures::join;
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::{
@@ -19,14 +20,17 @@ pub struct Server;
 
 #[allow(unused_must_use)]
 impl Server {
-    pub async fn run() -> Result<()> {
+    pub async fn run(library: Library) -> Result<()> {
         let market_state = MarketState::new();
+        let async_processor = market_state.async_processor();
+        let library = Arc::new(library);
 
         let health_service = Router::new().route("/health", get(|| async { "OK" }));
 
         let recipe_service = Router::new()
             .route("/recipe", get(get_recipe_info))
-            .layer(axum_server_timing::ServerTimingLayer::new("RecipeService"));
+            .layer(axum_server_timing::ServerTimingLayer::new("RecipeService"))
+            .with_state(library.clone());
 
         let market_service = Router::new()
             .nest(
@@ -38,7 +42,7 @@ impl Server {
                     .route("/:id/cancel", put(put_market_cancel)),
             )
             .layer(axum_server_timing::ServerTimingLayer::new("MarketService"))
-            .with_state(market_state.clone());
+            .with_state((market_state.clone(), library.clone()));
 
         let v1_router = Router::new()
             .merge(recipe_service)
@@ -56,7 +60,7 @@ impl Server {
         println!("Server up at http://localhost:3001/");
 
         join!(
-            market_state.async_processor(),
+            async_processor,
             axum::Server::bind(&addr).serve(app.into_make_service())
         );
 

@@ -1,21 +1,11 @@
-use std::sync::Mutex;
-
 use crate::{
     parsers::{ItemList, UiCategoryList},
     recipe::{Ingredient, Recipe},
     ItemInfo, Library,
 };
 
-static LIBRARY_CREATE_LOCK: Mutex<bool> = Mutex::new(false);
-
 impl Library {
-    pub(crate) fn initialize_test_data() {
-        let _test_lock = LIBRARY_CREATE_LOCK.lock().unwrap();
-        let library = match unsafe { Self::create_mut() } {
-            Some(library) => library,
-            None => return, // Already initialized once
-        };
-
+    pub(crate) fn initialize_test_data() -> Library {
         let categories = UiCategoryList::from(&["base 1", "base 2", "cat 1", "cat 2"][..]);
         let items = vec![
             ItemInfo {
@@ -116,8 +106,11 @@ impl Library {
             },
         ];
 
-        library.all_items = ItemList::from(items);
-        library.all_ui_categories = categories;
-        // TODO: Other info
+        Library {
+            all_items: ItemList::from(items),
+            all_ui_categories: categories,
+            // TODO: Other info
+            ..Default::default()
+        }
     }
 }

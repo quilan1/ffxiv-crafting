@@ -3,8 +3,6 @@ use std::{collections::BTreeMap, ops::Index, path::Path};
 use anyhow::Result;
 use csv::ReaderBuilder;
 
-use crate::library;
-
 #[derive(Default)]
 pub struct UiCategoryList {
     name_to_id: BTreeMap<String, u32>,
@@ -27,10 +25,6 @@ impl UiCategoryList {
             name_to_id,
             categories,
         })
-    }
-
-    pub fn get_unchecked(ui_category: u32) -> &'static str {
-        &library().all_ui_categories[&ui_category]
     }
 }
 

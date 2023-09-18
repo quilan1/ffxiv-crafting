@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use log::warn;
 use regex::Regex;
 
-use crate::{library, parsers::UiCategoryList, ItemInfo};
+use crate::{ItemInfo, Library};
 
 type FilterOptions = Vec<String>;
 
@@ -13,13 +13,15 @@ pub struct Filter {
     pub options: FilterOptions,
 }
 
-type FilterFn = for<'a, 'b> fn(&'a [String], &'b mut Vec<&'static ItemInfo>) -> ();
+type FilterFn =
+    for<'a, 'b, 'c> fn(library: &'c Library, &'a [String], &'b mut Vec<&'c ItemInfo>) -> ();
 
 impl Filter {
-    pub fn apply_filter_str(
+    pub fn apply_filter_str<'a>(
+        library: &'a Library,
         filter_str: &str,
-        mut items: Vec<&'static ItemInfo>,
-    ) -> Vec<&'static ItemInfo> {
+        mut items: Vec<&'a ItemInfo>,
+    ) -> Vec<&'a ItemInfo> {
         if filter_str.trim().is_empty() {
             return Vec::new();
         }
@@ -28,7 +30,7 @@ impl Filter {
         let filter_functions = Self::filter_functions();
         for Filter { tag, options } in filters {
             match filter_functions.get(&tag[..]) {
-                Some(func) => func(&options, &mut items),
+                Some(func) => func(library, &options, &mut items),
                 None => {
                     if tag.chars().nth(0).unwrap_or(' ') == ':' {
                         warn!("[Filter] Invalid filter tag: {tag}");
@@ -41,7 +43,7 @@ impl Filter {
                     } else {
                         new_options.push(tag);
                     }
-                    filter_name(&new_options, &mut items)
+                    filter_name(library, &new_options, &mut items)
                 }
             }
         }
@@ -102,7 +104,7 @@ impl Filter {
 
 ////////////////////////////////////////////////////////////
 
-fn filter_name(options: &[String], items: &mut Vec<&'static ItemInfo>) {
+fn filter_name<'a>(_library: &'a Library, options: &[String], items: &mut Vec<&'a ItemInfo>) {
     if options.is_empty() {
         return;
     }
@@ -113,7 +115,11 @@ fn filter_name(options: &[String], items: &mut Vec<&'static ItemInfo>) {
     items.retain(|item| re.is_match(&item.name));
 }
 
-fn filter_recipe_level(options: &[String], items: &mut Vec<&'static ItemInfo>) {
+fn filter_recipe_level<'a>(
+    _library: &'a Library,
+    options: &[String],
+    items: &mut Vec<&'a ItemInfo>,
+) {
     let levels = options
         .iter()
         .filter_map(|level| level.parse::<u32>().ok())
@@ -128,7 +134,11 @@ fn filter_recipe_level(options: &[String], items: &mut Vec<&'static ItemInfo>) {
     });
 }
 
-fn filter_equip_level(options: &[String], items: &mut Vec<&'static ItemInfo>) {
+fn filter_equip_level<'a>(
+    _library: &'a Library,
+    options: &[String],
+    items: &mut Vec<&'a ItemInfo>,
+) {
     if options.is_empty() {
         return;
     }
@@ -143,7 +153,7 @@ fn filter_equip_level(options: &[String], items: &mut Vec<&'static ItemInfo>) {
     items.retain(|item| item.equip_level >= min_level && item.equip_level <= max_level);
 }
 
-fn filter_ilevel(options: &[String], items: &mut Vec<&'static ItemInfo>) {
+fn filter_ilevel<'a>(_library: &'a Library, options: &[String], items: &mut Vec<&'a ItemInfo>) {
     if options.is_empty() {
         return;
     }
@@ -158,18 +168,18 @@ fn filter_ilevel(options: &[String], items: &mut Vec<&'static ItemInfo>) {
     items.retain(|item| item.ilevel >= min_level && item.ilevel <= max_level);
 }
 
-fn filter_ui_category(options: &[String], items: &mut Vec<&'static ItemInfo>) {
+fn filter_ui_category<'a>(library: &'a Library, options: &[String], items: &mut Vec<&'a ItemInfo>) {
     if options.is_empty() {
         return;
     }
 
     let categories = options.iter().map(|cat| cat.as_str()).collect::<Vec<_>>();
-    items.retain(|item| categories.contains(&UiCategoryList::get_unchecked(item.ui_category)));
+    items.retain(|item| categories.contains(&library.ui_category_unchecked(item.ui_category)));
 }
 
-fn filter_leve(options: &[String], items: &mut Vec<&'static ItemInfo>) {
+fn filter_leve<'a>(library: &'a Library, options: &[String], items: &mut Vec<&'a ItemInfo>) {
     let categories = options;
-    let all_leve_items = library().all_leves.all_item_ids();
+    let all_leve_items = library.all_leves.all_item_ids();
 
     items.retain(|item| all_leve_items.contains(&item.id));
 
@@ -178,198 +188,199 @@ fn filter_leve(options: &[String], items: &mut Vec<&'static ItemInfo>) {
     }
 
     items.retain(|item| {
-        let leve_ids = library().all_leves.get_by_item_id(item.id).unwrap();
+        let leve_ids = library.all_leves.get_by_item_id(item.id).unwrap();
         leve_ids
             .iter()
-            .map(|leve_id| &library().all_leves[leve_id].jobs)
-            .any(|jobs| library().all_job_categories[jobs].matches_any(categories))
+            .map(|leve_id| &library.all_leves[leve_id].jobs)
+            .any(|jobs| library.all_job_categories[jobs].matches_any(categories))
     });
 }
 
-fn filter_contains(options: &[String], items: &mut Vec<&'static ItemInfo>) {
+fn filter_contains<'a>(library: &'a Library, options: &[String], items: &mut Vec<&'a ItemInfo>) {
     if options.is_empty() {
         return;
     }
 
     let re = Regex::new(&options.join("|")).unwrap();
     items.retain(|&item| {
-        item.all_recipe_input_ids(item)
+        item.all_recipe_input_ids(library, item)
             .iter()
-            .any(|id| re.is_match(&ItemInfo::get(id).name))
+            .any(|id| re.is_match(&library.item_info(id).name))
     });
 }
 
 #[allow(clippy::ptr_arg)]
-fn filter_noop(_options: &[String], _items: &mut Vec<&'static ItemInfo>) {}
+fn filter_noop<'a>(_library: &'a Library, _options: &[String], _items: &mut Vec<&'a ItemInfo>) {}
 
 ////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use crate::{item_name, Library};
+    use crate::Library;
 
     use super::*;
 
-    fn item_names(items: Vec<&ItemInfo>) -> Vec<&'static str> {
+    fn item_names<'a>(library: &'a Library, items: Vec<&ItemInfo>) -> Vec<&'a str> {
+        let item_name = |id| library.item_name(id);
         items.into_iter().map(item_name).collect()
     }
 
     #[test]
     fn test_empty_filter_string() {
-        Library::initialize_test_data();
+        let library = Library::initialize_test_data();
 
-        let items = Filter::apply_filter_str("", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, "", library.all_items());
         assert_eq!(items.len(), 0);
     }
 
     #[test]
     fn test_missing_tag() {
-        Library::initialize_test_data();
+        let library = Library::initialize_test_data();
 
-        let items = Filter::apply_filter_str("Test 1", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, "Test 1", library.all_items());
         assert_eq!(items.len(), 1);
-        assert_eq!(item_names(items), vec!["Test 1"]);
+        assert_eq!(item_names(&library, items), vec!["Test 1"]);
 
-        let items = Filter::apply_filter_str("Test", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, "Test", library.all_items());
         assert_eq!(items.len(), 2);
-        assert_eq!(item_names(items), vec!["Test 1", "Test 2"]);
+        assert_eq!(item_names(&library, items), vec!["Test 1", "Test 2"]);
     }
 
     #[test]
     fn test_name() {
-        Library::initialize_test_data();
+        let library = Library::initialize_test_data();
 
-        let items = Filter::apply_filter_str(":name Test", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":name Test", library.all_items());
         assert_eq!(items.len(), 2);
-        assert_eq!(item_names(items), vec!["Test 1", "Test 2"]);
+        assert_eq!(item_names(&library, items), vec!["Test 1", "Test 2"]);
 
-        let items = Filter::apply_filter_str(":name Extra", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":name Extra", library.all_items());
         assert_eq!(items.len(), 1);
-        assert_eq!(item_names(items), vec!["Extra"]);
+        assert_eq!(item_names(&library, items), vec!["Extra"]);
 
-        let items = Filter::apply_filter_str(":name", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":name", library.all_items());
         assert_eq!(items.len(), 6);
     }
 
     #[test]
     fn test_ui_categories() {
-        Library::initialize_test_data();
+        let library = Library::initialize_test_data();
 
-        let items = Filter::apply_filter_str(":cat cat 1", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":cat cat 1", library.all_items());
         assert_eq!(items.len(), 2);
-        assert_eq!(item_names(items), vec!["Test 1", "Test 2"]);
+        assert_eq!(item_names(&library, items), vec!["Test 1", "Test 2"]);
 
-        let items = Filter::apply_filter_str(":cat cat 2", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":cat cat 2", library.all_items());
         assert_eq!(items.len(), 1);
-        assert_eq!(item_names(items), vec!["Extra"]);
+        assert_eq!(item_names(&library, items), vec!["Extra"]);
 
-        let items = Filter::apply_filter_str(":cat XXXX", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":cat XXXX", library.all_items());
         assert_eq!(items.len(), 0);
 
-        let items = Filter::apply_filter_str(":cat", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":cat", library.all_items());
         assert_eq!(items.len(), 6);
     }
 
     #[test]
     fn test_contains() {
-        Library::initialize_test_data();
+        let library = Library::initialize_test_data();
 
-        let items = Filter::apply_filter_str(":contains Base 1", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":contains Base 1", library.all_items());
         assert_eq!(items.len(), 2);
-        assert_eq!(item_names(items), vec!["Base 3", "Test 1"]);
+        assert_eq!(item_names(&library, items), vec!["Base 3", "Test 1"]);
 
-        let items = Filter::apply_filter_str(":contains Extra", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":contains Extra", library.all_items());
         assert_eq!(items.len(), 0);
 
-        let items = Filter::apply_filter_str(":contains", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":contains", library.all_items());
         assert_eq!(items.len(), 6);
     }
 
     #[test]
     fn test_recipe_level() {
-        Library::initialize_test_data();
+        let library = Library::initialize_test_data();
 
-        let items = Filter::apply_filter_str(":rlevel 81|81", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":rlevel 81|81", library.all_items());
         assert_eq!(items.len(), 1);
-        assert_eq!(item_names(items), vec!["Base 3"]);
+        assert_eq!(item_names(&library, items), vec!["Base 3"]);
 
-        let items = Filter::apply_filter_str(":rlevel 81", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":rlevel 81", library.all_items());
         assert_eq!(items.len(), 1);
-        assert_eq!(item_names(items), vec!["Base 3"]);
+        assert_eq!(item_names(&library, items), vec!["Base 3"]);
 
-        let items = Filter::apply_filter_str(":rlevel 84|84", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":rlevel 84|84", library.all_items());
         assert_eq!(items.len(), 2);
-        assert_eq!(item_names(items), vec!["Test 1", "Test 2"]);
+        assert_eq!(item_names(&library, items), vec!["Test 1", "Test 2"]);
 
-        let items = Filter::apply_filter_str(":rlevel 84", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":rlevel 84", library.all_items());
         assert_eq!(items.len(), 2);
-        assert_eq!(item_names(items), vec!["Test 1", "Test 2"]);
+        assert_eq!(item_names(&library, items), vec!["Test 1", "Test 2"]);
 
-        let items = Filter::apply_filter_str(":rlevel 1|99", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":rlevel 1|99", library.all_items());
         assert_eq!(items.len(), 4);
         assert_eq!(
-            item_names(items),
+            item_names(&library, items),
             vec!["Base 3", "Test 1", "Test 2", "Extra"]
         );
 
-        let items = Filter::apply_filter_str(":rlevel XXXX", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":rlevel XXXX", library.all_items());
         assert_eq!(items.len(), 4);
         assert_eq!(
-            item_names(items),
+            item_names(&library, items),
             vec!["Base 3", "Test 1", "Test 2", "Extra"]
         );
 
-        let items = Filter::apply_filter_str(":rlevel", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":rlevel", library.all_items());
         assert_eq!(items.len(), 4);
         assert_eq!(
-            item_names(items),
+            item_names(&library, items),
             vec!["Base 3", "Test 1", "Test 2", "Extra"]
         );
     }
 
     #[test]
     fn test_item_ilevel() {
-        Library::initialize_test_data();
+        let library = Library::initialize_test_data();
 
-        let items = Filter::apply_filter_str(":ilevel 500|599", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":ilevel 500|599", library.all_items());
         assert_eq!(items.len(), 1);
-        assert_eq!(item_names(items), vec!["Extra"]);
+        assert_eq!(item_names(&library, items), vec!["Extra"]);
 
-        let items = Filter::apply_filter_str(":ilevel 530", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":ilevel 530", library.all_items());
         assert_eq!(items.len(), 1);
-        assert_eq!(item_names(items), vec!["Extra"]);
+        assert_eq!(item_names(&library, items), vec!["Extra"]);
 
-        let items = Filter::apply_filter_str(":ilevel 600|699", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":ilevel 600|699", library.all_items());
         assert_eq!(items.len(), 2);
-        assert_eq!(item_names(items), vec!["Test 1", "Test 2"]);
+        assert_eq!(item_names(&library, items), vec!["Test 1", "Test 2"]);
 
-        let items = Filter::apply_filter_str(":ilevel 660", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":ilevel 660", library.all_items());
         assert_eq!(items.len(), 2);
-        assert_eq!(item_names(items), vec!["Test 1", "Test 2"]);
+        assert_eq!(item_names(&library, items), vec!["Test 1", "Test 2"]);
 
-        let items = Filter::apply_filter_str(":ilevel XXXX", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":ilevel XXXX", library.all_items());
         assert_eq!(items.len(), 6);
 
-        let items = Filter::apply_filter_str(":ilevel", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":ilevel", library.all_items());
         assert_eq!(items.len(), 6);
     }
 
     #[test]
     fn test_item_level() {
-        Library::initialize_test_data();
+        let library = Library::initialize_test_data();
 
-        let items = Filter::apply_filter_str(":elevel 90|90", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":elevel 90|90", library.all_items());
         assert_eq!(items.len(), 2);
-        assert_eq!(item_names(items), vec!["Test 1", "Test 2"]);
+        assert_eq!(item_names(&library, items), vec!["Test 1", "Test 2"]);
 
-        let items = Filter::apply_filter_str(":elevel 90", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":elevel 90", library.all_items());
         assert_eq!(items.len(), 2);
-        assert_eq!(item_names(items), vec!["Test 1", "Test 2"]);
+        assert_eq!(item_names(&library, items), vec!["Test 1", "Test 2"]);
 
-        let items = Filter::apply_filter_str(":elevel XXXX", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":elevel XXXX", library.all_items());
         assert_eq!(items.len(), 6);
 
-        let items = Filter::apply_filter_str(":elevel", ItemInfo::all_items());
+        let items = Filter::apply_filter_str(&library, ":elevel", library.all_items());
         assert_eq!(items.len(), 6);
     }
 

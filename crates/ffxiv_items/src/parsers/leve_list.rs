@@ -18,7 +18,7 @@ pub struct LeveInfo {
 }
 
 impl LeveList {
-    pub fn from_path<P: AsRef<Path>>(library: &mut Library, path: P) -> Result<Self> {
+    pub fn from_path<P: AsRef<Path>>(library: &Library, path: P) -> Result<Self> {
         let mut leves = BTreeMap::new();
         let mut leves_by_item = BTreeMap::<u32, Vec<u32>>::new();
 

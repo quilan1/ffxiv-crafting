@@ -18,10 +18,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     setup()?;
 
     let start = Instant::now();
-    unsafe { Library::create().await? }; // Safety: Initializing the singleton once
+    let library = Library::create().await?; // Safety: Initializing the singleton once
     println!("Initialized in {} ms", start.elapsed().as_millis());
 
-    Server::run().await?;
+    Server::run(library).await?;
 
     Ok(())
 }
@@ -63,4 +63,8 @@ fn setup() -> Result<(), Box<dyn Error>> {
     log4rs::init_config(config)?;
 
     Ok(())
+}
+
+mod _temp {
+    use axum_macros as _;
 }

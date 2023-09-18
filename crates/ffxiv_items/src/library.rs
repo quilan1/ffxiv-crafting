@@ -7,7 +7,8 @@ use std::path::Path;
 use std::{fs::DirBuilder, io::Write};
 
 use crate::recipe::RecipeLevelInfo;
-use crate::Recipe;
+use crate::util::ItemId;
+use crate::{ItemInfo, Recipe};
 
 use super::parsers::{
     CraftLeveList, ItemList, JobCategoryList, LeveList, RecipeLevelTable, RecipeList,
@@ -23,33 +24,9 @@ pub struct Library {
     pub(crate) all_job_categories: JobCategoryList,
 }
 
-static mut LIBRARY: Option<Library> = None;
-
-pub(crate) fn library() -> &'static Library {
-    unsafe {
-        LIBRARY
-            .as_ref()
-            .expect("LIBRARY has not been set! Please first call Library::create()")
-    }
-}
-
-fn library_mut() -> &'static mut Library {
-    unsafe {
-        LIBRARY
-            .as_mut()
-            .expect("LIBRARY has not been set! Please first call Library::create()")
-    }
-}
-
 impl Library {
-    /// # Safety
-    /// May not be called concurrently
-    pub async unsafe fn create() -> Result<()> {
-        unsafe {
-            LIBRARY = Some(Library::default());
-        }
-
-        let library = library_mut();
+    pub async fn create() -> Result<Self> {
+        let mut library = Library::default();
 
         Self::download_files().await?;
 
@@ -57,7 +34,7 @@ impl Library {
         library.all_ui_categories = UiCategoryList::from_path("./csv/ItemUICategory.csv")?;
 
         library.all_crafting_leves = CraftLeveList::from_path("./csv/CraftLeve.csv")?;
-        library.all_leves = LeveList::from_path(library, "./csv/Leve.csv")?;
+        library.all_leves = LeveList::from_path(&library, "./csv/Leve.csv")?;
         library.all_job_categories = JobCategoryList::from_path("./csv/ClassJobCategory.csv")?;
 
         let recipe_info = Self::parse_recipes()?;
@@ -69,18 +46,7 @@ impl Library {
 
         library.validate_items();
 
-        Ok(())
-    }
-
-    #[cfg(test)]
-    pub(crate) unsafe fn create_mut() -> Option<&'static mut Self> {
-        unsafe {
-            if LIBRARY.is_some() {
-                return None;
-            }
-            LIBRARY = Some(Library::default());
-        }
-        Some(library_mut())
+        Ok(library)
     }
 
     fn parse_recipes() -> Result<BTreeMap<u32, Recipe>> {
@@ -160,11 +126,35 @@ impl Library {
         for item in self.all_items.items.values() {
             if let Some(recipe) = &item.recipe {
                 for input in &recipe.inputs {
-                    if crate::ItemInfo::get_checked(input).is_none() {
+                    if self.item_info_checked(input).is_none() {
                         println!("[Library] *WARN*: Item '{}' missing recipe references invalid item_id: {}", item.id, input.item_id);
                     }
                 }
             }
         }
+    }
+}
+
+impl Library {
+    pub fn ui_category_unchecked(&self, ui_category: u32) -> &str {
+        &self.all_ui_categories[&ui_category]
+    }
+
+    pub fn item_name<'a, I: ItemId>(&'a self, obj: &I) -> &'a str {
+        let id = obj.item_id();
+        &self.all_items[&id].name
+    }
+
+    pub fn item_info<'a, I: ItemId>(&'a self, obj: &I) -> &'a ItemInfo {
+        let id = obj.item_id();
+        &self.all_items[&id]
+    }
+
+    pub fn item_info_checked<'a, I: ItemId>(&'a self, obj: &I) -> Option<&'a ItemInfo> {
+        self.all_items.items.get(&obj.item_id())
+    }
+
+    pub fn all_items(&self) -> Vec<&ItemInfo> {
+        self.all_items.items.values().collect::<Vec<_>>()
     }
 }

@@ -1,7 +1,10 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
-use axum::{extract::Form, response::IntoResponse};
-use ffxiv_items::item_name;
+use axum::{
+    extract::{Form, State},
+    response::IntoResponse,
+};
+use ffxiv_items::Library;
 use serde::{Deserialize, Serialize};
 use tokio::task::spawn_blocking;
 
@@ -40,16 +43,19 @@ pub struct RecipeData {
 ////////////////////////////////////////////////////////////
 
 // Return recipe info for a particular filter
-pub async fn get_recipe_info(Form(payload): Form<GetInput>) -> impl IntoResponse {
+pub async fn get_recipe_info(
+    State(library): State<Arc<Library>>,
+    Form(payload): Form<GetInput>,
+) -> impl IntoResponse {
     ok_json(
-        spawn_blocking(move || get_recipe_info_data(payload))
+        spawn_blocking(move || get_recipe_info_data(&library, payload))
             .await
             .unwrap(),
     )
 }
 
-fn get_recipe_info_data(payload: GetInput) -> GetOutput {
-    let (top_ids, all_ids) = ffxiv_items::get_ids_from_filters(payload.filters);
+fn get_recipe_info_data(library: &Library, payload: GetInput) -> GetOutput {
+    let (top_ids, all_ids) = ffxiv_items::get_ids_from_filters(library, payload.filters);
     let item_info = all_ids
         .into_iter()
         .map(|id| {
@@ -57,8 +63,8 @@ fn get_recipe_info_data(payload: GetInput) -> GetOutput {
                 id,
                 ItemInfo {
                     item_id: id,
-                    name: item_name(&id).replace('\u{00A0}', " ").to_string(),
-                    recipe: recipe_info(id),
+                    name: library.item_name(&id).replace('\u{00A0}', " ").to_string(),
+                    recipe: recipe_info(library, id),
                 },
             )
         })
@@ -69,8 +75,9 @@ fn get_recipe_info_data(payload: GetInput) -> GetOutput {
 
 ////////////////////////////////////////////////////////////
 
-fn recipe_info(id: u32) -> Option<Recipe> {
-    ffxiv_items::ItemInfo::get_checked(&id)
+fn recipe_info(library: &Library, id: u32) -> Option<Recipe> {
+    library
+        .item_info_checked(&id)
         .and_then(|item| item.recipe.as_ref())
         .map(|recipe| Recipe {
             outputs: recipe.output.count,

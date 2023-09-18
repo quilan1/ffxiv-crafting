@@ -20,3 +20,4 @@ ffxiv_items = { version = "0.1.0", path = "../ffxiv_items" }
 ffxiv_universalis = { version = "0.1.0", path = "../ffxiv_universalis" }
 async_processor = { version = "0.1.0", path = "../async_processor" }
 axum-server-timing = "0.2.0"
+axum-macros = "0.3.8"

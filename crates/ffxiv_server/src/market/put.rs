@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::{extract::State, response::IntoResponse, Json};
-use ffxiv_items::get_ids_from_filters;
+use ffxiv_items::{get_ids_from_filters, Library};
 use ffxiv_universalis::{
     request_universalis_info, UniversalisHistory, UniversalisListing, UniversalisRequestType,
 };
@@ -27,23 +27,27 @@ pub struct PutInput {
 
 #[allow(clippy::unused_async)]
 pub async fn put_market_history(
-    State(state): State<Arc<MarketState>>,
+    State((state, library)): State<(Arc<MarketState>, Arc<Library>)>,
     Json(payload): Json<PutInput>,
 ) -> impl IntoResponse {
     let uuid = Uuid::new_v4().to_string();
     let uuid_clone = uuid.clone();
-    spawn_blocking(move || put_market_request::<UniversalisHistory>(&state, uuid_clone, payload));
+    spawn_blocking(move || {
+        put_market_request::<UniversalisHistory>(&state, &library, uuid_clone, payload)
+    });
     ok_text(uuid)
 }
 
 #[allow(clippy::unused_async)]
 pub async fn put_market_listings(
-    State(state): State<Arc<MarketState>>,
+    State((state, library)): State<(Arc<MarketState>, Arc<Library>)>,
     Json(payload): Json<PutInput>,
 ) -> impl IntoResponse {
     let uuid = Uuid::new_v4().to_string();
     let uuid_clone = uuid.clone();
-    spawn_blocking(move || put_market_request::<UniversalisListing>(&state, uuid_clone, payload));
+    spawn_blocking(move || {
+        put_market_request::<UniversalisListing>(&state, &library, uuid_clone, payload)
+    });
     ok_text(uuid)
 }
 
@@ -51,10 +55,11 @@ pub async fn put_market_listings(
 
 pub fn put_market_request<T: UniversalisRequestType>(
     state: &Arc<MarketState>,
+    library: &Library,
     uuid: String,
     payload: PutInput,
 ) -> String {
-    let (_, all_ids) = get_ids_from_filters(payload.filters);
+    let (_, all_ids) = get_ids_from_filters(library, payload.filters);
     let worlds = payload
         .data_center
         .or(std::env::var("FFXIV_DATA_CENTERS").ok())
