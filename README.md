@@ -45,4 +45,4 @@ The Rust crates are inside of the 'crates' directory, and the Javascript / Types
 
 ## Customization
 
-This is all a personal project, and not intended for anyone else, but in the off-chance that someone wants to use it, references to the homeworld (Seraph) may be found in [crates/ffxiv_server/src/cli.rs](crates/ffxiv_server/src/cli.rs)
+This is all a personal project, and not intended for anyone else, but in the off-chance that someone wants to use it, references to the homeworld (Seraph) may be found in [frontend/src-ts/src/custom/statistics.ts](frontend/src-ts/src/custom/statistics.ts), as the HOMEWORLD variable.
