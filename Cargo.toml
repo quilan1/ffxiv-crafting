@@ -1,9 +1,14 @@
 [workspace]
-members = ["crates/ffxiv_items", "crates/ffxiv_server", "crates/ffxiv_universalis", "crates/async_processor"]
+members = [
+    "crates/ffxiv_items",
+    "crates/ffxiv_server",
+    "crates/ffxiv_universalis",
+    "crates/async_processor",
+]
 resolver = "2"
 
 [profile.release-debug]
-inherits="release"
+inherits = "release"
 debug = true
 
 [profile.docker]

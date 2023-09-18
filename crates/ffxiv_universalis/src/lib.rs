@@ -1,7 +1,7 @@
 #![warn(unused_crate_dependencies)]
 mod handle;
 mod json;
-mod json_types;
+pub mod json_types;
 mod processor;
 mod processor_data;
 mod request;
@@ -19,5 +19,12 @@ pub use json::ItemMarketInfoMap;
 pub use processor::{new_universalis_processor, request_universalis_info};
 pub use request_type::{UniversalisHistory, UniversalisListing, UniversalisRequestType};
 pub use status::UniversalisStatus;
+
+#[cfg(test)]
+mod tests {
+    // Avoiding the unused warnings for the integration tests
+    use axum as _;
+    use tower_http as _;
+}
 
 ////////////////////////////////////////////////////////////

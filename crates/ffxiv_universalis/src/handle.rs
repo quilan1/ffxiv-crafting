@@ -3,7 +3,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures::{Future, FutureExt};
+use futures::{channel::oneshot::Receiver, Future, FutureExt};
 use tokio::task::{JoinError, JoinHandle};
 
 use crate::{ItemMarketInfoMap, UniversalisStatus};
@@ -14,6 +14,7 @@ pub struct UniversalisHandle {
     uuid: String,
     join_handle: JoinHandle<UniversalisHandleOutput>,
     status: UniversalisStatus,
+    ready_signal: Option<Receiver<()>>,
 }
 
 impl UniversalisHandle {
@@ -21,11 +22,13 @@ impl UniversalisHandle {
         uuid: String,
         join_handle: JoinHandle<UniversalisHandleOutput>,
         status: UniversalisStatus,
+        spawn_signal: Receiver<()>,
     ) -> Self {
         Self {
             uuid,
             join_handle,
             status,
+            ready_signal: Some(spawn_signal),
         }
     }
 
@@ -35,6 +38,12 @@ impl UniversalisHandle {
 
     pub fn uuid(&self) -> &str {
         &self.uuid
+    }
+
+    pub async fn wait_for_ready(&mut self) {
+        if let Some(signal) = self.ready_signal.take() {
+            signal.await.unwrap();
+        }
     }
 }
 

@@ -6,7 +6,10 @@ use crate::{
 };
 
 use async_processor::{AsyncProcessor, AsyncProcessorHandle};
-use futures::future::join_all;
+use futures::{
+    channel::oneshot::{self, Sender},
+    future::join_all,
+};
 use itertools::Itertools;
 use log::info;
 use tokio::task::spawn_blocking;
@@ -29,13 +32,14 @@ pub fn request_universalis_info<T: UniversalisRequestType>(
     let status = data.status.clone();
     let uuid = data.uuid.clone();
 
+    let (ready_signal_tx, ready_signal_rx) = oneshot::channel();
     let join_handle = tokio::spawn(async move {
         let status = data.status.clone();
         let uuid = data.uuid.clone();
         let chunks = data.id_chunks();
 
         info!("[Universalis] {uuid} Queueing {} futures", T::fetch_type());
-        let all_listings = fetch_and_process_market_info::<T>(data).await;
+        let all_listings = fetch_and_process_market_info::<T>(data, ready_signal_tx).await;
         status.set_value(UniversalisStatusState::Cleanup);
 
         let (listing_map, failure_ids) =
@@ -50,7 +54,7 @@ pub fn request_universalis_info<T: UniversalisRequestType>(
         (listing_map, failure_ids)
     });
 
-    UniversalisHandle::new(uuid, join_handle, status)
+    UniversalisHandle::new(uuid, join_handle, status, ready_signal_rx)
 }
 
 fn combine_returned_listings(
@@ -75,6 +79,7 @@ fn combine_returned_listings(
 
 async fn fetch_and_process_market_info<T: UniversalisRequestType>(
     data: UniversalisProcessorData,
+    ready_signal: Sender<()>,
 ) -> Vec<Option<ItemMarketInfoMap>> {
     let id_chunks = data.id_chunks();
 
@@ -90,6 +95,7 @@ async fn fetch_and_process_market_info<T: UniversalisRequestType>(
         }
     }
 
+    let _ = ready_signal.send(());
     let ids = handles.iter().map(AsyncProcessorHandle::id).collect();
     data.status
         .set_value(UniversalisStatusState::Processing(ids));

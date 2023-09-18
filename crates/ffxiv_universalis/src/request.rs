@@ -36,6 +36,8 @@ impl<T: UniversalisRequestType> UniversalisRequest<T> {
     // they return, it yields the full request back.
     pub fn process_listing(self) -> AsyncProcessorHandle<Option<ItemMarketInfoMap>> {
         let async_processor = self.data.async_processor.clone();
+
+        // TODO: Can this be done better?
         let future = async move {
             Self::fetch_listing_url(
                 self.data.uuid,
@@ -61,6 +63,7 @@ impl<T: UniversalisRequestType> UniversalisRequest<T> {
         info!("[Universalis] {uuid} Fetch {signature} {url}");
 
         for attempt in 0..num_attempts {
+            // let listing = reqwest::get(&url).await.unwrap().text().await.unwrap();
             let listing = reqwest::get(&url).await.ok()?.text().await.ok()?;
 
             // Invalid response from the server. This typically is from load, so let's fall back a bit & retry in a second
