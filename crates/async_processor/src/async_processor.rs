@@ -1,5 +1,6 @@
 use std::{
     pin::Pin,
+    sync::Arc,
     task::{Context, Poll, Waker},
 };
 
@@ -9,17 +10,18 @@ use futures::{
     stream::BufferUnordered,
     Future, FutureExt, StreamExt,
 };
-
-use crate::{AmValue, AmoValue};
+use parking_lot::Mutex;
 
 type FutureSender = UnboundedSender<BoxFuture<'static, ()>>;
 type FutureReceiver = BufferUnordered<UnboundedReceiver<BoxFuture<'static, ()>>>;
 
 #[derive(Clone)]
-pub struct AsyncProcessor {
-    tx: AmValue<FutureSender>,
-    rx: AmValue<FutureReceiver>,
-    waker: AmoValue<Waker>,
+pub struct AsyncProcessor(Arc<AsyncProcessorInnerData>);
+
+pub struct AsyncProcessorInnerData {
+    tx: Mutex<FutureSender>,
+    rx: Mutex<FutureReceiver>,
+    waker: Mutex<Option<Waker>>,
 }
 
 ////////////////////////////////////////////////////////////
@@ -29,11 +31,11 @@ impl AsyncProcessor {
     pub fn new(max_active: usize) -> Self {
         let (tx, rx) = unbounded();
         let rx = rx.buffer_unordered(max_active);
-        Self {
-            tx: AmValue::new(tx),
-            rx: AmValue::new(rx),
-            waker: AmoValue::new(None),
-        }
+        Self(Arc::new(AsyncProcessorInnerData {
+            tx: Mutex::new(tx),
+            rx: Mutex::new(rx),
+            waker: Mutex::new(None),
+        }))
     }
 
     // Takes in future, queues it, and returns a future that you can poll for the result
@@ -43,12 +45,13 @@ impl AsyncProcessor {
         Fut::Output: Send,
     {
         let (future, remote) = future.remote_handle();
-        let waker = self.waker.clone();
-        self.tx
+        let inner = self.0.clone();
+        self.0
+            .tx
             .lock()
             .unbounded_send(Box::pin(async move {
                 future.await;
-                if let Some(waker) = waker.lock().as_ref() {
+                if let Some(waker) = inner.waker.lock().as_ref() {
                     waker.wake_by_ref()
                 }
             }))
@@ -57,7 +60,7 @@ impl AsyncProcessor {
     }
 
     pub fn disconnect(&self) {
-        self.tx.lock().disconnect();
+        self.0.tx.lock().disconnect();
     }
 }
 
@@ -65,8 +68,8 @@ impl Future for AsyncProcessor {
     type Output = ();
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.waker.replace(Some(cx.waker().clone()));
-        match self.rx.lock().poll_next_unpin(cx) {
+        self.0.waker.lock().replace(cx.waker().clone());
+        match self.0.rx.lock().poll_next_unpin(cx) {
             Poll::Ready(None) => Poll::Ready(()),
             _ => Poll::Pending,
         }
