@@ -15,7 +15,7 @@ pub async fn put_market_cancel(
     Path(uuid): Path<String>,
 ) -> impl IntoResponse {
     fn inner(state: &Arc<MarketState>, uuid: String) -> impl IntoResponse {
-        let status = state.with_market_request(&uuid, |info| {
+        let status = state.with_handle(&uuid, |info| {
             info.map(|universalis_handle| universalis_handle.status())
         });
 
@@ -25,7 +25,7 @@ pub async fn put_market_cancel(
 
         let id_count = status.get_num_futures();
         log::info!("[Cancel] {uuid} market call cancelled ({id_count} requests)");
-        state.remove_market_request(uuid);
+        state.remove_handle(uuid);
         ok_text("OK").into_response()
     }
 

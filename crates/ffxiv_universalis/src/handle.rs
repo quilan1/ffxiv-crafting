@@ -32,6 +32,10 @@ impl UniversalisHandle {
     pub fn status(&self) -> UniversalisStatus {
         self.status.clone()
     }
+
+    pub fn uuid(&self) -> &str {
+        &self.uuid
+    }
 }
 
 impl Drop for UniversalisHandle {

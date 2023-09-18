@@ -5,6 +5,7 @@ use ffxiv_items::get_ids_from_filters;
 use ffxiv_universalis::{
     request_market_info, UniversalisHistory, UniversalisListing, UniversalisRequestType,
 };
+use log::info;
 use serde::Deserialize;
 use tokio::task::spawn_blocking;
 use uuid::Uuid;
@@ -24,23 +25,25 @@ pub struct PutInput {
 
 ////////////////////////////////////////////////////////////
 
+#[allow(clippy::unused_async)]
 pub async fn put_market_history(
     State(state): State<Arc<MarketState>>,
     Json(payload): Json<PutInput>,
 ) -> impl IntoResponse {
-    let uuid = spawn_blocking(move || put_market_request::<UniversalisHistory>(&state, payload))
-        .await
-        .unwrap();
+    let uuid = Uuid::new_v4().to_string();
+    let uuid_clone = uuid.clone();
+    spawn_blocking(move || put_market_request::<UniversalisHistory>(&state, uuid_clone, payload));
     ok_text(uuid)
 }
 
+#[allow(clippy::unused_async)]
 pub async fn put_market_listings(
     State(state): State<Arc<MarketState>>,
     Json(payload): Json<PutInput>,
 ) -> impl IntoResponse {
-    let uuid = spawn_blocking(move || put_market_request::<UniversalisListing>(&state, payload))
-        .await
-        .unwrap();
+    let uuid = Uuid::new_v4().to_string();
+    let uuid_clone = uuid.clone();
+    spawn_blocking(move || put_market_request::<UniversalisListing>(&state, uuid_clone, payload));
     ok_text(uuid)
 }
 
@@ -48,6 +51,7 @@ pub async fn put_market_listings(
 
 pub fn put_market_request<T: UniversalisRequestType>(
     state: &Arc<MarketState>,
+    uuid: String,
     payload: PutInput,
 ) -> String {
     let (_, all_ids) = get_ids_from_filters(payload.filters);
@@ -56,6 +60,7 @@ pub fn put_market_request<T: UniversalisRequestType>(
         .or(std::env::var("FFXIV_DATA_CENTERS").ok())
         .unwrap()
         .split(',')
+        .map(str::trim)
         .map(ToString::to_string)
         .collect();
 
@@ -68,9 +73,13 @@ pub fn put_market_request<T: UniversalisRequestType>(
         retain_num_days,
     );
 
+    info!(
+        "[Server] Server uuid {uuid} maps to universalis uuid {}",
+        universalis_handle.uuid()
+    );
+
     // Save the placeholder & output into the server state
-    let uuid = Uuid::new_v4().to_string();
-    state.insert_market_request(&uuid, universalis_handle);
+    state.insert_handle(&uuid, universalis_handle);
 
     uuid
 }

@@ -51,7 +51,7 @@ pub fn get_market_request_status(state: &Arc<MarketState>, uuid: &str) -> impl I
             ok_json(GetOutput::from_in_progress(status)).into_response()
         }
         GetStatus::Finished(listing_map, failures) => {
-            state.remove_market_request(uuid).unwrap();
+            state.remove_handle(uuid).unwrap();
             let out = GetOutput::from_finished(GetOutputInfo::new(listing_map, failures));
             ok_json(out).into_response()
         }
@@ -59,7 +59,7 @@ pub fn get_market_request_status(state: &Arc<MarketState>, uuid: &str) -> impl I
 }
 
 pub fn get_market_request_data(state: &Arc<MarketState>, uuid: &str) -> GetStatus {
-    state.with_market_request(uuid, |info| match info {
+    state.with_handle(uuid, |info| match info {
         None => GetStatus::Error(format!("Id not found: {uuid}")),
         Some(universalis_handle) => match universalis_handle.now_or_never() {
             Some(Ok((info, failures))) => GetStatus::Finished(info, failures),
