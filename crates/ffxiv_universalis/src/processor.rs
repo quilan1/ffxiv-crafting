@@ -5,7 +5,7 @@ use crate::{
     UniversalisRequest, UniversalisRequestType, UniversalisStatusState,
 };
 
-use async_processor::AsyncProcessor;
+use async_processor::{AsyncProcessor, AsyncProcessorHandle};
 use futures::future::join_all;
 use itertools::Itertools;
 use log::info;
@@ -13,7 +13,13 @@ use tokio::task::spawn_blocking;
 
 ////////////////////////////////////////////////////////////
 
-pub fn request_market_info<T: UniversalisRequestType>(
+pub const MAX_UNIVERSALIS_CONCURRENT_FUTURES: usize = 8;
+
+pub fn new_universalis_processor() -> AsyncProcessor {
+    AsyncProcessor::new(MAX_UNIVERSALIS_CONCURRENT_FUTURES)
+}
+
+pub fn request_universalis_info<T: UniversalisRequestType>(
     async_processor: AsyncProcessor,
     worlds: Vec<String>,
     ids: Vec<u32>,
@@ -73,19 +79,21 @@ async fn fetch_and_process_market_info<T: UniversalisRequestType>(
     let id_chunks = data.id_chunks();
 
     let mut chunk_id = 1;
-    let mut remote_futures = Vec::new();
+    let mut handles = Vec::new();
     for ids in &id_chunks {
         for world in &data.worlds {
             let ids_string = ids.iter().map(|id| id.to_string()).join(",");
             let request =
                 UniversalisRequest::<T>::new(data.clone(), world.clone(), ids_string, chunk_id);
-            remote_futures.push(request.process_listing());
+            handles.push(request.process_listing());
             chunk_id += 1;
         }
     }
 
-    data.status.set_value(UniversalisStatusState::Processing);
-    join_all(remote_futures).await
+    let ids = handles.iter().map(AsyncProcessorHandle::id).collect();
+    data.status
+        .set_value(UniversalisStatusState::Processing(ids));
+    join_all(handles).await
 }
 
 ////////////////////////////////////////////////////////////

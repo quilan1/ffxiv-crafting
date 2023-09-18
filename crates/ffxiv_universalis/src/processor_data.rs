@@ -31,7 +31,7 @@ impl UniversalisProcessorData {
             ids,
             retain_num_days,
             num_requests,
-            status: UniversalisStatus::new(async_processor, num_requests),
+            status: UniversalisStatus::new(async_processor),
         }
     }
 

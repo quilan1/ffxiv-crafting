@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::{extract::State, response::IntoResponse, Json};
 use ffxiv_items::get_ids_from_filters;
 use ffxiv_universalis::{
-    request_market_info, UniversalisHistory, UniversalisListing, UniversalisRequestType,
+    request_universalis_info, UniversalisHistory, UniversalisListing, UniversalisRequestType,
 };
 use log::info;
 use serde::Deserialize;
@@ -66,7 +66,7 @@ pub fn put_market_request<T: UniversalisRequestType>(
 
     // Send the request over to the async processor
     let retain_num_days = payload.retain_num_days.unwrap_or(7.0);
-    let universalis_handle = request_market_info::<T>(
+    let universalis_handle = request_universalis_info::<T>(
         state.async_processor.clone(),
         worlds,
         all_ids,

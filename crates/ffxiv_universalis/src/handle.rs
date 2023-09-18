@@ -8,7 +8,7 @@ use tokio::task::{JoinError, JoinHandle};
 
 use crate::{ItemMarketInfoMap, UniversalisStatus};
 
-type UniversalisHandleOutput = (ItemMarketInfoMap, Vec<u32>);
+pub type UniversalisHandleOutput = (ItemMarketInfoMap, Vec<u32>);
 
 pub struct UniversalisHandle {
     uuid: String,

@@ -19,14 +19,14 @@ pub async fn put_market_cancel(
             info.map(|universalis_handle| universalis_handle.status())
         });
 
-        let Some(status) = status else {
-            return not_found(format!("UUID {uuid} not found!")).into_response();
-        };
-
-        let id_count = status.get_num_futures();
-        log::info!("[Cancel] {uuid} market call cancelled ({id_count} requests)");
-        state.remove_handle(uuid);
-        ok_text("OK").into_response()
+        match status {
+            Some(_) => {
+                log::info!("[Cancel] {uuid} market call cancelled");
+                state.remove_handle(uuid);
+                ok_text("OK").into_response()
+            }
+            None => not_found(format!("UUID {uuid} not found!")).into_response(),
+        }
     }
 
     spawn_blocking(move || inner(&state, uuid)).await.unwrap()

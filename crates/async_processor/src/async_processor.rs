@@ -18,10 +18,24 @@ type FutureReceiver = BufferUnordered<UnboundedReceiver<BoxFuture<'static, ()>>>
 #[derive(Clone)]
 pub struct AsyncProcessor(Arc<AsyncProcessorInnerData>);
 
-pub struct AsyncProcessorInnerData {
+struct AsyncProcessorInnerData {
     tx: Mutex<FutureSender>,
     rx: Mutex<FutureReceiver>,
     waker: Mutex<Option<Waker>>,
+    cur_id: Mutex<usize>,
+    num_finished: Mutex<usize>,
+}
+
+pub struct AsyncProcessorHandle<T> {
+    id: usize,
+    handle: RemoteHandle<T>,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum AsyncProcessorStatus {
+    Done,
+    Active,
+    Queued(usize),
 }
 
 ////////////////////////////////////////////////////////////
@@ -35,16 +49,26 @@ impl AsyncProcessor {
             tx: Mutex::new(tx),
             rx: Mutex::new(rx),
             waker: Mutex::new(None),
+            cur_id: Mutex::new(0),
+            num_finished: Mutex::new(0),
         }))
     }
 
     // Takes in future, queues it, and returns a future that you can poll for the result
-    pub fn process_future<Fut>(&self, future: Fut) -> RemoteHandle<Fut::Output>
+    pub fn process_future<Fut>(&self, future: Fut) -> AsyncProcessorHandle<Fut::Output>
     where
         Fut: Future + Send + 'static,
         Fut::Output: Send,
     {
         let (future, remote) = future.remote_handle();
+
+        let id = {
+            let mut cur_id = self.0.cur_id.lock();
+            let id = *cur_id;
+            *cur_id += 1;
+            id
+        };
+
         let inner = self.0.clone();
         self.0
             .tx
@@ -56,11 +80,16 @@ impl AsyncProcessor {
                 }
             }))
             .unwrap();
-        remote
+
+        AsyncProcessorHandle { id, handle: remote }
     }
 
     pub fn disconnect(&self) {
         self.0.tx.lock().disconnect();
+    }
+
+    pub fn num_finished(&self) -> usize {
+        *self.0.num_finished.lock()
     }
 }
 
@@ -70,9 +99,27 @@ impl Future for AsyncProcessor {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         self.0.waker.lock().replace(cx.waker().clone());
         match self.0.rx.lock().poll_next_unpin(cx) {
+            Poll::Ready(Some(_)) => {
+                *self.0.num_finished.lock() += 1;
+                Poll::Pending
+            }
             Poll::Ready(None) => Poll::Ready(()),
-            _ => Poll::Pending,
+            Poll::Pending => Poll::Pending,
         }
+    }
+}
+
+impl<T> AsyncProcessorHandle<T> {
+    pub fn id(&self) -> usize {
+        self.id
+    }
+}
+
+impl<T: 'static> Future for AsyncProcessorHandle<T> {
+    type Output = T;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        self.handle.poll_unpin(cx)
     }
 }
 

@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use async_processor::{AmValue, AsyncProcessor};
-use ffxiv_universalis::UniversalisHandle;
+use ffxiv_universalis::{new_universalis_processor, UniversalisHandle};
 
 #[derive(Clone)]
 pub struct MarketState {
@@ -11,9 +11,8 @@ pub struct MarketState {
 
 impl MarketState {
     pub fn new() -> Arc<Self> {
-        // Universalis can only take 8 connections at a time
         Arc::new(Self {
-            async_processor: AsyncProcessor::new(8),
+            async_processor: new_universalis_processor(),
             handles: AmValue::new(HashMap::new()),
         })
     }

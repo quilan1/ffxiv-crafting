@@ -1,6 +1,6 @@
 use std::{marker::PhantomData, time::Duration};
 
-use futures::future::RemoteHandle;
+use async_processor::AsyncProcessorHandle;
 use log::{error, info, warn};
 use tokio::{task::spawn_blocking, time::sleep};
 
@@ -34,20 +34,16 @@ impl<T: UniversalisRequestType> UniversalisRequest<T> {
 
     // Uses the AsyncProcessor to queue the listing & history API calls to Universalis. Once
     // they return, it yields the full request back.
-    pub fn process_listing(self) -> RemoteHandle<Option<ItemMarketInfoMap>> {
+    pub fn process_listing(self) -> AsyncProcessorHandle<Option<ItemMarketInfoMap>> {
         let async_processor = self.data.async_processor.clone();
         let future = async move {
-            let status = self.data.status.clone();
-            status.start_future();
-            let result = Self::fetch_listing_url(
+            Self::fetch_listing_url(
                 self.data.uuid,
                 self.url,
                 self.signature,
                 self.data.retain_num_days,
             )
-            .await;
-            status.finish_future();
-            result
+            .await
         };
 
         async_processor.process_future(future)

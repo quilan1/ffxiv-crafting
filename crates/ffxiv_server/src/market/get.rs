@@ -79,7 +79,7 @@ impl GetOutput {
 
     fn from_finished(output: GetOutputInfo) -> Self {
         Self {
-            status: "Finished...".into(),
+            status: "Done".into(),
             output_info: Some(output),
         }
     }

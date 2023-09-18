@@ -26,11 +26,19 @@ pub struct Library {
 static mut LIBRARY: Option<Library> = None;
 
 pub(crate) fn library() -> &'static Library {
-    unsafe { LIBRARY.as_ref().expect("LIBRARY has not been set!") }
+    unsafe {
+        LIBRARY
+            .as_ref()
+            .expect("LIBRARY has not been set! Please first call Library::create()")
+    }
 }
 
 fn library_mut() -> &'static mut Library {
-    unsafe { LIBRARY.as_mut().expect("LIBRARY has not been set!") }
+    unsafe {
+        LIBRARY
+            .as_mut()
+            .expect("LIBRARY has not been set! Please first call Library::create()")
+    }
 }
 
 impl Library {
