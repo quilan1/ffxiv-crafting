@@ -8,7 +8,7 @@ use ffxiv_items::Library;
 use serde::{Deserialize, Serialize};
 use tokio::task::spawn_blocking;
 
-use crate::util::ok_json;
+use crate::ok_json;
 
 #[derive(Deserialize)]
 pub struct GetInput {

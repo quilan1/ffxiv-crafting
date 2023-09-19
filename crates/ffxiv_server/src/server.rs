@@ -10,10 +10,8 @@ use std::{net::SocketAddr, sync::Arc};
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::{
-    market::{
-        get_market_info, put_market_cancel, put_market_history, put_market_listings, MarketState,
-    },
-    recipe::get_recipe_info,
+    market::{self, MarketState},
+    recipe,
 };
 
 pub struct Server;
@@ -28,7 +26,7 @@ impl Server {
         let health_service = Router::new().route("/health", get(|| async { "OK" }));
 
         let recipe_service = Router::new()
-            .route("/recipe", get(get_recipe_info))
+            .route("/recipe", get(recipe::get_recipe_info))
             .layer(axum_server_timing::ServerTimingLayer::new("RecipeService"))
             .with_state(library.clone());
 
@@ -36,10 +34,10 @@ impl Server {
             .nest(
                 "/market",
                 Router::new()
-                    .route("/history", put(put_market_history))
-                    .route("/listings", put(put_market_listings))
-                    .route("/:id", get(get_market_info))
-                    .route("/:id/cancel", put(put_market_cancel)),
+                    .route("/history", put(market::put_market_history))
+                    .route("/listings", put(market::put_market_listings))
+                    .route("/:id", get(market::get_market_info))
+                    .route("/:id/cancel", put(market::put_market_cancel)),
             )
             .layer(axum_server_timing::ServerTimingLayer::new("MarketService"))
             .with_state((market_state.clone(), library.clone()));

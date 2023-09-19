@@ -1,7 +1,6 @@
 use crate::{
     parsers::{ItemList, UiCategoryList},
-    recipe::{Ingredient, Recipe},
-    ItemInfo, Library,
+    Ingredient, ItemInfo, Library, Recipe,
 };
 
 impl Library {

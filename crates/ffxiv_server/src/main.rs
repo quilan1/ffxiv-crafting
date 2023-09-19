@@ -4,12 +4,13 @@
 
 mod market;
 mod recipe;
+mod responses;
 mod server;
-mod util;
 
 use std::{error::Error, time::Instant};
 
-use crate::server::Server;
+use responses::{not_found, ok_json, ok_text};
+use server::Server;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {

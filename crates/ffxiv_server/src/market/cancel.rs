@@ -7,7 +7,7 @@ use axum::{
 use ffxiv_items::Library;
 use tokio::task::spawn_blocking;
 
-use crate::util::{not_found, ok_text};
+use crate::{not_found, ok_text};
 
 use super::MarketState;
 

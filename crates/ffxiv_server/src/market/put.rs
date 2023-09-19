@@ -8,7 +8,7 @@ use serde::Deserialize;
 use tokio::task::spawn_blocking;
 use uuid::Uuid;
 
-use crate::util::ok_text;
+use crate::ok_text;
 
 use super::MarketState;
 

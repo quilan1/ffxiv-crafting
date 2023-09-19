@@ -6,14 +6,11 @@ use std::io::BufWriter;
 use std::path::Path;
 use std::{fs::DirBuilder, io::Write};
 
-use crate::recipe::RecipeLevelInfo;
-use crate::util::ItemId;
-use crate::{ItemInfo, Recipe};
-
-use super::parsers::{
+use crate::parsers::{
     CraftLeveList, ItemList, JobCategoryList, LeveList, RecipeLevelTable, RecipeList,
     UiCategoryList,
 };
+use crate::{ItemId, ItemInfo, Recipe, RecipeLevelInfo};
 
 #[derive(Default)]
 pub struct Library {
