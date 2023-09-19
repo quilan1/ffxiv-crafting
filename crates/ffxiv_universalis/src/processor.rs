@@ -38,7 +38,7 @@ pub fn request_universalis_info<T: UniversalisRequestType>(
         let uuid = data.uuid.clone();
         let chunks = data.id_chunks();
 
-        info!("[Universalis] {uuid} Queueing {} futures", T::fetch_type());
+        info!(target: "ffxiv_universalis", "{uuid} Queueing {} futures", T::fetch_type());
         let all_listings = fetch_and_process_market_info::<T>(data, ready_signal_tx).await;
         status.set_value(UniversalisStatusState::Cleanup);
 
@@ -48,7 +48,7 @@ pub fn request_universalis_info<T: UniversalisRequestType>(
                 .unwrap();
 
         status.set_value(UniversalisStatusState::Finished);
-        info!("[Universalis] {uuid} Process all {} done!", T::fetch_type());
+        info!(target: "ffxiv_universalis", "{uuid} Process all {} done!", T::fetch_type());
 
         let failure_ids = failure_ids.into_iter().unique().collect::<Vec<_>>();
         (listing_map, failure_ids)

@@ -48,12 +48,8 @@ fn setup() -> Result<(), Box<dyn Error>> {
         std::env::set_var("RUST_LIB_BACKTRACE", "1");
     }
 
-    if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "info");
-    }
-
     let logfile = FileAppender::builder()
-        .encoder(Box::new(PatternEncoder::new("{({d}):35} - {l} - {m}{n}")))
+        .encoder(Box::new(PatternEncoder::new("{d(%F %T%.3f)} | {({l}):5.5} | {({t}):17} | {m}{n}")))
         .build("out/output.log")?;
 
     let config = Config::builder()

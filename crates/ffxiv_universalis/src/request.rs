@@ -60,7 +60,7 @@ impl<T: UniversalisRequestType> UniversalisRequest<T> {
     ) -> Option<ItemMarketInfoMap> {
         let fetch_type = T::fetch_type();
         let num_attempts = 10;
-        info!("[Universalis] {uuid} Fetch {signature} {url}");
+        info!(target: "ffxiv_universalis", "{uuid} Fetch {signature} {url}");
 
         for attempt in 0..num_attempts {
             // let listing = reqwest::get(&url).await.unwrap().text().await.unwrap();
@@ -68,18 +68,18 @@ impl<T: UniversalisRequestType> UniversalisRequest<T> {
 
             // Invalid response from the server. This typically is from load, so let's fall back a bit & retry in a second
             if !is_valid_json(&listing) {
-                warn!("[Universalis] {uuid} Fetch {signature} [{attempt}] Invalid {fetch_type} json: {url}");
+                warn!(target: "ffxiv_universalis", "{uuid} Fetch {signature} [{attempt}] Invalid {fetch_type} json: {url}");
                 sleep(Duration::from_millis(500)).await;
                 continue;
             }
 
-            info!("[Universalis] {uuid} Fetch {signature} {fetch_type} done");
+            info!(target: "ffxiv_universalis", "{uuid} Fetch {signature} {fetch_type} done");
             return spawn_blocking(move || T::parse_json(listing, retain_num_days).ok())
                 .await
                 .unwrap();
         }
 
-        error!("[Universalis] {uuid} Fetch {signature} failed: {url}");
+        error!(target: "ffxiv_universalis", "{uuid} Fetch {signature} failed: {url}");
         None
     }
 }

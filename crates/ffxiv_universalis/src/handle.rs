@@ -49,7 +49,7 @@ impl UniversalisHandle {
 
 impl Drop for UniversalisHandle {
     fn drop(&mut self) {
-        log::info!("[Universalis] {} Handle dropped", self.uuid);
+        log::info!(target: "ffxiv_universalis", "{} Handle dropped", self.uuid);
         self.join_handle.abort();
     }
 }

@@ -78,8 +78,8 @@ pub fn put_market_request<T: UniversalisRequestType>(
         retain_num_days,
     );
 
-    info!(
-        "[Server] Server uuid {uuid} maps to universalis uuid {}",
+    info!(target: "ffxiv_server", 
+        "Server uuid {uuid} maps to universalis uuid {}",
         universalis_handle.uuid()
     );
 

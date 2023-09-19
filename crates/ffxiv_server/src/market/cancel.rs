@@ -22,7 +22,7 @@ pub async fn put_market_cancel(
 
         match status {
             Some(_) => {
-                log::info!("[Cancel] {uuid} market call cancelled");
+                log::info!(target: "ffxiv_server", "{uuid} market call cancelled");
                 state.remove_handle(uuid);
                 ok_text("OK").into_response()
             }

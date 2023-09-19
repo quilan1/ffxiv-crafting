@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use log::warn;
+use log::info;
 use regex::Regex;
 
 use crate::{ItemInfo, Library};
@@ -33,10 +33,10 @@ impl Filter {
                 Some(func) => func(library, &options, &mut items),
                 None => {
                     if tag.chars().nth(0).unwrap_or(' ') == ':' {
-                        warn!("[Filter] Invalid filter tag: {tag}");
+                        info!(target: "ffxiv_items", "Invalid filter tag: {tag}");
                         continue;
                     }
-                    warn!("[Filter] Missing filter tag: {tag}, interpreting it as a :name filter",);
+                    info!(target: "ffxiv_items", "Missing filter tag: {tag}, interpreting it as a :name filter",);
                     let mut new_options = options.clone();
                     if let Some(option) = new_options.first_mut() {
                         *option = format!("{tag} {option}");
