@@ -1,24 +1,24 @@
 use std::{collections::HashMap, sync::Arc};
 
 use async_processor::{AmValue, AsyncProcessor};
-use ffxiv_universalis::{new_universalis_processor, UniversalisHandle};
+use ffxiv_universalis::{UniversalisHandle, UniversalisProcessor};
 
 #[derive(Clone)]
 pub struct MarketState {
-    pub async_processor: AsyncProcessor,
+    pub processor: UniversalisProcessor,
     handles: AmValue<HashMap<String, UniversalisHandle>>,
 }
 
 impl MarketState {
     pub fn new() -> Arc<Self> {
         Arc::new(Self {
-            async_processor: new_universalis_processor(),
+            processor: UniversalisProcessor::new(),
             handles: AmValue::new(HashMap::new()),
         })
     }
 
     pub fn async_processor(&self) -> AsyncProcessor {
-        self.async_processor.clone()
+        self.processor.async_processor()
     }
 
     pub(super) fn insert_handle<S: AsRef<str>>(&self, uuid: S, info: UniversalisHandle) {

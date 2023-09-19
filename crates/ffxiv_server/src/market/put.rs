@@ -2,9 +2,7 @@ use std::sync::Arc;
 
 use axum::{extract::State, response::IntoResponse, Json};
 use ffxiv_items::{get_ids_from_filters, Library};
-use ffxiv_universalis::{
-    request_universalis_info, UniversalisHistory, UniversalisListing, UniversalisRequestType,
-};
+use ffxiv_universalis::{UniversalisHistory, UniversalisListing, UniversalisRequestType};
 use log::info;
 use serde::Deserialize;
 use tokio::task::spawn_blocking;
@@ -71,14 +69,11 @@ pub fn put_market_request<T: UniversalisRequestType>(
 
     // Send the request over to the async processor
     let retain_num_days = payload.retain_num_days.unwrap_or(7.0);
-    let universalis_handle = request_universalis_info::<T>(
-        state.async_processor.clone(),
-        worlds,
-        all_ids,
-        retain_num_days,
-    );
+    let universalis_handle = state
+        .processor
+        .make_request::<T>(worlds, all_ids, retain_num_days);
 
-    info!(target: "ffxiv_server", 
+    info!(target: "ffxiv_server",
         "Server uuid {uuid} maps to universalis uuid {}",
         universalis_handle.uuid()
     );

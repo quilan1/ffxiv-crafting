@@ -1,9 +1,8 @@
 mod mock_server;
 
 use anyhow::Result;
-use async_processor::AsyncProcessor;
 use ffxiv_universalis::{
-    request_universalis_info, UniversalisHandleOutput, UniversalisHistory, UniversalisListing,
+    UniversalisHandleOutput, UniversalisHistory, UniversalisListing, UniversalisProcessor,
     UniversalisRequestType,
 };
 use futures::Future;
@@ -35,7 +34,7 @@ const ALL_IDS_LARGE: [u32; 112] = [
 ];
 
 fn send_universalis_request<T: UniversalisRequestType>(
-    async_processor: AsyncProcessor,
+    processor: UniversalisProcessor,
     all_ids: &[u32],
     worlds: Vec<String>,
 ) -> Result<UniversalisHandleOutput> {
@@ -47,8 +46,8 @@ fn send_universalis_request<T: UniversalisRequestType>(
         let addr = format!("http://{addr}");
         std::env::set_var("UNIVERSALIS_URL", addr);
 
-        let mut universalis_handle =
-            request_universalis_info::<T>(async_processor.clone(), worlds, all_ids, 7.0);
+        let async_processor = processor.async_processor();
+        let mut universalis_handle = processor.make_request::<T>(worlds, all_ids, 7.0);
         universalis_handle.wait_for_ready().await;
 
         async_processor.disconnect();
@@ -60,8 +59,9 @@ fn send_universalis_request<T: UniversalisRequestType>(
 
 #[test]
 fn test_listing() -> Result<()> {
+    let processor = UniversalisProcessor::new();
     let (market_info, failures) = send_universalis_request::<UniversalisListing>(
-        AsyncProcessor::new(1),
+        processor,
         &ALL_IDS_ONE,
         vec!["Dynamis".to_owned()],
     )?;
@@ -76,8 +76,9 @@ fn test_listing() -> Result<()> {
 
 #[test]
 fn test_history() -> Result<()> {
+    let processor = UniversalisProcessor::new();
     let (market_info, failures) = send_universalis_request::<UniversalisHistory>(
-        AsyncProcessor::new(1),
+        processor,
         &ALL_IDS_ONE,
         vec!["Dynamis".to_owned()],
     )?;

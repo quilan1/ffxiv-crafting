@@ -49,7 +49,9 @@ fn setup() -> Result<(), Box<dyn Error>> {
     }
 
     let logfile = FileAppender::builder()
-        .encoder(Box::new(PatternEncoder::new("{d(%F %T%.3f)} | {({l}):5.5} | {({t}):17} | {m}{n}")))
+        .encoder(Box::new(PatternEncoder::new(
+            "{d(%F %T%.3f)} | {({l}):5.5} | {({t}):17} | {m}{n}",
+        )))
         .build("out/output.log")?;
 
     let config = Config::builder()

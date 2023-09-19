@@ -31,13 +31,6 @@ pub struct AsyncProcessorHandle<T> {
     handle: RemoteHandle<T>,
 }
 
-#[derive(Clone, Copy, PartialEq)]
-pub enum AsyncProcessorStatus {
-    Done,
-    Active,
-    Queued(usize),
-}
-
 ////////////////////////////////////////////////////////////
 
 // Consumer side of the API

@@ -35,8 +35,9 @@ mod tests {
             shutdown_rx.await.ok();
         });
 
-        #[allow(unused_must_use)]
-        let shutdown = || shutdown_tx.send(()).unwrap();
+        let shutdown = || {
+            let _ = shutdown_tx.send(());
+        };
 
         spawn(async {
             ready_tx.send(()).unwrap();
