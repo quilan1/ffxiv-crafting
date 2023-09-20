@@ -1,6 +1,6 @@
 use anyhow::Result;
 use csv::ReaderBuilder;
-use std::{collections::BTreeMap, ops::Index, path::Path};
+use std::{collections::BTreeMap, io::Read, ops::Index};
 
 #[derive(Default)]
 pub struct CraftLeveList {
@@ -8,10 +8,10 @@ pub struct CraftLeveList {
 }
 
 impl CraftLeveList {
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
+    pub fn from_reader<R: Read>(reader: R) -> Result<Self> {
         let mut leves = BTreeMap::new();
 
-        csv_parse!(path => {
+        csv_parse!(reader => {
             id = U[1];
             item = U[3 + 1];
             leves.insert(id, item);

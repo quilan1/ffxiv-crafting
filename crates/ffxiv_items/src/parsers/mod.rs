@@ -26,8 +26,8 @@ macro_rules! parse {
 
 #[macro_export]
 macro_rules! csv_parse {
-    ($path:expr, $info:ident => { $($tail:tt)* }) => {
-        let mut reader = ReaderBuilder::new().from_path($path)?;
+    ($reader:expr, $info:ident => { $($tail:tt)* }) => {
+        let mut reader = ReaderBuilder::new().from_reader($reader);
         for (line, record) in reader.records().enumerate() {
             if line < 2 {
                 continue;
@@ -39,7 +39,7 @@ macro_rules! csv_parse {
         }
     };
 
-    ($path:expr => { $($tail:tt)* }) => { csv_parse!($path, info => { $($tail)* }); }
+    ($reader:expr => { $($tail:tt)* }) => { csv_parse!($reader, info => { $($tail)* }); }
 }
 
 #[macro_use]

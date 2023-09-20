@@ -53,7 +53,7 @@ fn setup() -> Result<(), Box<dyn Error>> {
         .encoder(Box::new(PatternEncoder::new(
             "{d(%F %T%.3f)} | {({l}):5.5} | {({t}):17} | {m}{n}",
         )))
-        .build("out/output.log")?;
+        .build("output.log")?;
 
     let config = Config::builder()
         .appender(Appender::builder().build("logfile", Box::new(logfile)))

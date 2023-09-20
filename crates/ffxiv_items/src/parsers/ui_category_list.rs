@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, ops::Index, path::Path};
+use std::{collections::BTreeMap, io::Read, ops::Index};
 
 use anyhow::Result;
 use csv::ReaderBuilder;
@@ -10,11 +10,11 @@ pub struct UiCategoryList {
 }
 
 impl UiCategoryList {
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
+    pub fn from_reader<R: Read>(reader: R) -> Result<Self> {
         let mut categories = BTreeMap::new();
         let mut name_to_id = BTreeMap::new();
 
-        csv_parse!(path => {
+        csv_parse!(reader => {
             id = U[0];
             name = S[1];
             categories.insert(id, name.to_string());

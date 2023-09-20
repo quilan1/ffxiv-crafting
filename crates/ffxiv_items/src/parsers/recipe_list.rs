@@ -1,7 +1,7 @@
 use anyhow::Result;
 use csv::ReaderBuilder;
 use itertools::Itertools;
-use std::{collections::BTreeMap, path::Path};
+use std::{collections::BTreeMap, io::Read};
 
 use crate::Ingredient;
 
@@ -15,10 +15,10 @@ pub struct RecipeParsed {
 pub struct RecipeList(pub BTreeMap<u32, RecipeParsed>);
 
 impl RecipeList {
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
+    pub fn from_reader<R: Read>(reader: R) -> Result<Self> {
         let mut recipes = BTreeMap::new();
 
-        csv_parse!(path => {
+        csv_parse!(reader, info => {
             level_id = U[2 + 1];
             arr = U[4..24];
 
