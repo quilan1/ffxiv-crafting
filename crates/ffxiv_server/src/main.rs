@@ -9,7 +9,7 @@ mod server;
 
 use std::{error::Error, time::Instant};
 
-use responses::{not_found, ok_json, ok_text};
+use responses::{JsonResponse, StringResponse};
 use server::Server;
 
 #[tokio::main]
@@ -37,9 +37,9 @@ fn setup() -> Result<(), Box<dyn Error>> {
     };
 
     if let Ok(val) = std::env::var("FFXIV_DATA_CENTERS") {
-        println!("FFXIV_DATA_CENTERS is currently set to {val}");
+        log::info!(target: "ffxiv_server", "FFXIV_DATA_CENTERS is currently set to {val}");
     } else {
-        println!(
+        log::info!(target: "ffxiv_server",
             "FFXIV_DATA_CENTERS environment variable not currently set. Defaulting to Dynamis."
         );
         std::env::set_var("FFXIV_DATA_CENTERS", "Dynamis");

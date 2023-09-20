@@ -7,7 +7,7 @@ use axum::{
 use ffxiv_items::Library;
 use tokio::task::spawn_blocking;
 
-use crate::{not_found, ok_text};
+use crate::StringResponse;
 
 use super::MarketState;
 
@@ -24,9 +24,9 @@ pub async fn put_market_cancel(
             Some(_) => {
                 log::info!(target: "ffxiv_server", "{uuid} market call cancelled");
                 state.remove_handle(uuid);
-                ok_text("OK").into_response()
+                "OK".ok()
             }
-            None => not_found(format!("UUID {uuid} not found!")).into_response(),
+            None => format!("UUID {uuid} not found!").not_found(),
         }
     }
 

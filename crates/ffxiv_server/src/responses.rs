@@ -1,17 +1,36 @@
-pub fn ok_json<T>(data: T) -> impl axum::response::IntoResponse
+use axum::{
+    response::{IntoResponse, Response},
+    Json,
+};
+use serde::Serialize;
+
+pub trait JsonResponse
 where
-    (reqwest::StatusCode, axum::Json<T>): axum::response::IntoResponse,
+    Self: Sized + Serialize,
+    Json<Self>: IntoResponse,
 {
-    (reqwest::StatusCode::OK, axum::Json(data))
+    fn ok(self) -> Response {
+        (reqwest::StatusCode::OK, Json(self)).into_response()
+    }
+
+    fn not_found(self) -> Response {
+        (reqwest::StatusCode::NOT_FOUND, Json(self)).into_response()
+    }
 }
 
-pub fn ok_text<S: Into<String>>(data: S) -> impl axum::response::IntoResponse
+pub trait StringResponse
 where
-    (reqwest::StatusCode, String): axum::response::IntoResponse,
+    Self: Sized,
+    Self: Into<String>,
 {
-    (reqwest::StatusCode::OK, data.into())
+    fn ok(self) -> Response {
+        (reqwest::StatusCode::OK, self.into()).into_response()
+    }
+
+    fn not_found(self) -> Response {
+        (reqwest::StatusCode::NOT_FOUND, self.into()).into_response()
+    }
 }
 
-pub fn not_found(data: String) -> impl axum::response::IntoResponse {
-    (reqwest::StatusCode::NOT_FOUND, data)
-}
+impl StringResponse for String {}
+impl StringResponse for &str {}

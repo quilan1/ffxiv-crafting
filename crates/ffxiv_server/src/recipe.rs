@@ -8,7 +8,7 @@ use ffxiv_items::Library;
 use serde::{Deserialize, Serialize};
 use tokio::task::spawn_blocking;
 
-use crate::ok_json;
+use crate::JsonResponse;
 
 #[derive(Deserialize)]
 pub struct GetInput {
@@ -20,6 +20,7 @@ pub struct GetOutput {
     top_ids: Vec<u32>,
     item_info: BTreeMap<u32, ItemInfo>,
 }
+impl JsonResponse for GetOutput {}
 
 #[derive(Serialize)]
 pub struct ItemInfo {
@@ -47,11 +48,10 @@ pub async fn get_recipe_info(
     State(library): State<Arc<Library>>,
     Form(payload): Form<GetInput>,
 ) -> impl IntoResponse {
-    ok_json(
-        spawn_blocking(move || get_recipe_info_data(&library, payload))
-            .await
-            .unwrap(),
-    )
+    spawn_blocking(move || get_recipe_info_data(&library, payload))
+        .await
+        .unwrap()
+        .ok()
 }
 
 fn get_recipe_info_data(library: &Library, payload: GetInput) -> GetOutput {

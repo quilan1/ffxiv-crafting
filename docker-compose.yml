@@ -1,6 +1,6 @@
 services:
   ffxiv-server:
-    image: rust:1.72
+    image: rust:1.72.1
     working_dir: /crates
     command: [ "./startup.sh" ]
     ports: [ "3001:3001" ]

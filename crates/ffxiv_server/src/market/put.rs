@@ -8,7 +8,7 @@ use serde::Deserialize;
 use tokio::task::spawn_blocking;
 use uuid::Uuid;
 
-use crate::ok_text;
+use crate::StringResponse;
 
 use super::MarketState;
 
@@ -33,7 +33,7 @@ pub async fn put_market_history(
     spawn_blocking(move || {
         put_market_request::<UniversalisHistory>(&state, &library, uuid_clone, payload)
     });
-    ok_text(uuid)
+    uuid.ok()
 }
 
 #[allow(clippy::unused_async)]
@@ -46,7 +46,7 @@ pub async fn put_market_listings(
     spawn_blocking(move || {
         put_market_request::<UniversalisListing>(&state, &library, uuid_clone, payload)
     });
-    ok_text(uuid)
+    uuid.ok()
 }
 
 ////////////////////////////////////////////////////////////

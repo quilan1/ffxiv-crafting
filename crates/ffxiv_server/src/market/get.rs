@@ -8,7 +8,7 @@ use futures::FutureExt;
 use serde::Serialize;
 use tokio::task::spawn_blocking;
 
-use crate::{not_found, ok_json};
+use crate::{JsonResponse, StringResponse};
 
 use super::MarketState;
 
@@ -19,6 +19,7 @@ struct GetOutput {
     status: String,
     output_info: Option<GetOutputInfo>,
 }
+impl JsonResponse for GetOutput {}
 
 #[derive(Serialize)]
 struct GetOutputInfo {
@@ -47,14 +48,12 @@ pub async fn get_market_info(
 
 pub fn get_market_request_status(state: &Arc<MarketState>, uuid: &str) -> impl IntoResponse {
     match get_market_request_data(state, uuid) {
-        GetStatus::Error(err) => not_found(err).into_response(),
-        GetStatus::InProgress(status) => {
-            ok_json(GetOutput::from_in_progress(status)).into_response()
-        }
+        GetStatus::Error(err) => err.not_found(),
+        GetStatus::InProgress(status) => GetOutput::from_in_progress(status).ok(),
         GetStatus::Finished(listing_map, failures) => {
             state.remove_handle(uuid).unwrap();
             let out = GetOutput::from_finished(GetOutputInfo::new(listing_map, failures));
-            ok_json(out).into_response()
+            out.ok()
         }
     }
 }
