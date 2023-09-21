@@ -49,7 +49,6 @@ impl Library {
                 ui_category: categories["cat 1"],
                 ilevel: 660,
                 equip_level: 90,
-                is_untradable: false,
                 recipe: Some(Recipe {
                     output: Ingredient {
                         count: 1,
@@ -69,7 +68,6 @@ impl Library {
                 ui_category: categories["cat 1"],
                 ilevel: 660,
                 equip_level: 90,
-                is_untradable: false,
                 recipe: Some(Recipe {
                     output: Ingredient {
                         count: 1,
@@ -89,7 +87,6 @@ impl Library {
                 ui_category: categories["cat 2"],
                 ilevel: 530,
                 equip_level: 80,
-                is_untradable: false,
                 recipe: Some(Recipe {
                     output: Ingredient {
                         count: 1,

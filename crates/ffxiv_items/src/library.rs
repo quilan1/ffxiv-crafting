@@ -1,6 +1,4 @@
 use anyhow::Result;
-use futures::join;
-use reqwest::IntoUrl;
 use std::collections::BTreeMap;
 use std::io::Cursor;
 
@@ -8,7 +6,9 @@ use crate::parsers::{
     CraftLeveList, ItemList, JobCategoryList, LeveList, RecipeLevelTable, RecipeList,
     UiCategoryList,
 };
-use crate::{ItemId, ItemInfo, Recipe, RecipeLevelInfo};
+use crate::{CsvContent, ItemId, ItemInfo, Recipe, RecipeLevelInfo};
+
+////////////////////////////////////////////////////////////
 
 #[derive(Default)]
 pub struct Library {
@@ -18,6 +18,8 @@ pub struct Library {
     pub(crate) all_leves: LeveList,
     pub(crate) all_job_categories: JobCategoryList,
 }
+
+////////////////////////////////////////////////////////////
 
 impl Library {
     pub async fn create() -> Result<Self> {
@@ -30,7 +32,7 @@ impl Library {
             craft_leve,
             leve,
             recipe,
-            recipe_level_table,
+            recipe_level: recipe_level_table,
         } = CsvContent::download().await?;
 
         library.all_items = ItemList::from_reader(item)?;
@@ -97,6 +99,8 @@ impl Library {
     }
 }
 
+////////////////////////////////////////////////////////////
+
 impl Library {
     pub fn ui_category_unchecked(&self, ui_category: u32) -> &str {
         &self.all_ui_categories[&ui_category]
@@ -118,78 +122,5 @@ impl Library {
 
     pub fn all_items(&self) -> Vec<&ItemInfo> {
         self.all_items.items.values().collect::<Vec<_>>()
-    }
-}
-
-struct CsvContent {
-    item: Cursor<String>,
-    item_ui_category: Cursor<String>,
-
-    class_job_category: Cursor<String>,
-    craft_leve: Cursor<String>,
-    leve: Cursor<String>,
-
-    recipe: Cursor<String>,
-    recipe_level_table: Cursor<String>,
-}
-
-impl CsvContent {
-    async fn download() -> Result<Self> {
-        let (
-            item,
-            item_ui_category,
-            class_job_category,
-            craft_leve,
-            leve,
-            recipe,
-            recipe_level_table,
-        ) = join!(
-            Self::download_file("Item.csv"),
-            Self::download_file("ItemUICategory.csv"),
-            Self::download_file("ClassJobCategory.csv"),
-            Self::download_file("CraftLeve.csv"),
-            Self::download_file("Leve.csv"),
-            Self::download_file("Recipe.csv"),
-            Self::download_file("RecipeLevelTable.csv"),
-        );
-
-        let (
-            item,
-            item_ui_category,
-            class_job_category,
-            craft_leve,
-            leve,
-            recipe,
-            recipe_level_table,
-        ) = (
-            Cursor::new(item?),
-            Cursor::new(item_ui_category?),
-            Cursor::new(class_job_category?),
-            Cursor::new(craft_leve?),
-            Cursor::new(leve?),
-            Cursor::new(recipe?),
-            Cursor::new(recipe_level_table?),
-        );
-
-        Ok(Self {
-            item,
-            item_ui_category,
-            class_job_category,
-            craft_leve,
-            leve,
-            recipe,
-            recipe_level_table,
-        })
-    }
-
-    async fn download_file(file_name: &str) -> Result<String> {
-        Self::download_url(format!(
-            "https://raw.githubusercontent.com/xivapi/ffxiv-datamining/master/csv/{file_name}"
-        ))
-        .await
-    }
-
-    async fn download_url<S: IntoUrl>(url: S) -> Result<String> {
-        Ok(reqwest::get(url).await?.text().await?)
     }
 }

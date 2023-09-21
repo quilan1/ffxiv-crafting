@@ -14,15 +14,19 @@ use server::Server;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    use ffxiv_items::Library;
+    use ffxiv_items::{ItemDB, Library};
 
     setup()?;
 
-    let start = Instant::now();
     let library = Library::create().await?; // Safety: Initializing the singleton once
+
+    let start = Instant::now();
+    let item_db = std::env::var("FFXIV_ITEM_DB").unwrap();
+    let db = ItemDB::connect(format!("mysql://{item_db}/ffxiv_items")).await?;
+    db.initialize().await?;
     println!("Initialized in {} ms", start.elapsed().as_millis());
 
-    Server::run(library).await?;
+    Server::run(library, db).await?;
 
     Ok(())
 }
@@ -44,6 +48,16 @@ fn setup() -> Result<(), Box<dyn Error>> {
         );
         std::env::set_var("FFXIV_DATA_CENTERS", "Dynamis");
     };
+
+    if let Ok(val) = std::env::var("FFXIV_ITEM_DB") {
+        log::info!(target: "ffxiv_server", "FFXIV_ITEM_DB is currently set to {val}");
+    } else {
+        let item_db = "user:password@localhost:3306";
+        let msg = format!("FFXIV_ITEM_DB not set! Defaulting to {item_db}");
+        println!("{msg}");
+        log::warn!(target: "ffxiv_server", "{msg}");
+        std::env::set_var("FFXIV_ITEM_DB", item_db);
+    }
 
     if std::env::var("RUST_LIB_BACKTRACE").is_err() {
         std::env::set_var("RUST_LIB_BACKTRACE", "1");

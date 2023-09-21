@@ -12,6 +12,10 @@ services:
       start_period: 10s
     environment:
       - FFXIV_DATA_CENTERS=Dynamis
+      - FFXIV_ITEM_DB=user:password@ffxiv-items-db:3306
+    depends_on:
+      ffxiv-items-db:
+        condition: service_healthy
     volumes:
       - ./crates:/crates
 
@@ -24,7 +28,6 @@ services:
         required: false
       ffxiv-server:
         condition: service_healthy
-
     volumes:
       - ./frontend/src-js:/usr/local/apache2/htdocs/
 
@@ -47,3 +50,17 @@ services:
     volumes:
       - ./frontend/src-ts:/src-ts
       - ./frontend/src-js:/src-js
+
+  ffxiv-items-db:
+    image: mysql:8.0
+    ports: ["3306:3306"]
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: "password"
+      MYSQL_USER: "user"
+      MYSQL_PASSWORD: "password"
+      MYSQL_DATABASE: "ffxiv_items"
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10

@@ -20,7 +20,6 @@ impl ItemList {
             name = S[9 + 1];
             ilevel = U[11 + 1];
             ui_category = U[15 + 1];
-            is_untradable = B[22 + 1];
             equip_level = U[40 + 1];
 
             let item = ItemInfo {
@@ -29,7 +28,6 @@ impl ItemList {
                 ui_category,
                 ilevel,
                 equip_level,
-                is_untradable,
                 ..Default::default()
             };
 

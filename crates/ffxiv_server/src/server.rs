@@ -4,7 +4,7 @@ use axum::{
     routing::{get, put},
     Router,
 };
-use ffxiv_items::Library;
+use ffxiv_items::{ItemDB, Library};
 use futures::join;
 use std::{net::SocketAddr, sync::Arc};
 use tower_http::cors::{Any, CorsLayer};
@@ -18,7 +18,7 @@ pub struct Server;
 
 #[allow(unused_must_use)]
 impl Server {
-    pub async fn run(library: Library) -> Result<()> {
+    pub async fn run(library: Library, _db: ItemDB) -> Result<()> {
         let market_state = MarketState::new();
         let async_processor = market_state.async_processor();
         let library = Arc::new(library);

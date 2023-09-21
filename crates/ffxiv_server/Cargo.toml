@@ -12,10 +12,10 @@ tower-http = { version = "0.4.4", features = ["cors"] }
 uuid = { version = "1.4.1", features = ["v4"] }
 reqwest = { version = "0.11.20", features = [] }
 axum = { version = "0.6.20", features = ["tokio"] }
+anyhow = { version = "1.0.75", features = ["backtrace"] }
+log4rs = "1.2.0"
 futures = "0.3.28"
-anyhow = "1.0.75"
 log = "0.4.20"
-log4rs = { version = "1.2.0", features = [] }
 ffxiv_items = { version = "0.1.0", path = "../ffxiv_items" }
 ffxiv_universalis = { version = "0.1.0", path = "../ffxiv_universalis" }
 async_processor = { version = "0.1.0", path = "../async_processor" }

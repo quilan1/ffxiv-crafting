@@ -6,7 +6,7 @@ use csv::ReaderBuilder;
 #[derive(Default)]
 pub struct UiCategoryList {
     name_to_id: BTreeMap<String, u32>,
-    categories: BTreeMap<u32, String>,
+    pub categories: BTreeMap<u32, String>,
 }
 
 impl UiCategoryList {
