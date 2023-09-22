@@ -4,7 +4,7 @@ use axum::{
     routing::{get, put},
     Router,
 };
-use ffxiv_items::{ItemDB, Library};
+use ffxiv_items::ItemDB;
 use futures::join;
 use std::{net::SocketAddr, sync::Arc};
 use tower_http::cors::{Any, CorsLayer};
@@ -18,10 +18,9 @@ pub struct Server;
 
 #[allow(unused_must_use)]
 impl Server {
-    pub async fn run(library: Library, db: ItemDB) -> Result<()> {
+    pub async fn run(db: ItemDB) -> Result<()> {
         let market_state = MarketState::new();
         let async_processor = market_state.async_processor();
-        let library = Arc::new(library);
         let db = Arc::new(db);
 
         let health_service = Router::new().route("/health", get(|| async { "OK" }));
@@ -41,7 +40,7 @@ impl Server {
                     .route("/:id/cancel", put(market::put_market_cancel)),
             )
             .layer(axum_server_timing::ServerTimingLayer::new("MarketService"))
-            .with_state((market_state.clone(), library.clone()));
+            .with_state((market_state.clone(), db.clone()));
 
         let v1_router = Router::new()
             .merge(recipe_service)

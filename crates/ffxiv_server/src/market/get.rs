@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::extract::Path;
 use axum::{extract::State, response::IntoResponse};
-use ffxiv_items::Library;
+use ffxiv_items::ItemDB;
 use ffxiv_universalis::ItemMarketInfoMap;
 use futures::FutureExt;
 use serde::Serialize;
@@ -36,7 +36,7 @@ pub enum GetStatus {
 ////////////////////////////////////////////////////////////
 
 pub async fn get_market_info(
-    State((state, _library)): State<(Arc<MarketState>, Arc<Library>)>,
+    State((state, _)): State<(Arc<MarketState>, Arc<ItemDB>)>,
     Path(uuid): Path<String>,
 ) -> impl IntoResponse {
     spawn_blocking(move || get_market_request_status(&state, &uuid))

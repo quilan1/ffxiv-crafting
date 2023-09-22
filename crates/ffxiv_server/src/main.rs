@@ -14,11 +14,9 @@ use server::Server;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    use ffxiv_items::{ItemDB, Library};
+    use ffxiv_items::ItemDB;
 
     setup()?;
-
-    let library = Library::create().await?; // Safety: Initializing the singleton once
 
     let start = Instant::now();
     let item_db_conn = std::env::var("FFXIV_ITEM_DB_CONN").unwrap();
@@ -26,7 +24,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     db.initialize().await?;
     println!("Initialized in {} ms", start.elapsed().as_millis());
 
-    Server::run(library, db).await?;
+    Server::run(db).await?;
 
     Ok(())
 }

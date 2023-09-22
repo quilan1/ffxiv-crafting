@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
+use anyhow::Result;
 use axum::{extract::State, response::IntoResponse, Json};
-use ffxiv_items::{get_ids_from_filters, Library};
+use ffxiv_items::ItemDB;
 use ffxiv_universalis::{UniversalisHistory, UniversalisListing, UniversalisRequestType};
 use log::info;
 use serde::Deserialize;
-use tokio::task::spawn_blocking;
 use uuid::Uuid;
 
 use crate::StringResponse;
@@ -25,39 +25,39 @@ pub struct PutInput {
 
 #[allow(clippy::unused_async)]
 pub async fn put_market_history(
-    State((state, library)): State<(Arc<MarketState>, Arc<Library>)>,
+    State((state, db)): State<(Arc<MarketState>, Arc<ItemDB>)>,
     Json(payload): Json<PutInput>,
 ) -> impl IntoResponse {
     let uuid = Uuid::new_v4().to_string();
     let uuid_clone = uuid.clone();
-    spawn_blocking(move || {
-        put_market_request::<UniversalisHistory>(&state, &library, uuid_clone, payload)
+    tokio::spawn(async move {
+        let _ = put_market_request::<UniversalisHistory>(&state, &db, uuid_clone, payload).await;
     });
     uuid.ok()
 }
 
 #[allow(clippy::unused_async)]
 pub async fn put_market_listings(
-    State((state, library)): State<(Arc<MarketState>, Arc<Library>)>,
+    State((state, db)): State<(Arc<MarketState>, Arc<ItemDB>)>,
     Json(payload): Json<PutInput>,
 ) -> impl IntoResponse {
     let uuid = Uuid::new_v4().to_string();
     let uuid_clone = uuid.clone();
-    spawn_blocking(move || {
-        put_market_request::<UniversalisListing>(&state, &library, uuid_clone, payload)
+    tokio::spawn(async move {
+        let _ = put_market_request::<UniversalisListing>(&state, &db, uuid_clone, payload).await;
     });
     uuid.ok()
 }
 
 ////////////////////////////////////////////////////////////
 
-pub fn put_market_request<T: UniversalisRequestType>(
+pub async fn put_market_request<T: UniversalisRequestType>(
     state: &Arc<MarketState>,
-    library: &Library,
+    db: &ItemDB,
     uuid: String,
     payload: PutInput,
-) -> String {
-    let (_, all_ids) = get_ids_from_filters(library, payload.filters);
+) -> Result<String> {
+    let (_, all_ids) = db.get_ids_from_filters(payload.filters).await?;
     let worlds = payload
         .data_center
         .or(std::env::var("FFXIV_DATA_CENTERS").ok())
@@ -81,5 +81,5 @@ pub fn put_market_request<T: UniversalisRequestType>(
     // Save the placeholder & output into the server state
     state.insert_handle(&uuid, universalis_handle);
 
-    uuid
+    Ok(uuid)
 }

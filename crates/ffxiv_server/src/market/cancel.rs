@@ -4,7 +4,7 @@ use axum::{
     extract::{Path, State},
     response::IntoResponse,
 };
-use ffxiv_items::Library;
+use ffxiv_items::ItemDB;
 use tokio::task::spawn_blocking;
 
 use crate::StringResponse;
@@ -12,7 +12,7 @@ use crate::StringResponse;
 use super::MarketState;
 
 pub async fn put_market_cancel(
-    State((state, _library)): State<(Arc<MarketState>, Arc<Library>)>,
+    State((state, _)): State<(Arc<MarketState>, Arc<ItemDB>)>,
     Path(uuid): Path<String>,
 ) -> impl IntoResponse {
     fn inner(state: &Arc<MarketState>, uuid: String) -> impl IntoResponse {
