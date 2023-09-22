@@ -98,6 +98,13 @@ export default class CustomInfo {
         statusFn ??= () => { };
         countFn ??= () => 1;
 
+        let info = await recipe;
+
+        // Error in recipe call, return nothing
+        if (typeof info === "string") {
+            return this.customInfoFromJson({ item_info: {}, top_ids: [], failure_ids: [] }, countFn());
+        }
+
         const checkCancel = async (): Promise<void> => {
             if (cancelData?.cancelled !== true)
                 return;
@@ -136,7 +143,6 @@ export default class CustomInfo {
         }
         statusFn('');
 
-        let info = recipe;
         for (const [id, item] of Object.entries(recipe.item_info)) {
             item.listings = listingInfo.listings[id as any] ?? [];
             item.history = historyInfo?.listings[id as any] ?? [];
