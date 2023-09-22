@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, time::Instant};
 
 use anyhow::Result;
 use const_format::formatcp;
@@ -40,6 +40,7 @@ impl RecipeTable<'_> {
     }
 
     pub async fn by_item_ids<I: ItemId>(&self, ids: &[I]) -> Result<Vec<Recipe>> {
+        let start = Instant::now();
         let _ids = ids.iter().map(|id| id.item_id().to_string()).join(",");
         let query_string = format!("{} ({_ids})", SQL_SELECT);
 
@@ -68,6 +69,7 @@ impl RecipeTable<'_> {
             });
         }
 
+        log::debug!(target: "ffxiv_items", "Query for {} recipes: {:.3}s", ids.len(), start.elapsed().as_secs_f32());
         Ok(recipes.into_values().collect())
     }
 }

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use itertools::Itertools;
-use log::info;
 
 type FilterOptions = Vec<String>;
 
@@ -27,10 +26,10 @@ impl Filter {
                 Some(func) => func(&options),
                 None => {
                     if tag.chars().nth(0).unwrap_or(' ') == ':' {
-                        info!(target: "ffxiv_items", "Invalid filter tag: {tag}");
+                        log::info!(target: "ffxiv_items", "Invalid filter tag: {tag}");
                         continue;
                     }
-                    info!(target: "ffxiv_items", "Missing filter tag: {tag}, interpreting it as a :name filter",);
+                    log::info!(target: "ffxiv_items", "Missing filter tag: {tag}, interpreting it as a :name filter",);
                     let mut new_options = options.clone();
                     if let Some(option) = new_options.first_mut() {
                         *option = format!("{tag} {option}");

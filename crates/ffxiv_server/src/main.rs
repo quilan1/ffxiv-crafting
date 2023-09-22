@@ -35,7 +35,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 fn setup() {
     use chrono::Local;
-    use log::LevelFilter;
     use std::io::Write;
 
     if let Ok(val) = std::env::var("FFXIV_DATA_CENTERS") {
@@ -50,7 +49,7 @@ fn setup() {
     if let Ok(val) = std::env::var("FFXIV_ITEM_DB_CONN") {
         log::info!(target: "ffxiv_server", "FFXIV_ITEM_DB_CONN is currently set to {val}");
     } else {
-        let item_db = "user:password@localhost:3306";
+        let item_db = "mysql://user:password@localhost:3306/ffxiv_items";
         let msg = format!("FFXIV_ITEM_DB_CONN not set! Defaulting to {item_db}");
         println!("{msg}");
         log::warn!(target: "ffxiv_server", "{msg}");
@@ -64,8 +63,9 @@ fn setup() {
     let file_target = Box::new(FileAppender::new("output.log"));
     env_logger::Builder::new()
         .target(env_logger::Target::Pipe(file_target))
-        .filter(None, LevelFilter::Info)
-        .filter(Some("sqlx"), LevelFilter::Error)
+        .filter(None, log::LevelFilter::Info)
+        .filter(Some("ffxiv_items"), log::LevelFilter::Debug)
+        .filter(Some("sqlx"), log::LevelFilter::Error)
         .format(|buf, record| {
             writeln!(
                 buf,
@@ -80,6 +80,7 @@ fn setup() {
 }
 
 ////////////////////////////////////////////////////////////
+
 struct FileAppender {
     file_name: String,
 }

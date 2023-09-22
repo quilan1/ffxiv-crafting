@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, time::Instant};
 
 use anyhow::Result;
 use const_format::formatcp;
@@ -24,12 +24,12 @@ impl InputIdsTable<'_> {
 
         let recipes = Recipe::to_map_ref(recipes);
         let id_map = items
-            .items
-            .keys()
-            .flat_map(|&item_id| {
-                from_item_id(item_id, &recipes)
+            .0
+            .iter()
+            .flat_map(|item| {
+                from_item_id(item.id, &recipes)
                     .into_iter()
-                    .map(move |input_id| (item_id, input_id))
+                    .map(|input_id| (item.id, input_id))
             })
             .collect::<Vec<_>>();
 
@@ -47,6 +47,8 @@ impl InputIdsTable<'_> {
     }
 
     pub async fn by_item_ids<I: ItemId>(&self, ids: &[I]) -> Result<Vec<u32>> {
+        let start = Instant::now();
+        let num_ids = ids.len();
         let ids = ids.iter().map(|id| id.item_id().to_string()).join(",");
         let query_string = format!("{} ({ids})", SQL_SELECT);
 
@@ -56,6 +58,7 @@ impl InputIdsTable<'_> {
             let input_id: u32 = row.get(0);
             input_ids.push(input_id);
         }
+        log::debug!(target: "ffxiv_items", "Query for {num_ids} input ids ({} returned): {:.3}s", input_ids.len(), start.elapsed().as_secs_f32());
         Ok(input_ids)
     }
 }

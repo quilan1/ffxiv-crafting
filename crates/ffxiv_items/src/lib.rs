@@ -9,10 +9,12 @@ mod recipe;
 
 use csv_content::CsvContent;
 use item_id::ItemId;
-use recipe::{Ingredient, Recipe, RecipeLevelInfo};
+use item_info::ItemDBInfo;
+use recipe::RecipeLevelInfo;
 
 pub use db::ItemDB;
 pub use item_info::ItemInfo;
+pub use recipe::{Ingredient, Recipe};
 
 #[cfg(test)]
 mod tests {

@@ -4,7 +4,6 @@ use anyhow::Result;
 use axum::{extract::State, response::IntoResponse, Json};
 use ffxiv_items::ItemDB;
 use ffxiv_universalis::{UniversalisHistory, UniversalisListing, UniversalisRequestType};
-use log::info;
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -73,7 +72,7 @@ pub async fn put_market_request<T: UniversalisRequestType>(
         .processor
         .make_request::<T>(worlds, all_ids, retain_num_days);
 
-    info!(target: "ffxiv_server",
+    log::info!(target: "ffxiv_server",
         "Server uuid {uuid} maps to universalis uuid {}",
         universalis_handle.uuid()
     );

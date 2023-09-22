@@ -7,8 +7,11 @@ use axum::{
 };
 use ffxiv_items::ItemDB;
 use serde::{Deserialize, Serialize};
+use tokio::task::spawn_blocking;
 
 use crate::{JsonResponse, StringResponse};
+
+////////////////////////////////////////////////////////////
 
 #[derive(Deserialize)]
 pub struct GetInput {
@@ -31,12 +34,12 @@ pub struct ItemInfo {
 
 #[derive(Serialize)]
 pub struct Recipe {
-    pub inputs: Vec<RecipeData>,
+    pub inputs: Vec<Ingredient>,
     pub outputs: u32,
 }
 
 #[derive(Serialize)]
-pub struct RecipeData {
+pub struct Ingredient {
     pub item_id: u32,
     pub count: u32,
 }
@@ -58,29 +61,42 @@ async fn get_recipe_info_data(db: &ItemDB, payload: GetInput) -> Result<GetOutpu
     let (top_ids, all_ids) = db.get_ids_from_filters(&payload.filters).await?;
     let items = db.items_from_ids(&all_ids).await?;
 
-    let item_info = items
-        .into_iter()
-        .map(|item| {
-            (
-                item.id,
-                ItemInfo {
-                    item_id: item.id,
-                    name: item.name,
-                    recipe: item.recipe.map(|recipe| Recipe {
-                        inputs: recipe
-                            .inputs
-                            .into_iter()
-                            .map(|input| RecipeData {
-                                item_id: input.item_id,
-                                count: input.count,
-                            })
-                            .collect(),
-                        outputs: recipe.output.count,
-                    }),
-                },
-            )
-        })
-        .collect();
+    let item_info = spawn_blocking(|| {
+        items
+            .into_iter()
+            .map(|item| {
+                (
+                    item.id,
+                    ItemInfo {
+                        item_id: item.id,
+                        name: item.name,
+                        recipe: item.recipe.map(Into::into),
+                    },
+                )
+            })
+            .collect()
+    })
+    .await?;
 
     Ok(GetOutput { top_ids, item_info })
+}
+
+////////////////////////////////////////////////////////////
+
+impl From<ffxiv_items::Recipe> for Recipe {
+    fn from(recipe: ffxiv_items::Recipe) -> Self {
+        Self {
+            inputs: recipe.inputs.into_iter().map(Into::into).collect(),
+            outputs: recipe.output.count,
+        }
+    }
+}
+
+impl From<ffxiv_items::Ingredient> for Ingredient {
+    fn from(ingredient: ffxiv_items::Ingredient) -> Self {
+        Self {
+            item_id: ingredient.item_id,
+            count: ingredient.count,
+        }
+    }
 }

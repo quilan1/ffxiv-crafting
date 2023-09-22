@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, time::Instant};
 
 use anyhow::Result;
 use const_format::formatcp;
@@ -22,7 +22,7 @@ impl ItemInfoTable<'_> {
 
         println!("Initializing Items Database Table");
 
-        let items = items.items.values().filter(|item| !item.name.is_empty());
+        let items = items.0.iter().filter(|item| !item.name.is_empty());
         for items in &items.chunks(BIND_MAX / 5) {
             QueryBuilder::new(SQL_INSERT)
                 .push_values(items, |mut b, item| {
@@ -41,6 +41,7 @@ impl ItemInfoTable<'_> {
     }
 
     pub async fn by_item_ids<I: ItemId>(&self, ids: &[I]) -> Result<Vec<ItemInfo>> {
+        let start = Instant::now();
         let _ids = ids.iter().map(|id| id.item_id().to_string()).join(",");
         let query_string = format!("{} ({_ids})", SQL_SELECT);
 
@@ -49,17 +50,11 @@ impl ItemInfoTable<'_> {
         while let Some(row) = sql_query.try_next().await? {
             let item_id: u32 = row.get(0);
             let name: String = row.get(1);
-            let ui_category: u32 = row.get(2);
-            let item_level: u32 = row.get(3);
-            let equip_level: u32 = row.get(3);
             items.insert(
                 item_id,
                 ItemInfo {
                     id: item_id,
                     name,
-                    ui_category,
-                    ilevel: item_level,
-                    equip_level,
                     recipe: None,
                 },
             );
@@ -72,6 +67,7 @@ impl ItemInfoTable<'_> {
             });
         }
 
+        log::debug!(target: "ffxiv_items", "Query for {} items: {:.3}s", ids.len(), start.elapsed().as_secs_f32());
         Ok(items.into_values().collect())
     }
 }
@@ -93,8 +89,7 @@ const SQL_CREATE: &str = formatcp!(
 
 const SQL_EMPTY: &str = formatcp!("SELECT COUNT(id) FROM {SQL_TABLE_NAME}");
 
-const SQL_INSERT: &str =
-    formatcp!("INSERT INTO {SQL_TABLE_NAME} (id, name, ui_category, item_level, equip_level) ");
+const SQL_INSERT: &str = formatcp!("INSERT INTO {SQL_TABLE_NAME} (id, name) ");
 
 const SQL_SELECT: &str = formatcp!(
     "SELECT id, name, ui_category, item_level, equip_level

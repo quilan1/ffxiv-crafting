@@ -11,7 +11,6 @@ use futures::{
     future::join_all,
 };
 use itertools::Itertools;
-use log::info;
 use tokio::task::spawn_blocking;
 
 #[derive(Clone)]
@@ -51,7 +50,7 @@ impl UniversalisProcessor {
             let uuid = data.uuid.clone();
             let chunks = data.id_chunks();
 
-            info!(target: "ffxiv_universalis", "{uuid} Queueing {} futures", T::fetch_type());
+            log::info!(target: "ffxiv_universalis", "{uuid} Queueing {} futures", T::fetch_type());
             let all_listings =
                 Self::fetch_and_process_market_info::<T>(data, ready_signal_tx).await;
             status.set_value(UniversalisStatusState::Cleanup);
@@ -62,7 +61,7 @@ impl UniversalisProcessor {
                     .unwrap();
 
             status.set_value(UniversalisStatusState::Finished);
-            info!(target: "ffxiv_universalis", "{uuid} Process all {} done!", T::fetch_type());
+            log::info!(target: "ffxiv_universalis", "{uuid} Process all {} done!", T::fetch_type());
 
             let failure_ids = failure_ids.into_iter().unique().collect::<Vec<_>>();
             (listing_map, failure_ids)

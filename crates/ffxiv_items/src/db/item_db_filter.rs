@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use anyhow::Result;
 use const_format::formatcp;
 use futures::TryStreamExt;
@@ -21,6 +23,7 @@ impl ItemDB {
     }
 
     pub async fn ids_from_filter_str(&self, filter_str: &str) -> Result<Vec<u32>> {
+        let start = Instant::now();
         let (clauses, binds) = Filter::apply_filter_str(filter_str);
         if clauses.is_empty() {
             return Ok(Vec::new());
@@ -38,6 +41,7 @@ impl ItemDB {
             ids.push(row.get::<u32, _>(0));
         }
 
+        log::debug!(target: "ffxiv_items", "Query for filter string ({} ids returned): {:.3}s", ids.len(), start.elapsed().as_secs_f32());
         Ok(ids)
     }
 }
