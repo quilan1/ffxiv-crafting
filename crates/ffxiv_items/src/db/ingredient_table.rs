@@ -76,8 +76,8 @@ pub const SQL_TABLE_NAME: &str = "ingredients";
 const SQL_CREATE: &str = formatcp!(
     "CREATE TABLE IF NOT EXISTS {SQL_TABLE_NAME} (
         id          MEDIUMINT   UNSIGNED    AUTO_INCREMENT,
-        recipe_id   MEDIUMINT   UNSIGNED    NOT NULL,
-        item_id     SMALLINT    UNSIGNED    NOT NULL,
+        recipe_id   SMALLINT    UNSIGNED    NOT NULL,
+        item_id     MEDIUMINT   UNSIGNED    NOT NULL,
         count       SMALLINT    UNSIGNED    NOT NULL,
         PRIMARY KEY     ( id ),
         INDEX       id0 ( recipe_id ),

@@ -5,20 +5,25 @@ use const_format::formatcp;
 use futures::TryStreamExt;
 use sqlx::Row;
 
-use super::{Filter, IngredientTable, ItemDB, ItemInfoTable, RecipeTable, UiCategoryTable};
+use super::{
+    Filter, IngredientTable, InputIdsTable, ItemDB, ItemInfoTable, RecipeTable, UiCategoryTable,
+};
 
 impl ItemDB {
     fn get_query_string(clauses: &str) -> String {
         let mut query_string = SQL_SELECT.to_string();
         if clauses.contains("r.") {
             query_string = format!("{query_string} {SQL_JOIN_RECIPES}")
-        };
-        if clauses.contains("g.") {
-            query_string = format!("{query_string} {SQL_JOIN_INGREDIENTS}")
-        };
+        }
         if clauses.contains("c.") {
             query_string = format!("{query_string} {SQL_JOIN_UI_CATEGORIES}")
-        };
+        }
+        if clauses.contains("i_n.") {
+            query_string = format!("{query_string} {SQL_JOIN_INPUT_IDS_ITEMS}")
+        }
+        if clauses.contains("i_g.") {
+            query_string = format!("{query_string} {SQL_JOIN_INGREDIENTS_ITEMS}")
+        }
         query_string
     }
 
@@ -30,6 +35,8 @@ impl ItemDB {
         }
 
         let query_string = format!("{} WHERE {clauses}", Self::get_query_string(&clauses));
+        let query_string = query_string.replace('\n', "");
+        log::debug!(target: "ffxiv_items", "{query_string}");
         let mut sql_query = sqlx::query(&query_string);
         for bind in binds {
             sql_query = sql_query.bind(bind);
@@ -50,13 +57,22 @@ const SQL_SELECT: &str = formatcp!("SELECT DISTINCT i.id, i.name FROM {ITEM_TABL
 
 const SQL_JOIN_RECIPES: &str = formatcp!("INNER JOIN {RECIPE_TABLE_NAME} AS r ON r.item_id = i.id");
 
-const SQL_JOIN_INGREDIENTS: &str =
-    formatcp!("INNER JOIN {INGREDIENT_TABLE_NAME} AS g ON g.recipe_id = r.id");
-
 const SQL_JOIN_UI_CATEGORIES: &str =
     formatcp!("INNER JOIN {UI_CATEGORY_TABLE_NAME} AS c ON i.ui_category = c.id");
 
+const SQL_JOIN_INPUT_IDS_ITEMS: &str = formatcp!(
+    "INNER JOIN {INPUT_IDS_TABLE_NAME}   AS n   ON n.item_id = i.id
+    INNER JOIN {ITEM_TABLE_NAME}        AS i_n ON i_n.id = n.input_id"
+);
+
+const SQL_JOIN_INGREDIENTS_ITEMS: &str = formatcp!(
+    "INNER JOIN {RECIPE_TABLE_NAME}     AS r_g  ON r_g.item_id = i.id
+    INNER JOIN {INGREDIENTS_TABLE_NAME} AS g    ON g.recipe_id = r_g.id
+    INNER JOIN {ITEM_TABLE_NAME}        AS i_g  ON i_g.id = g.item_id"
+);
+
 const ITEM_TABLE_NAME: &str = ItemInfoTable::SQL_TABLE_NAME;
 const RECIPE_TABLE_NAME: &str = RecipeTable::SQL_TABLE_NAME;
-const INGREDIENT_TABLE_NAME: &str = IngredientTable::SQL_TABLE_NAME;
 const UI_CATEGORY_TABLE_NAME: &str = UiCategoryTable::SQL_TABLE_NAME;
+const INPUT_IDS_TABLE_NAME: &str = InputIdsTable::SQL_TABLE_NAME;
+const INGREDIENTS_TABLE_NAME: &str = IngredientTable::SQL_TABLE_NAME;

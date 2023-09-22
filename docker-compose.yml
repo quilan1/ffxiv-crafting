@@ -11,6 +11,7 @@ services:
       retries: 120
       start_period: 10s
     environment:
+      - CARGO_INCREMENTAL=true
       - FFXIV_DATA_CENTERS=Dynamis
       - FFXIV_ITEM_DB_CONN=mysql://user:password@ffxiv-items-db:3306/ffxiv_items
     depends_on:

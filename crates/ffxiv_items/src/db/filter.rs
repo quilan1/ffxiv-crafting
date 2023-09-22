@@ -87,7 +87,8 @@ impl Filter {
         map.insert(":elevel", filter_equip_level);
         map.insert(":ilevel", filter_ilevel);
         map.insert(":cat", filter_ui_category);
-        // map.insert(":contains", filter_contains);
+        map.insert(":contains", filter_contains);
+        map.insert(":includes", filter_includes);
 
         // Result filters
         map.insert(":count", filter_noop);
@@ -169,6 +170,24 @@ fn filter_ui_category(options: &[String]) -> Option<(String, Vec<String>)> {
     Some((clause, options.to_vec()))
 }
 
+fn filter_contains(options: &[String]) -> Option<(String, Vec<String>)> {
+    if options.is_empty() {
+        return None;
+    }
+
+    let re = options.join("|").replace(' ', "\\s");
+    Some(("i_g.name RLIKE ?".into(), vec![re]))
+}
+
+fn filter_includes(options: &[String]) -> Option<(String, Vec<String>)> {
+    if options.is_empty() {
+        return None;
+    }
+
+    let re = options.join("|").replace(' ', "\\s");
+    Some(("i_n.name RLIKE ?".into(), vec![re]))
+}
+
 /*
 fn filter_leve<'a>(options: &[String]) {
     let categories = options;
@@ -186,19 +205,6 @@ fn filter_leve<'a>(options: &[String]) {
             .iter()
             .map(|leve_id| &library.all_leves[leve_id].jobs)
             .any(|jobs| library.all_job_categories[jobs].matches_any(categories))
-    });
-}
-
-fn filter_contains<'a>(options: &[String]) {
-    if options.is_empty() {
-        return;
-    }
-
-    let re = Regex::new(&options.join("|")).unwrap();
-    items.retain(|&item| {
-        item.all_recipe_input_ids(library, item)
-            .iter()
-            .any(|id| re.is_match(&library.item_info(id).name))
     });
 }
 */
