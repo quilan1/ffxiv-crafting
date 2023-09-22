@@ -89,10 +89,11 @@ const SQL_CREATE: &str = formatcp!(
 
 const SQL_EMPTY: &str = formatcp!("SELECT COUNT(id) FROM {SQL_TABLE_NAME}");
 
-const SQL_INSERT: &str = formatcp!("INSERT INTO {SQL_TABLE_NAME} (id, name) ");
+const SQL_INSERT: &str =
+    formatcp!("INSERT INTO {SQL_TABLE_NAME} (id, name, ui_category, item_level, equip_level) ");
 
 const SQL_SELECT: &str = formatcp!(
-    "SELECT id, name, ui_category, item_level, equip_level
+    "SELECT id, name
     FROM {SQL_TABLE_NAME}
     WHERE id IN"
 );
