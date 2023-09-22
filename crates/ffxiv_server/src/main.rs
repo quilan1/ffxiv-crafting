@@ -12,11 +12,13 @@ use std::{error::Error, time::Instant};
 use responses::{JsonResponse, StringResponse};
 use server::Server;
 
+////////////////////////////////////////////////////////////
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     use ffxiv_items::ItemDB;
 
-    setup()?;
+    setup();
 
     let start = Instant::now();
     let item_db_conn = std::env::var("FFXIV_ITEM_DB_CONN").unwrap();
@@ -29,14 +31,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn setup() -> Result<(), Box<dyn Error>> {
+////////////////////////////////////////////////////////////
+
+fn setup() {
+    use chrono::Local;
     use log::LevelFilter;
-    use log4rs::{
-        append::file::FileAppender,
-        config::{Appender, Root},
-        encode::pattern::PatternEncoder,
-        Config,
-    };
+    use std::io::Write;
 
     if let Ok(val) = std::env::var("FFXIV_DATA_CENTERS") {
         log::info!(target: "ffxiv_server", "FFXIV_DATA_CENTERS is currently set to {val}");
@@ -61,20 +61,53 @@ fn setup() -> Result<(), Box<dyn Error>> {
         std::env::set_var("RUST_LIB_BACKTRACE", "1");
     }
 
-    let logfile = FileAppender::builder()
-        .encoder(Box::new(PatternEncoder::new(
-            "{d(%F %T%.3f)} | {({l}):5.5} | {({t}):17} | {m}{n}",
-        )))
-        .build("output.log")?;
-
-    let config = Config::builder()
-        .appender(Appender::builder().build("logfile", Box::new(logfile)))
-        .build(Root::builder().appender("logfile").build(LevelFilter::Info))?;
-
-    log4rs::init_config(config)?;
-
-    Ok(())
+    let file_target = Box::new(FileAppender::new("output.log"));
+    env_logger::Builder::new()
+        .target(env_logger::Target::Pipe(file_target))
+        .filter(None, LevelFilter::Info)
+        .filter(Some("sqlx"), LevelFilter::Error)
+        .format(|buf, record| {
+            writeln!(
+                buf,
+                "{} | {:5} | {:17} | {}",
+                Local::now().format("%F %T%.3f"),
+                record.level(),
+                record.target(),
+                record.args()
+            )
+        })
+        .init();
 }
+
+////////////////////////////////////////////////////////////
+struct FileAppender {
+    file_name: String,
+}
+
+impl FileAppender {
+    fn new<S: Into<String>>(file_name: S) -> Self {
+        Self {
+            file_name: file_name.into(),
+        }
+    }
+}
+
+impl std::io::Write for FileAppender {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let mut data_file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&self.file_name)?;
+
+        data_file.write(buf)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+////////////////////////////////////////////////////////////
 
 mod _temp {
     use axum_macros as _;
