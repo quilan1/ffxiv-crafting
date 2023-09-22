@@ -21,8 +21,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let library = Library::create().await?; // Safety: Initializing the singleton once
 
     let start = Instant::now();
-    let item_db = std::env::var("FFXIV_ITEM_DB").unwrap();
-    let db = ItemDB::connect(format!("mysql://{item_db}/ffxiv_items")).await?;
+    let item_db_conn = std::env::var("FFXIV_ITEM_DB_CONN").unwrap();
+    let db = ItemDB::connect(item_db_conn).await?;
     db.initialize().await?;
     println!("Initialized in {} ms", start.elapsed().as_millis());
 
@@ -49,14 +49,14 @@ fn setup() -> Result<(), Box<dyn Error>> {
         std::env::set_var("FFXIV_DATA_CENTERS", "Dynamis");
     };
 
-    if let Ok(val) = std::env::var("FFXIV_ITEM_DB") {
-        log::info!(target: "ffxiv_server", "FFXIV_ITEM_DB is currently set to {val}");
+    if let Ok(val) = std::env::var("FFXIV_ITEM_DB_CONN") {
+        log::info!(target: "ffxiv_server", "FFXIV_ITEM_DB_CONN is currently set to {val}");
     } else {
         let item_db = "user:password@localhost:3306";
-        let msg = format!("FFXIV_ITEM_DB not set! Defaulting to {item_db}");
+        let msg = format!("FFXIV_ITEM_DB_CONN not set! Defaulting to {item_db}");
         println!("{msg}");
         log::warn!(target: "ffxiv_server", "{msg}");
-        std::env::set_var("FFXIV_ITEM_DB", item_db);
+        std::env::set_var("FFXIV_ITEM_DB_CONN", item_db);
     }
 
     if std::env::var("RUST_LIB_BACKTRACE").is_err() {

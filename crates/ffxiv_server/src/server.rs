@@ -18,17 +18,18 @@ pub struct Server;
 
 #[allow(unused_must_use)]
 impl Server {
-    pub async fn run(library: Library, _db: ItemDB) -> Result<()> {
+    pub async fn run(library: Library, db: ItemDB) -> Result<()> {
         let market_state = MarketState::new();
         let async_processor = market_state.async_processor();
         let library = Arc::new(library);
+        let db = Arc::new(db);
 
         let health_service = Router::new().route("/health", get(|| async { "OK" }));
 
         let recipe_service = Router::new()
             .route("/recipe", get(recipe::get_recipe_info))
             .layer(axum_server_timing::ServerTimingLayer::new("RecipeService"))
-            .with_state(library.clone());
+            .with_state(db.clone());
 
         let market_service = Router::new()
             .nest(

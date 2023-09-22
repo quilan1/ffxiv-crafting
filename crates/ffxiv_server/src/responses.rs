@@ -30,6 +30,10 @@ where
     fn not_found(self) -> Response {
         (reqwest::StatusCode::NOT_FOUND, self.into()).into_response()
     }
+
+    fn server_error(self) -> Response {
+        (reqwest::StatusCode::NOT_FOUND, self.into()).into_response()
+    }
 }
 
 impl StringResponse for String {}

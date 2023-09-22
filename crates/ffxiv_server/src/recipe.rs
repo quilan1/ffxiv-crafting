@@ -1,14 +1,14 @@
 use std::{collections::BTreeMap, sync::Arc};
 
+use anyhow::Result;
 use axum::{
     extract::{Form, State},
     response::IntoResponse,
 };
-use ffxiv_items::Library;
+use ffxiv_items::ItemDB;
 use serde::{Deserialize, Serialize};
-use tokio::task::spawn_blocking;
 
-use crate::JsonResponse;
+use crate::{JsonResponse, StringResponse};
 
 #[derive(Deserialize)]
 pub struct GetInput {
@@ -45,49 +45,42 @@ pub struct RecipeData {
 
 // Return recipe info for a particular filter
 pub async fn get_recipe_info(
-    State(library): State<Arc<Library>>,
+    State(db): State<Arc<ItemDB>>,
     Form(payload): Form<GetInput>,
 ) -> impl IntoResponse {
-    spawn_blocking(move || get_recipe_info_data(&library, payload))
-        .await
-        .unwrap()
-        .ok()
+    match get_recipe_info_data(&db, payload).await {
+        Ok(v) => v.ok(),
+        Err(e) => e.to_string().server_error(),
+    }
 }
 
-fn get_recipe_info_data(library: &Library, payload: GetInput) -> GetOutput {
-    let (top_ids, all_ids) = ffxiv_items::get_ids_from_filters(library, payload.filters);
-    let item_info = all_ids
+async fn get_recipe_info_data(db: &ItemDB, payload: GetInput) -> Result<GetOutput> {
+    let (top_ids, all_ids) = db.get_ids_from_filters(&payload.filters).await?;
+    let items = db.items_from_ids(&all_ids).await?;
+
+    let item_info = items
         .into_iter()
-        .map(|id| {
+        .map(|item| {
             (
-                id,
+                item.id,
                 ItemInfo {
-                    item_id: id,
-                    name: library.item_name(&id).replace('\u{00A0}', " ").to_string(),
-                    recipe: recipe_info(library, id),
+                    item_id: item.id,
+                    name: item.name,
+                    recipe: item.recipe.map(|recipe| Recipe {
+                        inputs: recipe
+                            .inputs
+                            .into_iter()
+                            .map(|input| RecipeData {
+                                item_id: input.item_id,
+                                count: input.count,
+                            })
+                            .collect(),
+                        outputs: recipe.output.count,
+                    }),
                 },
             )
         })
         .collect();
 
-    GetOutput { top_ids, item_info }
-}
-
-////////////////////////////////////////////////////////////
-
-fn recipe_info(library: &Library, id: u32) -> Option<Recipe> {
-    library
-        .item_info_checked(&id)
-        .and_then(|item| item.recipe.as_ref())
-        .map(|recipe| Recipe {
-            outputs: recipe.output.count,
-            inputs: recipe
-                .inputs
-                .iter()
-                .map(|input| RecipeData {
-                    item_id: input.item_id,
-                    count: input.count,
-                })
-                .collect(),
-        })
+    Ok(GetOutput { top_ids, item_info })
 }

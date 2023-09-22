@@ -1,4 +1,4 @@
-use std::{io::Cursor, sync::Arc};
+use std::io::Cursor;
 
 use anyhow::Result;
 use futures::try_join;
@@ -6,7 +6,7 @@ use itertools::Itertools;
 use sqlx::MySqlPool;
 use tuple_conv::RepeatedTuple;
 
-use crate::{parsers, CsvContent, ItemInfo, Recipe, RecipeLevelInfo};
+use crate::{parsers, CsvContent, Recipe, RecipeLevelInfo};
 
 use super::{IngredientTable, InputIdsTable, ItemInfoTable, RecipeTable, UiCategoryTable};
 
@@ -68,18 +68,6 @@ impl ItemDB {
         self.tables()
             .fill_tables(&items, &recipes, &ui_categories)
             .await
-    }
-
-    pub async fn get_ids_from_filters(&self) -> Result<(Vec<u32>, Vec<u32>)> {
-        let top_ids = self
-            .ids_from_filter_str(":rlevel 90,:cat Metal|Lumber|Leather|Stone|Cloth|Reagent")
-            .await?;
-        let all_ids = InputIdsTable::new(self).by_item_ids(&top_ids).await?;
-        Ok((top_ids, all_ids))
-    }
-
-    pub async fn items_from_ids(self: &Arc<Self>, ids: &[u32]) -> Result<Vec<ItemInfo>> {
-        ItemInfoTable::new(self).by_item_ids(ids).await
     }
 
     fn parse_recipes(

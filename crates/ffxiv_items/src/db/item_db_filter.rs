@@ -27,7 +27,6 @@ impl ItemDB {
         }
 
         let query_string = format!("{} WHERE {clauses}", Self::get_query_string(&clauses));
-        println!("Query: {query_string}\n");
         let mut sql_query = sqlx::query(&query_string);
         for bind in binds {
             sql_query = sql_query.bind(bind);
