@@ -6,9 +6,9 @@ use futures::TryStreamExt;
 use itertools::Itertools;
 use sqlx::{QueryBuilder, Row};
 
-use crate::{Ingredient, ItemId, Recipe};
+use crate::{Ingredient, ItemDB, ItemId, Recipe};
 
-use super::{IngredientTable, ItemDB, BIND_MAX};
+use super::{IngredientTable, BIND_MAX};
 
 ////////////////////////////////////////////////////////////
 

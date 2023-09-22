@@ -6,9 +6,11 @@ use itertools::Itertools;
 use sqlx::MySqlPool;
 use tuple_conv::RepeatedTuple;
 
-use crate::{parsers, CsvContent, Recipe, RecipeLevelInfo};
-
-use super::{IngredientTable, InputIdsTable, ItemInfoTable, RecipeTable, UiCategoryTable};
+use crate::{
+    parsers,
+    tables::{IngredientTable, InputIdsTable, ItemInfoTable, RecipeTable, UiCategoryTable},
+    CsvContent, Recipe, RecipeLevelInfo,
+};
 
 #[derive(Debug)]
 pub struct ItemDB {
@@ -63,11 +65,8 @@ impl ItemDB {
         let csv_content = CsvContent::download().await?;
         let items = parsers::ItemList::from_reader(csv_content.item)?;
         let recipes = Self::parse_recipes(csv_content.recipe, csv_content.recipe_level)?;
-        let ui_categories = parsers::UiCategoryList::from_reader(csv_content.item_ui_category)?;
 
-        self.tables()
-            .fill_tables(&items, &recipes, &ui_categories)
-            .await
+        self.tables().fill_tables(&items, &recipes).await
     }
 
     fn parse_recipes(
@@ -114,18 +113,13 @@ impl Tables<'_> {
         Ok(())
     }
 
-    async fn fill_tables(
-        &self,
-        items: &parsers::ItemList,
-        recipes: &[Recipe],
-        ui_categories: &parsers::UiCategoryList,
-    ) -> Result<()> {
+    async fn fill_tables(&self, items: &parsers::ItemList, recipes: &[Recipe]) -> Result<()> {
         try_join!(
-            self.items.initialize(items),
+            self.items.initialize(),
             self.recipes.initialize(recipes),
             self.ingredients.initialize(recipes),
             self.input_ids.initialize(items, recipes),
-            self.ui_categories.initialize(ui_categories)
+            self.ui_categories.initialize()
         )?;
         Ok(())
     }

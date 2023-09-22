@@ -5,8 +5,9 @@ use const_format::formatcp;
 use futures::TryStreamExt;
 use sqlx::Row;
 
-use super::{
-    Filter, IngredientTable, InputIdsTable, ItemDB, ItemInfoTable, RecipeTable, UiCategoryTable,
+use crate::{
+    tables::{IngredientTable, InputIdsTable, ItemInfoTable, RecipeTable, UiCategoryTable},
+    Filter, ItemDB,
 };
 
 impl ItemDB {

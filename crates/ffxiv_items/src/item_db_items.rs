@@ -2,7 +2,10 @@ use anyhow::Result;
 
 use crate::{ItemId, ItemInfo};
 
-use super::{InputIdsTable, ItemDB, ItemInfoTable};
+use super::{
+    tables::{InputIdsTable, ItemInfoTable},
+    ItemDB,
+};
 
 impl ItemDB {
     pub async fn get_ids_from_filters<S: AsRef<str>>(

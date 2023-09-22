@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, time::Instant};
+use std::{collections::BTreeMap, io::Cursor, time::Instant};
 
 use anyhow::Result;
 use const_format::formatcp;
@@ -6,40 +6,15 @@ use futures::TryStreamExt;
 use itertools::Itertools;
 use sqlx::{QueryBuilder, Row};
 
-use crate::{parsers, ItemId, ItemInfo};
+use crate::{csv_parse, ItemDB, ItemId, ItemInfo};
 
-use super::{ItemDB, RecipeTable, BIND_MAX};
+use super::{download_file, RecipeTable, BIND_MAX};
 
 ////////////////////////////////////////////////////////////
 
 impl_table!(ItemInfoTable);
 
 impl ItemInfoTable<'_> {
-    pub async fn initialize(&self, items: &parsers::ItemList) -> Result<()> {
-        if !self.is_empty().await? {
-            return Ok(());
-        }
-
-        println!("Initializing Items Database Table");
-
-        let items = items.0.iter().filter(|item| !item.name.is_empty());
-        for items in &items.chunks(BIND_MAX / 5) {
-            QueryBuilder::new(SQL_INSERT)
-                .push_values(items, |mut b, item| {
-                    b.push_bind(item.id)
-                        .push_bind(&item.name)
-                        .push_bind(item.ui_category)
-                        .push_bind(item.ilevel)
-                        .push_bind(item.equip_level);
-                })
-                .build()
-                .execute(self.db)
-                .await?;
-        }
-
-        Ok(())
-    }
-
     pub async fn by_item_ids<I: ItemId>(&self, ids: &[I]) -> Result<Vec<ItemInfo>> {
         let start = Instant::now();
         let _ids = ids.iter().map(|id| id.item_id().to_string()).join(",");
@@ -69,6 +44,74 @@ impl ItemInfoTable<'_> {
 
         log::debug!(target: "ffxiv_items", "Query for {} items: {:.3}s", ids.len(), start.elapsed().as_secs_f32());
         Ok(items.into_values().collect())
+    }
+}
+
+////////////////////////////////////////////////////////////
+
+struct CsvItem {
+    pub id: u32,
+    pub name: String,
+    pub ui_category: u32,
+    pub ilevel: u32,
+    pub equip_level: u32,
+}
+
+////////////////////////////////////////////////////////////
+
+const CSV_FILE: &str = "Item.csv";
+
+impl ItemInfoTable<'_> {
+    pub async fn initialize(&self) -> Result<()> {
+        if !self.is_empty().await? {
+            return Ok(());
+        }
+
+        let items = Self::download().await?;
+
+        println!("Initializing Items Database Table");
+        let items = items.iter().filter(|item| !item.name.is_empty());
+        for items in &items.chunks(BIND_MAX / 5) {
+            QueryBuilder::new(SQL_INSERT)
+                .push_values(items, |mut b, item| {
+                    b.push_bind(item.id)
+                        .push_bind(&item.name)
+                        .push_bind(item.ui_category)
+                        .push_bind(item.ilevel)
+                        .push_bind(item.equip_level);
+                })
+                .build()
+                .execute(self.db)
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn download() -> Result<Vec<CsvItem>> {
+        println!("Downloading Items from Github");
+
+        let reader = Cursor::new(download_file(CSV_FILE).await?);
+        let mut items = Vec::new();
+        csv_parse!(reader => {
+            id = U[0];
+            name = S[9 + 1];
+            ilevel = U[11 + 1];
+            ui_category = U[15 + 1];
+            equip_level = U[40 + 1];
+
+            let item = CsvItem {
+                id,
+                name: name.clone(),
+                ui_category,
+                ilevel,
+                equip_level,
+            };
+
+            items.push(item);
+        });
+
+        Ok(items)
     }
 }
 

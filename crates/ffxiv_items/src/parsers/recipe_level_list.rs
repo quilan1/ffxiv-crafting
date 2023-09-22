@@ -1,7 +1,6 @@
 use std::{collections::BTreeMap, io::Read};
 
 use anyhow::Result;
-use csv::ReaderBuilder;
 
 pub struct RecipeLevelParsed {
     pub id: u32,
