@@ -7,10 +7,12 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Release",
+            "name": "Run Server",
             "cargo": {
                 "args": [
                     "build",
+                    "-p",
+                    "ffxiv_server",
                     "--profile=release-debug"
                 ]
             },
@@ -23,10 +25,12 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug",
+            "name": "Debug Server",
             "cargo": {
                 "args": [
                     "build",
+                    "-p",
+                    "ffxiv_server"
                 ],
             },
             "args": [],

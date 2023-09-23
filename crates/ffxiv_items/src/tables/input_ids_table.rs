@@ -8,7 +8,7 @@ use sqlx::{QueryBuilder, Row};
 
 use crate::{ItemDB, ItemId, Recipe};
 
-use super::BIND_MAX;
+use super::{strip_whitespace, BIND_MAX};
 
 ////////////////////////////////////////////////////////////
 
@@ -29,7 +29,7 @@ impl InputIdsTable<'_> {
             .collect::<Vec<_>>();
 
         for id_map in id_map.chunks(BIND_MAX / 2) {
-            QueryBuilder::new(SQL_INSERT)
+            QueryBuilder::new(strip_whitespace(SQL_INSERT))
                 .push_values(id_map, |mut b, &(item_id, input_id)| {
                     b.push_bind(item_id).push_bind(input_id);
                 })
@@ -42,17 +42,22 @@ impl InputIdsTable<'_> {
     }
 
     pub async fn by_item_ids<I: ItemId>(&self, ids: &[I]) -> Result<Vec<u32>> {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
         let start = Instant::now();
         let num_ids = ids.len();
         let ids = ids.iter().map(|id| id.item_id().to_string()).join(",");
-        let query_string = format!("{} ({ids})", SQL_SELECT);
+        let query_string = strip_whitespace(format!("{} ({ids})", SQL_SELECT));
 
         let mut input_ids = Vec::new();
-        let mut sql_query = sqlx::query(&query_string).fetch(self.db);
+        let mut sql_query = sqlx::query(&query_string).persistent(true).fetch(self.db);
         while let Some(row) = sql_query.try_next().await? {
             let input_id: u32 = row.get(0);
             input_ids.push(input_id);
         }
+
         log::debug!(target: "ffxiv_items", "Query for {num_ids} input ids ({} returned): {:.3}s", input_ids.len(), start.elapsed().as_secs_f32());
         Ok(input_ids)
     }

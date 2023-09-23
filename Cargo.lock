@@ -511,6 +511,7 @@ dependencies = [
  "futures",
  "itertools",
  "log",
+ "regex",
  "reqwest",
  "sqlx",
  "tokio",

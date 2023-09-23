@@ -1,4 +1,5 @@
 use anyhow::Result;
+use itertools::Itertools;
 
 use crate::{ItemId, ItemInfo};
 
@@ -12,8 +13,14 @@ impl ItemDB {
         &self,
         filter_str: S,
     ) -> Result<(Vec<u32>, Vec<u32>)> {
-        let top_ids = self.ids_from_filter_str(filter_str.as_ref()).await?;
-        let all_ids = InputIdsTable::new(self).by_item_ids(&top_ids).await?;
+        let mut top_ids = self.ids_from_filter_str(filter_str.as_ref()).await?;
+        top_ids.sort();
+
+        let mut all_ids = InputIdsTable::new(self).by_item_ids(&top_ids).await?;
+        all_ids.extend(top_ids.clone());
+
+        let mut all_ids = all_ids.into_iter().unique().collect_vec();
+        all_ids.sort();
         Ok((top_ids, all_ids))
     }
 

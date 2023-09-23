@@ -25,3 +25,9 @@ async fn download_file(file_name: &str) -> anyhow::Result<String> {
 async fn download_url<S: reqwest::IntoUrl>(url: S) -> anyhow::Result<String> {
     Ok(reqwest::get(url).await?.text().await?)
 }
+
+pub fn strip_whitespace<S: AsRef<str>>(s: S) -> String {
+    use regex::Regex;
+    let re = Regex::new(r"\s+").unwrap();
+    re.replace_all(s.as_ref(), " ").into()
+}

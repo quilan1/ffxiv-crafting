@@ -10,3 +10,7 @@ debug = true
 inherits = "release"
 incremental = true
 lto = "thin"
+
+[profile.docker-no-lto]
+inherits = "docker"
+lto = "off"

@@ -18,3 +18,7 @@ const_format = "0.2.31"
 tuple-conv = "1.0.1"
 env_logger = "0.10.0"
 chrono = "0.4.31"
+regex = "1.9.5"
+
+[features]
+docker = []

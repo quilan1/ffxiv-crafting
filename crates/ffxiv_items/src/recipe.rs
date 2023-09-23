@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Ingredient {
     pub count: u32,
     pub item_id: u32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Recipe {
     pub output: Ingredient,
     pub inputs: Vec<Ingredient>,

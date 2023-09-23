@@ -7,7 +7,7 @@ use sqlx::QueryBuilder;
 
 use crate::ItemDB;
 
-use super::{download_file, BIND_MAX};
+use super::{download_file, strip_whitespace, BIND_MAX};
 
 ////////////////////////////////////////////////////////////
 
@@ -29,7 +29,7 @@ impl UiCategoryTable<'_> {
         println!("Initializing UI Categories Table");
         let id_map = categories.iter();
         for id_map in &id_map.chunks(BIND_MAX / 2) {
-            QueryBuilder::new(SQL_INSERT)
+            QueryBuilder::new(strip_whitespace(SQL_INSERT))
                 .push_values(id_map, |mut b, data| {
                     b.push_bind(data.id).push_bind(&data.name);
                 })

@@ -56,6 +56,8 @@ pub async fn put_market_request<T: UniversalisRequestType>(
     uuid: String,
     payload: PutInput,
 ) -> Result<String> {
+    log::info!(target: "ffxiv_server", "Putting {} request for '{}'", T::fetch_type(), payload.filters);
+
     let (_, all_ids) = db.get_ids_from_filters(payload.filters).await?;
     let worlds = payload
         .data_center

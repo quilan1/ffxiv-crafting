@@ -101,13 +101,15 @@ impl Filter {
 
 ////////////////////////////////////////////////////////////
 
+fn join_regex(options: &[String]) -> String {
+    options.join("|").replace(' ', "\\s")
+}
+
 fn filter_name(options: &[String]) -> Option<(String, Vec<String>)> {
     if options.is_empty() {
         return None;
     }
-
-    let re = options.join("|").replace(' ', "\\s");
-    Some(("i.name RLIKE ?".into(), vec![re]))
+    Some(("i.name RLIKE ?".into(), vec![join_regex(options)]))
 }
 
 fn filter_recipe_level(options: &[String]) -> Option<(String, Vec<String>)> {
@@ -174,18 +176,14 @@ fn filter_contains(options: &[String]) -> Option<(String, Vec<String>)> {
     if options.is_empty() {
         return None;
     }
-
-    let re = options.join("|").replace(' ', "\\s");
-    Some(("i_g.name RLIKE ?".into(), vec![re]))
+    Some(("i_g.name RLIKE ?".into(), vec![join_regex(options)]))
 }
 
 fn filter_includes(options: &[String]) -> Option<(String, Vec<String>)> {
     if options.is_empty() {
         return None;
     }
-
-    let re = options.join("|").replace(' ', "\\s");
-    Some(("i_n.name RLIKE ?".into(), vec![re]))
+    Some(("i_n.name RLIKE ?".into(), vec![join_regex(options)]))
 }
 
 /*

@@ -8,7 +8,7 @@ use sqlx::{QueryBuilder, Row};
 
 use crate::{csv_parse, ItemDB, ItemId, ItemInfo};
 
-use super::{download_file, RecipeTable, BIND_MAX};
+use super::{download_file, strip_whitespace, RecipeTable, BIND_MAX};
 
 ////////////////////////////////////////////////////////////
 
@@ -16,9 +16,13 @@ impl_table!(ItemInfoTable);
 
 impl ItemInfoTable<'_> {
     pub async fn by_item_ids<I: ItemId>(&self, ids: &[I]) -> Result<Vec<ItemInfo>> {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
         let start = Instant::now();
         let _ids = ids.iter().map(|id| id.item_id().to_string()).join(",");
-        let query_string = format!("{} ({_ids})", SQL_SELECT);
+        let query_string = strip_whitespace(format!("{} ({_ids})", SQL_SELECT));
 
         let mut items = BTreeMap::new();
         let mut sql_query = sqlx::query(&query_string).fetch(self.db);
@@ -34,6 +38,7 @@ impl ItemInfoTable<'_> {
                 },
             );
         }
+        log::debug!(target: "ffxiv_items", "Query for {} items: {:.3}s", ids.len(), start.elapsed().as_secs_f32());
 
         let recipes = RecipeTable::new(self.db).by_item_ids(ids).await?;
         for recipe in recipes {
@@ -42,7 +47,6 @@ impl ItemInfoTable<'_> {
             });
         }
 
-        log::debug!(target: "ffxiv_items", "Query for {} items: {:.3}s", ids.len(), start.elapsed().as_secs_f32());
         Ok(items.into_values().collect())
     }
 }
@@ -68,7 +72,7 @@ impl ItemInfoTable<'_> {
         println!("Initializing Items Database Table");
         let items = items.iter().filter(|item| !item.name.is_empty());
         for items in &items.chunks(BIND_MAX / 5) {
-            QueryBuilder::new(SQL_INSERT)
+            QueryBuilder::new(strip_whitespace(SQL_INSERT))
                 .push_values(items, |mut b, item| {
                     b.push_bind(item.id)
                         .push_bind(&item.name)

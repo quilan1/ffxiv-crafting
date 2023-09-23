@@ -51,6 +51,7 @@ pub async fn get_recipe_info(
     State(db): State<Arc<ItemDB>>,
     Form(payload): Form<GetInput>,
 ) -> impl IntoResponse {
+    log::info!(target: "ffxiv_server", "Fetching recipe for '{}'", payload.filters);
     match get_recipe_info_data(&db, payload).await {
         Ok(v) => v.ok(),
         Err(e) => e.to_string().server_error(),

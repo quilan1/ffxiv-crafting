@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use anyhow::Result;
 use const_format::formatcp;
 use futures::TryStreamExt;
@@ -6,7 +8,7 @@ use sqlx::{QueryBuilder, Row};
 
 use crate::{Ingredient, ItemDB, ItemId, Recipe};
 
-use super::{RecipeTable, BIND_MAX};
+use super::{strip_whitespace, RecipeTable, BIND_MAX};
 
 ////////////////////////////////////////////////////////////
 
@@ -27,7 +29,7 @@ impl IngredientTable<'_> {
             });
 
         for ingredients in &ingredients.chunks(BIND_MAX / 3) {
-            QueryBuilder::new(SQL_INSERT)
+            QueryBuilder::new(strip_whitespace(SQL_INSERT))
                 .push_values(ingredients, |mut b, (item_id, recipe)| {
                     b.push_bind(item_id as u64 + 1)
                         .push_bind(recipe.item_id)
@@ -42,8 +44,14 @@ impl IngredientTable<'_> {
     }
 
     pub async fn by_item_ids<I: ItemId>(&self, ids: &[I]) -> Result<Vec<(u32, Ingredient)>> {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let start = Instant::now();
         let ids = ids.iter().map(|id| id.item_id().to_string()).join(",");
-        let query_string = format!("{} ({ids})", SQL_SELECT);
+        let num_ids = ids.len();
+        let query_string = strip_whitespace(format!("{} ({ids})", SQL_SELECT));
 
         let mut ingredients = Vec::new();
         let mut sql_query = sqlx::query(&query_string).fetch(self.db);
@@ -60,6 +68,7 @@ impl IngredientTable<'_> {
             ));
         }
 
+        log::debug!(target: "ffxiv_items", "Query for {num_ids} ingredients ({} returned): {:.3}s", ingredients.len(), start.elapsed().as_secs_f32());
         Ok(ingredients)
     }
 }
@@ -85,8 +94,7 @@ const SQL_INSERT: &str = formatcp!("INSERT INTO {SQL_TABLE_NAME} (recipe_id, ite
 const SQL_SELECT: &str = formatcp!(
     "SELECT r.item_id, g.item_id, g.count
     FROM {SQL_TABLE_NAME} AS g
-    INNER JOIN {} as r
-    ON r.id = g.recipe_id
+    INNER JOIN {} as r ON r.id = g.recipe_id
     WHERE r.item_id IN",
     RecipeTable::SQL_TABLE_NAME
 );

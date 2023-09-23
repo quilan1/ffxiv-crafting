@@ -14,7 +14,9 @@ macro_rules! impl_table {
             }
 
             pub async fn create(&self) -> Result<()> {
-                sqlx::query(SQL_CREATE).execute(&*self.db).await?;
+                sqlx::query(&$crate::tables::strip_whitespace(SQL_CREATE))
+                    .execute(&*self.db)
+                    .await?;
                 Ok(())
             }
 

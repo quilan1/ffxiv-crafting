@@ -6,7 +6,10 @@ use futures::TryStreamExt;
 use sqlx::Row;
 
 use crate::{
-    tables::{IngredientTable, InputIdsTable, ItemInfoTable, RecipeTable, UiCategoryTable},
+    tables::{
+        strip_whitespace, IngredientTable, InputIdsTable, ItemInfoTable, RecipeTable,
+        UiCategoryTable,
+    },
     Filter, ItemDB,
 };
 
@@ -35,9 +38,10 @@ impl ItemDB {
             return Ok(Vec::new());
         }
 
-        let query_string = format!("{} WHERE {clauses}", Self::get_query_string(&clauses));
-        let query_string = query_string.replace('\n', "");
-        log::debug!(target: "ffxiv_items", "{query_string}");
+        let query_string = strip_whitespace(format!(
+            "{} WHERE {clauses}",
+            Self::get_query_string(&clauses)
+        ));
         let mut sql_query = sqlx::query(&query_string);
         for bind in binds {
             sql_query = sql_query.bind(bind);
