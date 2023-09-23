@@ -24,14 +24,9 @@ impl_table!(UiCategoryTable);
 
 impl UiCategoryTable<'_> {
     pub async fn initialize(&self) -> Result<()> {
-        if !self.is_empty().await? {
-            return Ok(());
-        }
-
         let categories = Self::download().await?;
 
         println!("Initializing UI Categories Table");
-
         let id_map = categories.iter();
         for id_map in &id_map.chunks(BIND_MAX / 2) {
             QueryBuilder::new(SQL_INSERT)
@@ -47,7 +42,7 @@ impl UiCategoryTable<'_> {
     }
 
     async fn download() -> Result<Vec<CsvUiCategory>> {
-        println!("Downloading Items from Github");
+        println!("Downloading UI Categories from Github");
 
         let reader = Cursor::new(download_file(CSV_FILE).await?);
         let mut categories = Vec::new();
@@ -72,7 +67,5 @@ const SQL_CREATE: &str = formatcp!(
         PRIMARY KEY     ( id )
     )"
 );
-
-const SQL_EMPTY: &str = formatcp!("SELECT COUNT(id) FROM {SQL_TABLE_NAME}");
 
 const SQL_INSERT: &str = formatcp!("INSERT INTO {SQL_TABLE_NAME} (id, name) ");

@@ -6,7 +6,7 @@ use futures::TryStreamExt;
 use itertools::Itertools;
 use sqlx::{QueryBuilder, Row};
 
-use crate::{parsers, ItemDB, ItemId, Recipe};
+use crate::{ItemDB, ItemId, Recipe};
 
 use super::BIND_MAX;
 
@@ -15,21 +15,16 @@ use super::BIND_MAX;
 impl_table!(InputIdsTable);
 
 impl InputIdsTable<'_> {
-    pub async fn initialize(&self, items: &parsers::ItemList, recipes: &[Recipe]) -> Result<()> {
-        if !self.is_empty().await? {
-            return Ok(());
-        }
-
+    pub async fn initialize(&self, recipes: &[Recipe]) -> Result<()> {
         println!("Initializing Input IDs Database Table");
 
         let recipes = Recipe::to_map_ref(recipes);
-        let id_map = items
-            .0
+        let id_map = recipes
             .iter()
-            .flat_map(|item| {
-                from_item_id(item.id, &recipes)
+            .flat_map(|(_, recipe)| {
+                from_item_id(recipe.output.item_id, &recipes)
                     .into_iter()
-                    .map(|input_id| (item.id, input_id))
+                    .map(|input_id| (recipe.output.item_id, input_id))
             })
             .collect::<Vec<_>>();
 
@@ -95,8 +90,6 @@ const SQL_CREATE: &str = formatcp!(
         INDEX       id1 ( input_id )
     )"
 );
-
-const SQL_EMPTY: &str = formatcp!("SELECT COUNT(id) FROM {SQL_TABLE_NAME}");
 
 const SQL_INSERT: &str = formatcp!("INSERT INTO {SQL_TABLE_NAME} (item_id, input_id) ");
 

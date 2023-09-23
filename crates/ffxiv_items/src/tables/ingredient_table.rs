@@ -14,12 +14,7 @@ impl_table!(IngredientTable);
 
 impl IngredientTable<'_> {
     pub async fn initialize(&self, recipes: &[Recipe]) -> Result<()> {
-        if !self.is_empty().await? {
-            return Ok(());
-        }
-
         println!("Initializing Ingredients Database Table");
-
         let ingredients = recipes
             .iter()
             .enumerate()
@@ -84,8 +79,6 @@ const SQL_CREATE: &str = formatcp!(
         INDEX       id1 ( item_id )
     )"
 );
-
-const SQL_EMPTY: &str = formatcp!("SELECT COUNT(id) FROM {SQL_TABLE_NAME}");
 
 const SQL_INSERT: &str = formatcp!("INSERT INTO {SQL_TABLE_NAME} (recipe_id, item_id, count) ");
 

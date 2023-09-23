@@ -18,8 +18,16 @@ macro_rules! impl_table {
                 Ok(())
             }
 
+            #[allow(dead_code)]
+            pub async fn drop(&self) -> Result<()> {
+                let sql_drop = format!("DROP TABLE IF EXISTS {SQL_TABLE_NAME}");
+                sqlx::query(&sql_drop).execute(&*self.db).await?;
+                Ok(())
+            }
+
             pub async fn is_empty(&self) -> Result<bool> {
-                Ok(0 == sqlx::query_scalar::<_, i64>(SQL_EMPTY)
+                let sql_empty = format!("SELECT COUNT(id) FROM {SQL_TABLE_NAME}");
+                Ok(0 == sqlx::query_scalar::<_, i64>(&sql_empty)
                     .fetch_one(&*self.db)
                     .await?)
             }

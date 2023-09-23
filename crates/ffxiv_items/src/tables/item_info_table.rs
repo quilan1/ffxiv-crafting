@@ -63,10 +63,6 @@ const CSV_FILE: &str = "Item.csv";
 
 impl ItemInfoTable<'_> {
     pub async fn initialize(&self) -> Result<()> {
-        if !self.is_empty().await? {
-            return Ok(());
-        }
-
         let items = Self::download().await?;
 
         println!("Initializing Items Database Table");
@@ -129,8 +125,6 @@ const SQL_CREATE: &str = formatcp!(
         PRIMARY KEY ( id )
     )"
 );
-
-const SQL_EMPTY: &str = formatcp!("SELECT COUNT(id) FROM {SQL_TABLE_NAME}");
 
 const SQL_INSERT: &str =
     formatcp!("INSERT INTO {SQL_TABLE_NAME} (id, name, ui_category, item_level, equip_level) ");

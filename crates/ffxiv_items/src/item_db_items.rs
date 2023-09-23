@@ -20,12 +20,4 @@ impl ItemDB {
     pub async fn items_from_ids<I: ItemId>(&self, ids: &[I]) -> Result<Vec<ItemInfo>> {
         ItemInfoTable::new(self).by_item_ids(ids).await
     }
-
-    pub async fn item<I: ItemId>(&self, id: I) -> Result<Option<ItemInfo>> {
-        Ok(ItemInfoTable::new(self)
-            .by_item_ids(&[id])
-            .await?
-            .first()
-            .cloned())
-    }
 }

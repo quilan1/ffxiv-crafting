@@ -1,16 +1,9 @@
-use std::io::Cursor;
-
 use anyhow::Result;
 use futures::try_join;
-use itertools::Itertools;
 use sqlx::MySqlPool;
 use tuple_conv::RepeatedTuple;
 
-use crate::{
-    parsers,
-    tables::{IngredientTable, InputIdsTable, ItemInfoTable, RecipeTable, UiCategoryTable},
-    CsvContent, Recipe, RecipeLevelInfo,
-};
+use crate::tables::{IngredientTable, InputIdsTable, ItemInfoTable, RecipeTable, UiCategoryTable};
 
 #[derive(Debug)]
 pub struct ItemDB {
@@ -34,9 +27,7 @@ impl ItemDB {
     }
 
     pub async fn initialize(&self) -> Result<()> {
-        self.create_tables().await?;
-        self.fill_tables().await?;
-        Ok(())
+        self.tables().create().await
     }
 
     fn tables(&self) -> Tables<'_> {
@@ -48,55 +39,6 @@ impl ItemDB {
             ui_categories: UiCategoryTable::new(self),
         }
     }
-
-    async fn create_tables(&self) -> Result<()> {
-        self.tables().create().await
-    }
-
-    async fn has_empty_table(&self) -> Result<bool> {
-        self.tables().has_empty_table().await
-    }
-
-    async fn fill_tables(&self) -> Result<()> {
-        if !self.has_empty_table().await? {
-            return Ok(());
-        }
-
-        let csv_content = CsvContent::download().await?;
-        let items = parsers::ItemList::from_reader(csv_content.item)?;
-        let recipes = Self::parse_recipes(csv_content.recipe, csv_content.recipe_level)?;
-
-        self.tables().fill_tables(&items, &recipes).await
-    }
-
-    fn parse_recipes(
-        recipes: Cursor<String>,
-        recipe_levels: Cursor<String>,
-    ) -> Result<Vec<Recipe>> {
-        let all_recipes = parsers::RecipeList::from_reader(recipes)?;
-        let all_recipe_levels = parsers::RecipeLevelTable::from_reader(recipe_levels)?;
-
-        let mut recipes = Vec::new();
-        for recipe_parsed in all_recipes.0.into_values() {
-            let level_info = all_recipe_levels
-                .0
-                .get(&recipe_parsed.level_id)
-                .map(|level_info| RecipeLevelInfo {
-                    level: level_info.level,
-                    stars: level_info.stars,
-                })
-                .unwrap();
-
-            recipes.push(Recipe {
-                output: recipe_parsed.output,
-                inputs: recipe_parsed.inputs,
-                level: level_info.level,
-                stars: level_info.stars,
-            });
-        }
-
-        Ok(recipes)
-    }
 }
 
 ////////////////////////////////////////////////////////////
@@ -104,37 +46,73 @@ impl ItemDB {
 impl Tables<'_> {
     async fn create(&self) -> Result<()> {
         try_join!(
-            self.items.create(),
-            self.recipes.create(),
-            self.ingredients.create(),
-            self.input_ids.create(),
-            self.ui_categories.create()
+            self.create_items(),
+            self.create_ui_categories(),
+            self.create_recipes(),
         )?;
         Ok(())
     }
 
-    async fn fill_tables(&self, items: &parsers::ItemList, recipes: &[Recipe]) -> Result<()> {
-        try_join!(
-            self.items.initialize(),
-            self.recipes.initialize(recipes),
-            self.ingredients.initialize(recipes),
-            self.input_ids.initialize(items, recipes),
-            self.ui_categories.initialize()
-        )?;
+    async fn create_items(&self) -> Result<()> {
+        self.items.create().await?;
+        if self.items.is_empty().await? {
+            self.items.initialize().await?;
+        }
         Ok(())
     }
 
-    async fn has_empty_table(&self) -> Result<bool> {
-        let empties: Vec<bool> = try_join!(
-            self.items.is_empty(),
-            self.recipes.is_empty(),
-            self.ingredients.is_empty(),
-            self.input_ids.is_empty(),
-            self.ui_categories.is_empty(),
+    async fn create_ui_categories(&self) -> Result<()> {
+        self.ui_categories.create().await?;
+        if self.ui_categories.is_empty().await? {
+            self.ui_categories.initialize().await?;
+        }
+        Ok(())
+    }
+
+    async fn create_recipes(&self) -> Result<()> {
+        let empty = try_join!(
+            {
+                self.recipes.create().await?;
+                self.recipes.is_empty()
+            },
+            {
+                self.ingredients.create().await?;
+                self.ingredients.is_empty()
+            },
+            {
+                self.input_ids.create().await?;
+                self.input_ids.is_empty()
+            },
         )?
         .to_vec();
 
-        Ok(empties.into_iter().contains(&true))
+        if !empty.into_iter().any(|v| v) {
+            return Ok(());
+        }
+
+        let (recipes, _, _, _) = try_join!(
+            RecipeTable::download_recipe_info(),
+            {
+                self.recipes.drop().await?;
+                self.recipes.create()
+            },
+            {
+                self.ingredients.drop().await?;
+                self.ingredients.create()
+            },
+            {
+                self.input_ids.drop().await?;
+                self.input_ids.create()
+            }
+        )?;
+
+        try_join!(
+            self.recipes.initialize(&recipes),
+            self.ingredients.initialize(&recipes),
+            self.input_ids.initialize(&recipes),
+        )?;
+
+        Ok(())
     }
 }
 

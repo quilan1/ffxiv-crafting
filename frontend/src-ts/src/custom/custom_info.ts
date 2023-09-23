@@ -90,17 +90,18 @@ export default class CustomInfo {
     }
 
     static async fetch(searchFilter: string, dataCenter: string, countFn?: () => number, statusFn?: (_: string) => void, cancelData?: CancelData): Promise<CustomInfo> {
+        statusFn ??= () => { };
+        countFn ??= () => 1;
+        statusFn('Fetching item ids');
+
         const [recipe, listingId, historyId] = await Promise.all([
             this.apiRecipeGet(searchFilter),
             this.apiListingsPut(searchFilter, dataCenter),
             this.apiHistoryPut(searchFilter, dataCenter)
         ]);
-        statusFn ??= () => { };
-        countFn ??= () => 1;
-
-        let info = await recipe;
 
         // Error in recipe call, return nothing
+        let info = await recipe;
         if (typeof info === "string") {
             return this.customInfoFromJson({ item_info: {}, top_ids: [], failure_ids: [] }, countFn());
         }
@@ -119,6 +120,7 @@ export default class CustomInfo {
             throw new CancelError("Cancelled transaction");
         }
 
+        statusFn('Fetching status');
         let listingInfo = null, historyInfo = null;
         while (listingInfo == null || historyInfo == null) {
             await checkCancel();
