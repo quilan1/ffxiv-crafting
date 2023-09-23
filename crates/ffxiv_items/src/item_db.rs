@@ -26,7 +26,7 @@ impl ItemDB {
         Ok(Self { pool })
     }
 
-    pub async fn initialize(&self) -> Result<()> {
+    pub async fn initialize(&self) -> Result<bool> {
         self.tables().create().await
     }
 
@@ -44,33 +44,38 @@ impl ItemDB {
 ////////////////////////////////////////////////////////////
 
 impl Tables<'_> {
-    async fn create(&self) -> Result<()> {
-        try_join!(
+    async fn create(&self) -> Result<bool> {
+        let is_empty = try_join!(
             self.create_items(),
             self.create_ui_categories(),
             self.create_recipes(),
-        )?;
-        Ok(())
+        )?
+        .to_vec()
+        .into_iter()
+        .any(|v| v);
+        Ok(is_empty)
     }
 
-    async fn create_items(&self) -> Result<()> {
+    async fn create_items(&self) -> Result<bool> {
         self.items.create().await?;
-        if self.items.is_empty().await? {
+        let is_empty = self.items.is_empty().await?;
+        if is_empty {
             self.items.initialize().await?;
         }
-        Ok(())
+        Ok(is_empty)
     }
 
-    async fn create_ui_categories(&self) -> Result<()> {
+    async fn create_ui_categories(&self) -> Result<bool> {
         self.ui_categories.create().await?;
-        if self.ui_categories.is_empty().await? {
+        let is_empty = self.ui_categories.is_empty().await?;
+        if is_empty {
             self.ui_categories.initialize().await?;
         }
-        Ok(())
+        Ok(is_empty)
     }
 
-    async fn create_recipes(&self) -> Result<()> {
-        let empty = try_join!(
+    async fn create_recipes(&self) -> Result<bool> {
+        let is_empty = try_join!(
             {
                 self.recipes.create().await?;
                 self.recipes.is_empty()
@@ -84,10 +89,12 @@ impl Tables<'_> {
                 self.input_ids.is_empty()
             },
         )?
-        .to_vec();
+        .to_vec()
+        .into_iter()
+        .any(|v| v);
 
-        if !empty.into_iter().any(|v| v) {
-            return Ok(());
+        if !is_empty {
+            return Ok(false);
         }
 
         let (recipes, _, _, _) = try_join!(
@@ -112,7 +119,7 @@ impl Tables<'_> {
             self.input_ids.initialize(&recipes),
         )?;
 
-        Ok(())
+        Ok(true)
     }
 }
 

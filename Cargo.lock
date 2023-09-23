@@ -504,8 +504,10 @@ name = "ffxiv_items"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "const_format",
  "csv",
+ "env_logger",
  "futures",
  "itertools",
  "log",

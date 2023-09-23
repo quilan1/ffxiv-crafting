@@ -20,7 +20,8 @@ pub use item_db::ItemDB;
 pub use item_info::ItemInfo;
 pub use recipe::{Ingredient, Recipe};
 
-#[cfg(test)]
-mod tests {
+mod _temp {
+    use chrono as _;
+    use env_logger as _;
     use tokio as _;
 }
