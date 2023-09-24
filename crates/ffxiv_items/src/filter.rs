@@ -113,6 +113,10 @@ fn filter_name(options: &[String]) -> Option<(String, Vec<String>)> {
 }
 
 fn filter_recipe_level(options: &[String]) -> Option<(String, Vec<String>)> {
+    if options.is_empty() {
+        return None;
+    }
+
     let levels = options
         .iter()
         .filter_map(|level| level.parse::<u32>().ok())
@@ -135,7 +139,7 @@ fn filter_equip_level(options: &[String]) -> Option<(String, Vec<String>)> {
         .iter()
         .filter_map(|level| level.parse::<u32>().ok())
         .collect::<Vec<_>>();
-    let min_level = levels.first().cloned().unwrap_or(u32::MIN);
+    let min_level = levels.first().cloned().unwrap_or(0);
     let max_level = levels.last().cloned().unwrap_or(u32::MAX);
 
     Some((
@@ -153,11 +157,11 @@ fn filter_ilevel(options: &[String]) -> Option<(String, Vec<String>)> {
         .iter()
         .filter_map(|level| level.parse::<u32>().ok())
         .collect::<Vec<_>>();
-    let min_level = levels.first().cloned().unwrap_or(u32::MIN);
+    let min_level = levels.first().cloned().unwrap_or(0);
     let max_level = levels.last().cloned().unwrap_or(u32::MAX);
 
     Some((
-        format!("i.ilevel >= {min_level} AND i.ilevel <= {max_level}"),
+        format!("i.item_level >= {min_level} AND i.item_level <= {max_level}"),
         Vec::new(),
     ))
 }

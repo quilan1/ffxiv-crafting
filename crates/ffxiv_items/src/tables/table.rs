@@ -7,7 +7,7 @@ macro_rules! impl_table {
 
         impl<'a> $table<'a> {
             #[allow(dead_code)]
-            pub const SQL_TABLE_NAME: &str = SQL_TABLE_NAME;
+            pub const SQL_TABLE_NAME: &'static str = SQL_TABLE_NAME;
 
             pub fn new<'b: 'a>(db: &'b ItemDB) -> Self {
                 Self { db }

@@ -59,7 +59,8 @@ pub async fn get_recipe_info(
 }
 
 async fn get_recipe_info_data(db: &ItemDB, payload: GetInput) -> Result<GetOutput> {
-    let (top_ids, all_ids) = db.get_ids_from_filters(&payload.filters).await?;
+    let top_ids = db.ids_from_filters(&payload.filters).await?;
+    let all_ids = db.associated_ids(&top_ids).await?;
     let items = db.items_from_ids(&all_ids).await?;
 
     let item_info = spawn_blocking(|| {

@@ -1,6 +1,9 @@
 services:
   ffxiv-server:
-    image: rust:1.72.1
+    build:
+      dockerfile_inline: |
+        FROM rust:1.72.1
+        RUN apt-get update && apt-get install -y lld && rm -rf /var/lib/apt/lists/*
     working_dir: /crates
     command: [ "./startup.sh" ]
     ports: [ "3001:3001" ]
@@ -11,6 +14,7 @@ services:
       retries: 120
       start_period: 10s
     environment:
+      - RUSTFLAGS=-C link-arg=-fuse-ld=lld
       - CARGO_INCREMENTAL=true
       - FFXIV_DATA_CENTERS=Dynamis
       - FFXIV_ITEM_DB_CONN=mysql://user:password@ffxiv-items-db:3306/ffxiv_items

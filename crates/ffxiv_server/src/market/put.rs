@@ -58,7 +58,8 @@ pub async fn put_market_request<T: UniversalisRequestType>(
 ) -> Result<String> {
     log::info!(target: "ffxiv_server", "Putting {} request for '{}'", T::fetch_type(), payload.filters);
 
-    let (_, all_ids) = db.get_ids_from_filters(payload.filters).await?;
+    let top_ids = db.ids_from_filters(payload.filters).await?;
+    let all_ids = db.associated_ids(&top_ids).await?;
     let worlds = payload
         .data_center
         .or(std::env::var("FFXIV_DATA_CENTERS").ok())
