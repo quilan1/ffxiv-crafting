@@ -28,8 +28,9 @@ macro_rules! impl_table {
             }
 
             pub async fn is_empty(&self) -> Result<bool> {
-                let sql_empty = format!("SELECT COUNT(id) FROM {SQL_TABLE_NAME}");
+                let sql_empty = format!("SELECT COUNT(*) FROM {SQL_TABLE_NAME}");
                 Ok(0 == sqlx::query_scalar::<_, i64>(&sql_empty)
+                    .persistent(true)
                     .fetch_one(&*self.db)
                     .await?)
             }

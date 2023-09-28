@@ -25,7 +25,7 @@ impl ItemInfoTable<'_> {
         let query_string = strip_whitespace(format!("{} ({_ids})", SQL_SELECT));
 
         let mut items = BTreeMap::new();
-        let mut sql_query = sqlx::query(&query_string).fetch(self.db);
+        let mut sql_query = sqlx::query(&query_string).persistent(true).fetch(self.db);
         while let Some(row) = sql_query.try_next().await? {
             let item_id: u32 = row.get(0);
             let name: String = row.get(1);
@@ -121,20 +121,19 @@ const SQL_TABLE_NAME: &str = "items";
 
 const SQL_CREATE: &str = formatcp!(
     "CREATE TABLE IF NOT EXISTS {SQL_TABLE_NAME} (
-        id          MEDIUMINT       UNSIGNED,
-        name        VARCHAR(100)    NOT NULL,
+        id          MEDIUMINT       UNSIGNED    PRIMARY KEY,
+        name        VARCHAR(100)                NOT NULL,
         ui_category SMALLINT        UNSIGNED    NOT NULL,
         item_level  SMALLINT        UNSIGNED    NOT NULL,
         equip_level SMALLINT        UNSIGNED    NOT NULL,
-        PRIMARY KEY ( id )
+        INDEX       ( name ),
+        INDEX       ( item_level ),
+        INDEX       ( equip_level ),
+        INDEX       ( ui_category )
     )"
 );
 
 const SQL_INSERT: &str =
     formatcp!("INSERT INTO {SQL_TABLE_NAME} (id, name, ui_category, item_level, equip_level) ");
 
-const SQL_SELECT: &str = formatcp!(
-    "SELECT id, name
-    FROM {SQL_TABLE_NAME}
-    WHERE id IN"
-);
+const SQL_SELECT: &str = formatcp!("SELECT id, name FROM {SQL_TABLE_NAME} WHERE id IN");

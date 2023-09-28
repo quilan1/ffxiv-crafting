@@ -101,69 +101,63 @@ impl Filter {
 
 ////////////////////////////////////////////////////////////
 
-fn join_regex(options: &[String]) -> String {
-    options.join("|").replace(' ', "\\s")
-}
-
-fn filter_name(options: &[String]) -> Option<(String, Vec<String>)> {
+fn filter_generic_regex(table_name: &str, options: &[String]) -> Option<(String, Vec<String>)> {
     if options.is_empty() {
         return None;
     }
-    Some(("i.name RLIKE ?".into(), vec![join_regex(options)]))
+
+    fn resp(table_name: &str, op: &str, pattern: String) -> Option<(String, Vec<String>)> {
+        Some((format!("{table_name} {op} ?"), vec![pattern]))
+    }
+
+    let table_name = format!("{table_name}.name");
+    let pattern = options.join("|");
+    if let Some(postfix) = pattern.strip_prefix('!') {
+        return resp(&table_name, "=", postfix.into());
+    }
+
+    if "([.*+$^".chars().any(|ch| pattern.contains(ch)) {
+        return resp(&table_name, "RLIKE", pattern.replace(' ', "\\s"));
+    }
+
+    resp(&table_name, "LIKE", format!("%{pattern}%"))
+}
+
+fn filter_generic_range(field: &str, options: &[String]) -> Option<(String, Vec<String>)> {
+    if options.is_empty() {
+        return None;
+    }
+
+    let values = options
+        .iter()
+        .filter_map(|level| level.parse::<u32>().ok())
+        .collect::<Vec<_>>();
+
+    let min = values.first().cloned().unwrap_or(0);
+    let max = values.last().cloned().unwrap_or(u16::MAX as u32);
+    match values.len() {
+        0 => None,
+        1 => Some((format!("{field} = {min}"), Vec::new())),
+        _ => Some((format!("{field} >= {min} AND {field} <= {max}"), Vec::new())),
+    }
+}
+
+////////////////////////////////////////////////////////////
+
+fn filter_name(options: &[String]) -> Option<(String, Vec<String>)> {
+    filter_generic_regex("i", options)
 }
 
 fn filter_recipe_level(options: &[String]) -> Option<(String, Vec<String>)> {
-    if options.is_empty() {
-        return None;
-    }
-
-    let levels = options
-        .iter()
-        .filter_map(|level| level.parse::<u32>().ok())
-        .collect::<Vec<_>>();
-    let min_level = levels.first().cloned().unwrap_or(u32::MIN);
-    let max_level = levels.last().cloned().unwrap_or(u32::MAX);
-
-    Some((
-        format!("r.level >= {min_level} AND r.level <= {max_level}"),
-        Vec::new(),
-    ))
+    filter_generic_range("r.level", options)
 }
 
 fn filter_equip_level(options: &[String]) -> Option<(String, Vec<String>)> {
-    if options.is_empty() {
-        return None;
-    }
-
-    let levels = options
-        .iter()
-        .filter_map(|level| level.parse::<u32>().ok())
-        .collect::<Vec<_>>();
-    let min_level = levels.first().cloned().unwrap_or(0);
-    let max_level = levels.last().cloned().unwrap_or(u32::MAX);
-
-    Some((
-        format!("i.equip_level >= {min_level} AND i.equip_level <= {max_level}"),
-        Vec::new(),
-    ))
+    filter_generic_range("i.equip_level", options)
 }
 
 fn filter_ilevel(options: &[String]) -> Option<(String, Vec<String>)> {
-    if options.is_empty() {
-        return None;
-    }
-
-    let levels = options
-        .iter()
-        .filter_map(|level| level.parse::<u32>().ok())
-        .collect::<Vec<_>>();
-    let min_level = levels.first().cloned().unwrap_or(0);
-    let max_level = levels.last().cloned().unwrap_or(u32::MAX);
-
-    Some((
-        format!("i.item_level >= {min_level} AND i.item_level <= {max_level}"),
-        Vec::new(),
-    ))
+    filter_generic_range("i.item_level", options)
 }
 
 fn filter_ui_category(options: &[String]) -> Option<(String, Vec<String>)> {
@@ -171,23 +165,17 @@ fn filter_ui_category(options: &[String]) -> Option<(String, Vec<String>)> {
         return None;
     }
 
-    let clause = options.iter().map(|_| "c.name = ?").join(" OR ");
-    let clause = format!("({clause})");
+    let clause = options.iter().map(|_| "?").join(", ");
+    let clause = format!("c.name IN ({clause})");
     Some((clause, options.to_vec()))
 }
 
 fn filter_contains(options: &[String]) -> Option<(String, Vec<String>)> {
-    if options.is_empty() {
-        return None;
-    }
-    Some(("i_g.name RLIKE ?".into(), vec![join_regex(options)]))
+    filter_generic_regex("i_g", options)
 }
 
 fn filter_includes(options: &[String]) -> Option<(String, Vec<String>)> {
-    if options.is_empty() {
-        return None;
-    }
-    Some(("i_n.name RLIKE ?".into(), vec![join_regex(options)]))
+    filter_generic_regex("i_n", options)
 }
 
 /*

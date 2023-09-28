@@ -48,7 +48,7 @@ impl ItemDB {
         }
 
         let mut ids = Vec::new();
-        let mut sql_query = sql_query.fetch(self);
+        let mut sql_query = sql_query.persistent(true).fetch(self);
         while let Some(row) = sql_query.try_next().await? {
             ids.push(row.get::<u32, _>(0));
         }
@@ -58,22 +58,21 @@ impl ItemDB {
     }
 }
 
-const SQL_SELECT: &str = formatcp!("SELECT DISTINCT i.id, i.name FROM {ITEM_TABLE_NAME} AS i");
+const SQL_SELECT: &str = formatcp!("SELECT i.id, i.name FROM {ITEM_TABLE_NAME} AS i");
 
-const SQL_JOIN_RECIPES: &str = formatcp!("INNER JOIN {RECIPE_TABLE_NAME} AS r ON r.item_id = i.id");
+const SQL_JOIN_RECIPES: &str = formatcp!("INNER JOIN {RECIPE_TABLE_NAME} AS r ON r.id = i.id");
 
 const SQL_JOIN_UI_CATEGORIES: &str =
     formatcp!("INNER JOIN {UI_CATEGORY_TABLE_NAME} AS c ON i.ui_category = c.id");
 
 const SQL_JOIN_INPUT_IDS_ITEMS: &str = formatcp!(
-    "INNER JOIN {INPUT_IDS_TABLE_NAME}   AS n   ON n.item_id = i.id
+    "INNER JOIN {INPUT_IDS_TABLE_NAME}  AS n   ON n.item_id = i.id
     INNER JOIN {ITEM_TABLE_NAME}        AS i_n ON i_n.id = n.input_id"
 );
 
 const SQL_JOIN_INGREDIENTS_ITEMS: &str = formatcp!(
-    "INNER JOIN {RECIPE_TABLE_NAME}     AS r_g  ON r_g.item_id = i.id
-    INNER JOIN {INGREDIENTS_TABLE_NAME} AS g    ON g.recipe_id = r_g.id
-    INNER JOIN {ITEM_TABLE_NAME}        AS i_g  ON i_g.id = g.item_id"
+    "INNER JOIN {INGREDIENTS_TABLE_NAME}    AS g    ON g.item_id = i.id
+    INNER JOIN {ITEM_TABLE_NAME}            AS i_g  ON i_g.id = g.input_id"
 );
 
 const ITEM_TABLE_NAME: &str = ItemInfoTable::SQL_TABLE_NAME;

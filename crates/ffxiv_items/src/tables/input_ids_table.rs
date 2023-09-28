@@ -87,19 +87,15 @@ const SQL_TABLE_NAME: &str = "input_ids";
 
 const SQL_CREATE: &str = formatcp!(
     "CREATE TABLE IF NOT EXISTS {SQL_TABLE_NAME} (
-        id          MEDIUMINT   UNSIGNED    AUTO_INCREMENT,
+        id          MEDIUMINT   UNSIGNED    AUTO_INCREMENT  PRIMARY KEY,
         item_id     MEDIUMINT   UNSIGNED    NOT NULL,
-        input_id    SMALLINT    UNSIGNED    NOT NULL,
-        PRIMARY KEY     ( id ),
-        INDEX       id0 ( item_id ),
-        INDEX       id1 ( input_id )
+        input_id    MEDIUMINT   UNSIGNED    NOT NULL,
+        INDEX       ( item_id ),
+        INDEX       input_item  ( input_id, item_id )
     )"
 );
 
 const SQL_INSERT: &str = formatcp!("INSERT INTO {SQL_TABLE_NAME} (item_id, input_id) ");
 
-const SQL_SELECT: &str = formatcp!(
-    "SELECT DISTINCT input_id
-    FROM {SQL_TABLE_NAME}
-    WHERE item_id IN"
-);
+const SQL_SELECT: &str =
+    formatcp!("SELECT DISTINCT input_id FROM {SQL_TABLE_NAME} WHERE item_id IN");

@@ -36,6 +36,23 @@ mod docker {
     }
 
     #[tokio::test]
+    async fn test_filter_name_exact() -> Result<()> {
+        let db = database().await?;
+        let ids = db.ids_from_filters(":name !Eagle Feather").await?;
+
+        const ITEM_ID: u32 = 5358;
+        assert_eq!(ids, vec![ITEM_ID]);
+
+        let items = db.items_from_ids(&ids).await?;
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].id, ITEM_ID);
+        assert_eq!(items[0].name, "Eagle Feather");
+        assert!(items[0].recipe.is_none());
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn test_filter_name_regex() -> Result<()> {
         let db = database().await?;
         let ids = db

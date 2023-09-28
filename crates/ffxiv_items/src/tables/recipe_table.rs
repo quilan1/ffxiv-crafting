@@ -25,7 +25,7 @@ impl RecipeTable<'_> {
         let query_string = strip_whitespace(format!("{} ({_ids})", SQL_SELECT));
 
         let mut recipes = BTreeMap::new();
-        let mut sql_query = sqlx::query(&query_string).fetch(self.db);
+        let mut sql_query = sqlx::query(&query_string).persistent(true).fetch(self.db);
         while let Some(row) = sql_query.try_next().await? {
             let item_id: u32 = row.get(0);
             let count: u32 = row.get(1);
@@ -130,7 +130,7 @@ impl RecipeTable<'_> {
                 }
             }
 
-            if ingredients.is_empty() {
+            if ingredients.is_empty() || ingredients[0].item_id == 0 {
                 continue;
             }
 
@@ -168,20 +168,15 @@ const SQL_TABLE_NAME: &str = "recipes";
 
 const SQL_CREATE: &str = formatcp!(
     "CREATE TABLE IF NOT EXISTS {SQL_TABLE_NAME} (
-        id      MEDIUMINT   UNSIGNED    AUTO_INCREMENT,
-        item_id MEDIUMINT   UNSIGNED    NOT NULL    UNIQUE,
+        id      MEDIUMINT   UNSIGNED    NOT NULL    PRIMARY KEY,
         count   SMALLINT    UNSIGNED    NOT NULL,
         level   SMALLINT    UNSIGNED    NOT NULL,
         stars   SMALLINT    UNSIGNED    NOT NULL,
-        PRIMARY     KEY ( id ),
-        INDEX       id0 ( item_id )
+        INDEX   ( level )
     )"
 );
 
-const SQL_INSERT: &str = formatcp!("INSERT INTO {SQL_TABLE_NAME} (item_id, count, level, stars) ");
+const SQL_INSERT: &str = formatcp!("INSERT INTO {SQL_TABLE_NAME} (id, count, level, stars) ");
 
-const SQL_SELECT: &str = formatcp!(
-    "SELECT item_id, count, level, stars
-    FROM {SQL_TABLE_NAME}
-    WHERE item_id IN"
-);
+const SQL_SELECT: &str =
+    formatcp!("SELECT id, count, level, stars FROM {SQL_TABLE_NAME} WHERE id IN");

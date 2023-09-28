@@ -49,6 +49,10 @@ impl UiCategoryTable<'_> {
         csv_parse!(reader => {
             id = U[0];
             name = S[1];
+            if id == 0 || name.is_empty() {
+                continue;
+            }
+
             categories.push(CsvUiCategory { id, name: name.to_string() });
         });
 
@@ -62,9 +66,9 @@ const SQL_TABLE_NAME: &str = "ui_categories";
 
 const SQL_CREATE: &str = formatcp!(
     "CREATE TABLE IF NOT EXISTS {SQL_TABLE_NAME} (
-        id          SMALLINT        UNSIGNED,
-        name        VARCHAR(100)    NOT NULL,
-        PRIMARY KEY     ( id )
+        id          SMALLINT        UNSIGNED    PRIMARY KEY,
+        name        VARCHAR(50)     NOT NULL,
+        INDEX       ( name )
     )"
 );
 
