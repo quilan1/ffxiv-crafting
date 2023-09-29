@@ -37,11 +37,7 @@ The Rust crates are inside of the 'crates' directory, and the Javascript / Types
 
 ## Brief API overview
 
-* GET `/v1/recipe`: Returns recipe information for the associated IDs.
-* PUT `/v1/market/history`: Registers IDs to ffxiv_universalis and stores the handle that will yield market history information. Returns a UUID reference id.
-* PUT `/v1/market/listings`: Similar to above, but with current market board listings.
-* GET `/v1/market/:id`: Used to poll the service for information about the registered request. If the processing is incomplete, it will yield a status message. If the processing is complete, it will yield the results.
-* PUT `/v1/market/:id/cancel`: Cancels a running process.
+* GET `ws://{host}/v1/universalis`: Connects to a websocket that transmits data about the universalis request
 
 ## Customization
 

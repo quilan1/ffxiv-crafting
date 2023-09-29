@@ -32,15 +32,11 @@ class CustomDlg {
         FiltersDlg.setupEvents(this);
     }
 
-    async onRefreshClick(debug?: boolean) {
+    async onRefreshClick() {
         await FiltersDlg.withCancelRefresh(async (cancelData: CancelData) => {
             const countFn = () => FiltersDlg.countValue;
             const statusFn = (status: string) => FiltersDlg.setStatus(status);
-            if (debug === true) {
-                this.info = await CustomInfo.fetchDebug(FiltersDlg.countValue) as CustomInfo;
-            } else {
-                this.info = await CustomInfo.fetch_ws(FiltersDlg.searchValue, FiltersDlg.dataCenter, countFn, statusFn, cancelData) as CustomInfo;
-            }
+            this.info = await CustomInfo.fetch(FiltersDlg.searchValue, FiltersDlg.dataCenter, countFn, statusFn, cancelData) as CustomInfo;
         });
 
         this.filteredTopIds = this.getFilteredTopIds();
@@ -385,7 +381,7 @@ class CustomDlg {
 
 class FiltersDlg {
     static setupEvents(customDlg: CustomDlg) {
-        this.selectors.refresh.onclick = (e) => customDlg.onRefreshClick(e.shiftKey);
+        this.selectors.refresh.onclick = () => customDlg.onRefreshClick();
         this.selectors.load.onclick = () => this.load();
         this.selectors.save.onclick = () => this.save();
         this.selectors.saveAs.onclick = () => this.saveAs();

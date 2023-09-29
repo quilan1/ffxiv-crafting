@@ -1,0 +1,77 @@
+use std::{sync::Arc, time::Duration};
+
+use anyhow::{bail, Result};
+use axum::{
+    extract::{
+        ws::{close_code, CloseFrame, Message, WebSocket},
+        State, WebSocketUpgrade,
+    },
+    response::IntoResponse,
+};
+use ffxiv_items::ItemDB;
+use ffxiv_universalis::UniversalisProcessor;
+use futures::FutureExt;
+use tokio::time::sleep;
+use uuid::Uuid;
+
+use super::{make_universalis_handles, process_universalis_handle, send_recipes, Input};
+
+////////////////////////////////////////////////////////////
+
+#[allow(clippy::unused_async)]
+pub async fn universalis_websocket(
+    ws: WebSocketUpgrade,
+    State((universalis_processor, db)): State<(UniversalisProcessor, Arc<ItemDB>)>,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| handle_socket(socket, universalis_processor, db.clone()))
+}
+
+////////////////////////////////////////////////////////////
+
+async fn handle_socket(
+    mut socket: WebSocket,
+    universalis_processor: UniversalisProcessor,
+    db: Arc<ItemDB>,
+) {
+    async fn inner(
+        socket: &mut WebSocket,
+        universalis_processor: UniversalisProcessor,
+        db: Arc<ItemDB>,
+    ) -> Result<()> {
+        let server_uuid = Uuid::new_v4().to_string();
+
+        let payload: Input = fetch_payload(socket).await?;
+        log::info!(target: "ffxiv_server", "New request for '{}'", payload.filters);
+        let (top_ids, all_ids, items) = db.all_from_filters(&payload.filters).await?;
+        send_recipes(socket, &top_ids, items).await?;
+        let (mut history_handle, mut listing_handle) =
+            make_universalis_handles(&universalis_processor, payload, all_ids, &server_uuid);
+
+        while history_handle.is_some() || listing_handle.is_some() {
+            if let Some(None) = socket.recv().now_or_never() {
+                break;
+            }
+            process_universalis_handle(socket, "history", &mut history_handle).await?;
+            process_universalis_handle(socket, "listing", &mut listing_handle).await?;
+            sleep(Duration::from_millis(50)).await;
+        }
+        Ok(())
+    }
+
+    if let Err(err) = inner(&mut socket, universalis_processor, db).await {
+        let _ = socket
+            .send(Message::Close(Some(CloseFrame {
+                code: close_code::ERROR,
+                reason: err.to_string().into(),
+            })))
+            .await;
+    }
+}
+
+async fn fetch_payload(socket: &mut WebSocket) -> Result<Input> {
+    let Some(Ok(Message::Text(payload_str))) = socket.recv().await else {
+        bail!("Invalid input recieved from websocket");
+    };
+
+    Ok(serde_json::from_str(&payload_str)?)
+}

@@ -103,7 +103,7 @@ export default {
 
     _profitPromise(type: string): Promise<CustomInfo> {
         const purchases = exchangeProfits.filter(item => (item as any)[type] !== undefined);
-        const search = ":name (" + purchases.map(item => `^${item.search ?? item.name}\$`).join("|") + ")";
+        const search = ":name !" + purchases.map(item => `${item.search ?? item.name}`).join("|");
         return CustomInfo.fetch(search, "Dynamis");
     },
 

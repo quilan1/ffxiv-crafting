@@ -3,7 +3,7 @@ import Util from "../util/util.js";
 import { CancelData } from "./custom.js";
 import { CancelError, CustomInfoJson, ListingOutputJson } from "./custom_info.js";
 
-type MarketRequestState = {
+type UniversalisRequestState = {
     socket: WebSocket;
     isProcessing: boolean;
     listingStatus?: string;
@@ -24,9 +24,9 @@ type MessageStatus = MessageCore & {
     status: string;
 }
 type MessageOutput = MessageCore & ListingOutputJson;
-type MarketRequestMessage = MessageRecipe | MessageStatus | MessageOutput;
+type UniversalisRequestMessage = MessageRecipe | MessageStatus | MessageOutput;
 
-export default class MarketRequest {
+export default class UniversalisRequest {
     private statusFn = (_: string) => { };
     private cancelData: CancelData | undefined;
     private searchFilter;
@@ -50,7 +50,7 @@ export default class MarketRequest {
     async fetch(): Promise<CustomInfoJson> {
         this.statusFn('Fetching item ids');
         const socket = this.openWebSocket();
-        const state: MarketRequestState = { socket, isProcessing: true };
+        const state: UniversalisRequestState = { socket, isProcessing: true };
 
         const recipePayload = JSON.stringify({ filters: this.searchFilter, data_center: this.dataCenter, retain_num_days: 14.0 });
         socket.addEventListener("open", _ => socket.send(recipePayload));
@@ -79,10 +79,10 @@ export default class MarketRequest {
     }
 
     private openWebSocket() {
-        return new WebSocket(`ws://${Api.getUrl('v1/market_ws')}`);
+        return new WebSocket(`ws://${Api.getUrl('v1/universalis')}`);
     }
 
-    private async checkCancel(state: MarketRequestState) {
+    private async checkCancel(state: UniversalisRequestState) {
         if (this.cancelData?.cancelled !== true)
             return;
 
@@ -91,15 +91,15 @@ export default class MarketRequest {
         throw new CancelError("Cancelled transaction");
     }
 
-    private onClose(state: MarketRequestState, e: CloseEvent) {
+    private onClose(state: UniversalisRequestState, e: CloseEvent) {
         if (e.code == 1011) {
             state.serverError = e.reason;
         }
         state.isProcessing = false;
     }
 
-    private onMessage(state: MarketRequestState, e: MessageEvent) {
-        let output: MarketRequestMessage = JSON.parse(e.data);
+    private onMessage(state: UniversalisRequestState, e: MessageEvent) {
+        let output: UniversalisRequestMessage = JSON.parse(e.data);
         if (output.msg_type === "recipe") {
             this.onMessageRecipe(state, output as MessageRecipe);
         } else if (output.msg_type === "status") {
@@ -109,11 +109,11 @@ export default class MarketRequest {
         }
     }
 
-    private onMessageRecipe(state: MarketRequestState, recipeInfo: MessageRecipe) {
+    private onMessageRecipe(state: UniversalisRequestState, recipeInfo: MessageRecipe) {
         state.recipeInfo = recipeInfo;
     }
 
-    private onMessageStatus(state: MarketRequestState, statusInfo: MessageStatus) {
+    private onMessageStatus(state: UniversalisRequestState, statusInfo: MessageStatus) {
         if (statusInfo.listing_type === "listing") {
             state.listingStatus = statusInfo.status;
         } else if (statusInfo.listing_type === "history") {
@@ -122,11 +122,13 @@ export default class MarketRequest {
         this.statusFn(`Listings: ${state.listingStatus ?? ''}\nHistories: ${state.historyStatus ?? ''}`);
     }
 
-    private onMessageOutput(state: MarketRequestState, listingInfo: MessageOutput) {
+    private onMessageOutput(state: UniversalisRequestState, listingInfo: MessageOutput) {
         if (listingInfo.listing_type === "listing") {
             state.listingInfo = listingInfo;
+            state.listingStatus = "Done";
         } else if (listingInfo.listing_type === "history") {
             state.historyInfo = listingInfo;
+            state.historyStatus = "Done";
         }
     }
 }

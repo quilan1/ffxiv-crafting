@@ -1,57 +1,29 @@
 use anyhow::Result;
-use axum::{
-    http::Method,
-    routing::{get, put},
-    Router,
-};
+use axum::{http::Method, routing::get, Router};
 use ffxiv_items::ItemDB;
+use ffxiv_universalis::UniversalisProcessor;
 use futures::join;
 use std::{net::SocketAddr, sync::Arc};
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::{
-    market::{self, MarketState},
-    market_ws::market_ws,
-    recipe,
-};
+use crate::universalis::universalis_websocket;
 
 pub struct Server;
 
 #[allow(unused_must_use)]
 impl Server {
     pub async fn run(db: ItemDB) -> Result<()> {
-        let market_state = MarketState::new();
-        let async_processor = market_state.async_processor();
+        let universalis_processor = UniversalisProcessor::new();
+        let async_processor = universalis_processor.async_processor();
         let db = Arc::new(db);
 
         let health_service = Router::new().route("/health", get(|| async { "OK" }));
 
-        let recipe_service = Router::new()
-            .route("/recipe", get(recipe::get_recipe_info))
-            .layer(axum_server_timing::ServerTimingLayer::new("RecipeService"))
-            .with_state(db.clone());
-
-        let market_service = Router::new()
-            .nest(
-                "/market",
-                Router::new()
-                    .route("/history", put(market::put_market_history))
-                    .route("/listings", put(market::put_market_listings))
-                    .route("/:id", get(market::get_market_info))
-                    .route("/:id/cancel", put(market::put_market_cancel)),
-            )
-            .layer(axum_server_timing::ServerTimingLayer::new("MarketService"))
-            .with_state((market_state.clone(), db.clone()));
-
         let market_service_ws = Router::new()
-            .route("/market_ws", get(market_ws))
-            .with_state((market_state.processor(), db.clone()));
+            .route("/universalis", get(universalis_websocket))
+            .with_state((universalis_processor.clone(), db.clone()));
 
-        let v1_router = Router::new()
-            .merge(recipe_service)
-            .merge(market_service)
-            .merge(health_service)
-            .merge(market_service_ws);
+        let v1_router = Router::new().merge(health_service).merge(market_service_ws);
 
         let app = Router::new().nest("/v1", v1_router).layer(
             CorsLayer::new()

@@ -1,16 +1,13 @@
 #![warn(unused_crate_dependencies)]
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
+#![doc(hidden)]
 
-mod market;
-mod market_ws;
-mod recipe;
-mod responses;
 mod server;
+mod universalis;
 
 use std::{error::Error, time::Instant};
 
-use responses::{JsonResponse, StringResponse};
 use server::Server;
 
 ////////////////////////////////////////////////////////////
