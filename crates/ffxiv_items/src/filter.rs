@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use itertools::Itertools;
 
+use crate::tables::{IngredientTable, InputIdsTable, ItemInfoTable, RecipeTable, UiCategoryTable};
+
 type FilterOptions = Vec<String>;
 
 #[derive(Clone)]
@@ -10,18 +12,31 @@ pub struct Filter {
     pub options: FilterOptions,
 }
 
-type FilterFn = for<'a> fn(&'a [String]) -> Option<(String, Vec<String>)>;
+pub struct FilterBindingInfo {
+    pub clause: String,
+    pub binds: Vec<String>,
+}
+
+type FilterFn = for<'a> fn(&'a [String]) -> Option<FilterBindingInfo>;
 
 impl Filter {
-    pub fn apply_filter_str(filter_str: &str) -> (String, Vec<String>) {
+    pub(crate) fn from_filter_str(filter_str: &str) -> Option<FilterBindingInfo> {
         if filter_str.trim().is_empty() {
-            return (String::new(), Vec::new());
+            return None;
         }
 
+        FilterBindingInfo::join(
+            " OR ",
+            Self::from_str(filter_str)
+                .into_iter()
+                .map(Self::filter_group_clause),
+        )
+    }
+
+    fn filter_group_clause(filter_group: Vec<Filter>) -> Option<FilterBindingInfo> {
         let mut db_filters = Vec::new();
-        let filters = Self::from_str(filter_str);
         let filter_functions = Self::filter_functions();
-        for Filter { tag, options } in filters {
+        for Filter { tag, options } in filter_group {
             db_filters.push(match filter_functions.get(&tag[..]) {
                 Some(func) => func(&options),
                 None => {
@@ -41,35 +56,38 @@ impl Filter {
             })
         }
 
-        let (sql_clauses, binds): (Vec<_>, Vec<_>) = db_filters.into_iter().flatten().unzip();
-        let binds = binds.into_iter().flatten().collect_vec();
-        (sql_clauses.join(" AND "), binds)
+        FilterBindingInfo::join(" AND ", db_filters.into_iter())
     }
 
-    fn from_str(filter_str: &str) -> Vec<Filter> {
+    fn from_str(filter_str: &str) -> Vec<Vec<Filter>> {
         filter_str
-            .split(',')
-            .map(|filter| {
-                let filter = filter.trim();
-                let contents = filter.split(' ').collect::<Vec<_>>();
-                let (ftype, options) = if contents.len() > 1 {
-                    (
-                        contents[0].to_string(),
-                        contents[1..]
-                            .join(" ")
-                            .split('|')
-                            .map(str::trim)
-                            .filter(|filter| !filter.is_empty())
-                            .map(ToString::to_string)
-                            .collect::<Vec<_>>(),
-                    )
-                } else {
-                    (contents[0].to_string(), Vec::new())
-                };
-                Filter {
-                    tag: ftype,
-                    options,
-                }
+            .split(';')
+            .map(|chunk| {
+                chunk
+                    .split(',')
+                    .map(|filter| {
+                        let filter = filter.trim();
+                        let contents = filter.split(' ').collect::<Vec<_>>();
+                        let (ftype, options) = if contents.len() > 1 {
+                            (
+                                contents[0].to_string(),
+                                contents[1..]
+                                    .join(" ")
+                                    .split('|')
+                                    .map(str::trim)
+                                    .filter(|filter| !filter.is_empty())
+                                    .map(ToString::to_string)
+                                    .collect::<Vec<_>>(),
+                            )
+                        } else {
+                            (contents[0].to_string(), Vec::new())
+                        };
+                        Filter {
+                            tag: ftype,
+                            options,
+                        }
+                    })
+                    .collect()
             })
             .collect()
     }
@@ -99,31 +117,79 @@ impl Filter {
     }
 }
 
+impl FilterBindingInfo {
+    fn from_op(table_name: &str, op: &str, bind_str: &str, binds: Vec<String>) -> Self {
+        Self {
+            clause: format!("{table_name} {op} {bind_str}"),
+            binds,
+        }
+    }
+
+    fn join<I: Iterator<Item = Option<Self>>>(join_op: &str, iter: I) -> Option<Self> {
+        let (clauses, binds): (Vec<_>, Vec<_>) =
+            iter.flatten().map(|info| (info.clause, info.binds)).unzip();
+
+        match clauses.is_empty() {
+            true => None,
+            false => Some(FilterBindingInfo {
+                clause: clauses.join(join_op),
+                binds: binds.into_iter().flatten().collect(),
+            }),
+        }
+    }
+}
+
 ////////////////////////////////////////////////////////////
 
-fn filter_generic_regex(table_name: &str, options: &[String]) -> Option<(String, Vec<String>)> {
+enum StringCompareType<'a> {
+    Exact(&'a str),
+    Regexp(&'a str),
+    Like(&'a str),
+}
+
+fn filter_generic_regex(table_name: &str, options: &[String]) -> Option<FilterBindingInfo> {
     if options.is_empty() {
         return None;
     }
 
-    fn resp(table_name: &str, op: &str, pattern: String) -> Option<(String, Vec<String>)> {
-        Some((format!("{table_name} {op} ?"), vec![pattern]))
-    }
-
     let table_name = format!("{table_name}.name");
     let pattern = options.join("|");
-    if let Some(postfix) = pattern.strip_prefix('!') {
-        return resp(&table_name, "=", postfix.into());
-    }
-
-    if "([.*+$^".chars().any(|ch| pattern.contains(ch)) {
-        return resp(&table_name, "RLIKE", pattern.replace(' ', "\\s"));
-    }
-
-    resp(&table_name, "LIKE", format!("%{pattern}%"))
+    Some(match regex_string_compare_type(&pattern) {
+        StringCompareType::Exact(pattern) => {
+            let binds = pattern.split('|').map(String::from).collect_vec();
+            let bind_str = binds.iter().map(|_| "?").join(", ");
+            let bind_str = format!("({bind_str})");
+            FilterBindingInfo::from_op(&table_name, "IN", &bind_str, binds)
+        }
+        StringCompareType::Regexp(pattern) => {
+            FilterBindingInfo::from_op(&table_name, "RLIKE", "?", vec![pattern.replace(' ', "\\s")])
+        }
+        StringCompareType::Like(pattern) => {
+            FilterBindingInfo::from_op(&table_name, "LIKE", "?", vec![format!("%{pattern}%")])
+        }
+    })
 }
 
-fn filter_generic_range(field: &str, options: &[String]) -> Option<(String, Vec<String>)> {
+fn regex_string_compare_type(pattern: &str) -> StringCompareType<'_> {
+    // If the string begins with '!', it's an exact string match
+    // If it is grouped with parentheses, strip them out first
+    if let Some(pattern) = pattern.strip_prefix('!') {
+        return if pattern.contains('|') && pattern.starts_with('(') || pattern.ends_with(')') {
+            StringCompareType::Exact(&pattern[1..pattern.len() - 1])
+        } else {
+            StringCompareType::Exact(pattern)
+        };
+    }
+
+    // If it has any regex characters, it's regex, else like
+    if "([.*+$^|".chars().any(|ch| pattern.contains(ch)) {
+        StringCompareType::Regexp(pattern)
+    } else {
+        StringCompareType::Like(pattern)
+    }
+}
+
+fn filter_generic_range(field: &str, options: &[String]) -> Option<FilterBindingInfo> {
     if options.is_empty() {
         return None;
     }
@@ -135,47 +201,112 @@ fn filter_generic_range(field: &str, options: &[String]) -> Option<(String, Vec<
 
     let min = values.first().cloned().unwrap_or(0);
     let max = values.last().cloned().unwrap_or(u16::MAX as u32);
+    let binds = Vec::new();
     match values.len() {
         0 => None,
-        1 => Some((format!("{field} = {min}"), Vec::new())),
-        _ => Some((format!("{field} >= {min} AND {field} <= {max}"), Vec::new())),
+        1 => Some(FilterBindingInfo {
+            clause: format!("{field} = {min}"),
+            binds,
+        }),
+        _ => Some(FilterBindingInfo {
+            clause: format!("{field} >= {min} AND {field} <= {max}"),
+            binds,
+        }),
     }
 }
 
 ////////////////////////////////////////////////////////////
 
-fn filter_name(options: &[String]) -> Option<(String, Vec<String>)> {
+fn filter_name(options: &[String]) -> Option<FilterBindingInfo> {
     filter_generic_regex("i", options)
 }
 
-fn filter_recipe_level(options: &[String]) -> Option<(String, Vec<String>)> {
-    filter_generic_range("r.level", options)
+fn filter_recipe_level(options: &[String]) -> Option<FilterBindingInfo> {
+    let Some(FilterBindingInfo { clause, binds }) = filter_generic_range("r.level", options) else {
+        return None;
+    };
+
+    Some(FilterBindingInfo {
+        clause: format!(
+            "i.id IN (
+                SELECT r.id
+                FROM {} AS r
+                WHERE {}
+            )",
+            RecipeTable::SQL_TABLE_NAME,
+            clause
+        ),
+        binds,
+    })
 }
 
-fn filter_equip_level(options: &[String]) -> Option<(String, Vec<String>)> {
+fn filter_equip_level(options: &[String]) -> Option<FilterBindingInfo> {
     filter_generic_range("i.equip_level", options)
 }
 
-fn filter_ilevel(options: &[String]) -> Option<(String, Vec<String>)> {
+fn filter_ilevel(options: &[String]) -> Option<FilterBindingInfo> {
     filter_generic_range("i.item_level", options)
 }
 
-fn filter_ui_category(options: &[String]) -> Option<(String, Vec<String>)> {
-    if options.is_empty() {
+fn filter_ui_category(options: &[String]) -> Option<FilterBindingInfo> {
+    let Some(FilterBindingInfo { clause, binds }) = filter_generic_regex("c", options) else {
         return None;
-    }
+    };
 
-    let clause = options.iter().map(|_| "?").join(", ");
-    let clause = format!("c.name IN ({clause})");
-    Some((clause, options.to_vec()))
+    Some(FilterBindingInfo {
+        clause: format!(
+            "i.ui_category IN (
+                SELECT c.id
+                FROM {} AS c
+                WHERE {}
+            )",
+            UiCategoryTable::SQL_TABLE_NAME,
+            clause
+        ),
+        binds,
+    })
 }
 
-fn filter_contains(options: &[String]) -> Option<(String, Vec<String>)> {
-    filter_generic_regex("i_g", options)
+fn filter_contains(options: &[String]) -> Option<FilterBindingInfo> {
+    let Some(FilterBindingInfo { clause, binds }) = filter_generic_regex("i_g", options) else {
+        return None;
+    };
+
+    Some(FilterBindingInfo {
+        clause: format!(
+            "i.id IN (
+                SELECT g.item_id
+                FROM {} AS g
+                INNER JOIN {} AS i_g ON g.input_id = i_g.id
+                WHERE {}
+            )",
+            IngredientTable::SQL_TABLE_NAME,
+            ItemInfoTable::SQL_TABLE_NAME,
+            clause
+        ),
+        binds,
+    })
 }
 
-fn filter_includes(options: &[String]) -> Option<(String, Vec<String>)> {
-    filter_generic_regex("i_n", options)
+fn filter_includes(options: &[String]) -> Option<FilterBindingInfo> {
+    let Some(FilterBindingInfo { clause, binds }) = filter_generic_regex("i_n", options) else {
+        return None;
+    };
+
+    Some(FilterBindingInfo {
+        clause: format!(
+            "i.id IN (
+                SELECT n.item_id
+                FROM {} AS n
+                INNER JOIN {} AS i_n ON n.input_id = i_n.id
+                WHERE {}
+            )",
+            InputIdsTable::SQL_TABLE_NAME,
+            ItemInfoTable::SQL_TABLE_NAME,
+            clause
+        ),
+        binds,
+    })
 }
 
 /*
@@ -200,7 +331,7 @@ fn filter_leve<'a>(options: &[String]) {
 */
 
 #[allow(clippy::ptr_arg)]
-fn filter_noop(_options: &[String]) -> Option<(String, Vec<String>)> {
+fn filter_noop(_options: &[String]) -> Option<FilterBindingInfo> {
     None
 }
 

@@ -53,6 +53,18 @@ mod docker {
     }
 
     #[tokio::test]
+    async fn test_filter_name_exact_many() -> Result<()> {
+        let db = database().await?;
+        let ids = db
+            .ids_from_filters(":name !(Eagle Feather|Maple Branch)")
+            .await?;
+        // Eagle Feather, Maple Branch
+        assert_eq!(ids, vec![5358, 5396]);
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn test_filter_name_regex() -> Result<()> {
         let db = database().await?;
         let ids = db
@@ -160,6 +172,36 @@ mod docker {
     }
 
     #[tokio::test]
+    async fn test_filter_ilevel_empty() -> Result<()> {
+        let db = database().await?;
+        let ids = db.ids_from_filters(":ilevel").await?;
+        assert!(ids.is_empty());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_filter_ilevel() -> Result<()> {
+        let db = database().await?;
+        let ids = db.ids_from_filters(":ilevel 155").await?;
+        // Althyk Lavender, Voidrake
+        assert_eq!(ids, vec![15857, 15858]);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_filter_ilevel_range() -> Result<()> {
+        let db = database().await?;
+        let ids = db
+            .ids_from_filters(":ilevel 136|139, :name of healing")
+            .await?;
+        let items = db.items_from_ids(&ids).await?;
+        assert!(items.iter().any(|item| item.name.starts_with("Orthodox"))); // Level 136
+        assert!(items.iter().any(|item| item.name.starts_with("Hallowed"))); // Level 139
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn test_filter_ui_category_empty() -> Result<()> {
         let db = database().await?;
         let ids = db.ids_from_filters(":cat").await?;
@@ -213,10 +255,59 @@ mod docker {
     #[tokio::test]
     async fn test_filter_includes() -> Result<()> {
         let db = database().await?;
-        let ids = db.ids_from_filters(":includes maple branch").await?;
+        let ids = db.ids_from_filters(":includes !maple branch").await?;
         // Maple Longbow, Plumed Maple Shortbow, Wrapped Maple Longbow, Wrapped Elm Longbow,
         // Maple Wand, Whispering Maple Wand, Budding Maple Wand, Maple Fishing Rod
         assert_eq!(ids, vec![1892, 1893, 1894, 1905, 1958, 1959, 1960, 2572]);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_filter_or_clauses_ilevel() -> Result<()> {
+        let db = database().await?;
+        let ids = db.ids_from_filters(":ilevel 155; :ilevel 51").await?;
+        // Dzemael Tomato Seeds, Honey Lemon Seeds, Prickly Pineapple Seeds,
+        // Althyk Lavender, Voidrake
+        assert_eq!(ids, vec![7724, 7733, 7734, 15857, 15858]);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_filter_or_clauses_name() -> Result<()> {
+        let db = database().await?;
+        let ids = db
+            .ids_from_filters(":name !maple branch; :name !eagle feather")
+            .await?;
+        // Eagle Feather, Maple Branch
+        assert_eq!(ids, vec![5358, 5396]);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_filter_or_clauses_includes_name() -> Result<()> {
+        let db = database().await?;
+        let ids = db
+            .ids_from_filters(":name !(maple branch|eagle feather); :includes !maple branch")
+            .await?;
+        // Maple Longbow, Plumed Maple Shortbow, Wrapped Maple Longbow, Wrapped Elm Longbow,
+        // Maple Wand, Whispering Maple Wand, Budding Maple Wand, Maple Fishing Rod,
+        // Eagle Feather, Maple Branch
+        assert_eq!(
+            ids,
+            vec![1892, 1893, 1894, 1905, 1958, 1959, 1960, 2572, 5358, 5396]
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_filter_or_clauses_category_rlevel() -> Result<()> {
+        let db = database().await?;
+        let ids = db
+            .ids_from_filters(":cat Metal|Lumber, :ilevel 2; :rlevel 80, :name Mind Alkahest")
+            .await?;
+        // Bronze Rings, Bronze Rivets, Maple Branch,
+        // Grade [2..4] Mind Alkahest
+        assert_eq!(ids, vec![5081, 5091, 5396, 27795, 29967, 32943]);
         Ok(())
     }
 }

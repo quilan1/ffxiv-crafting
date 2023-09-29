@@ -6,42 +6,19 @@ use futures::TryStreamExt;
 use sqlx::Row;
 
 use crate::{
-    tables::{
-        strip_whitespace, IngredientTable, InputIdsTable, ItemInfoTable, RecipeTable,
-        UiCategoryTable,
-    },
+    filter::FilterBindingInfo,
+    tables::{strip_whitespace, ItemInfoTable},
     Filter, ItemDB,
 };
 
 impl ItemDB {
-    fn get_query_string(clauses: &str) -> String {
-        let mut query_string = SQL_SELECT.to_string();
-        if clauses.contains("r.") {
-            query_string = format!("{query_string} {SQL_JOIN_RECIPES}")
-        }
-        if clauses.contains("c.") {
-            query_string = format!("{query_string} {SQL_JOIN_UI_CATEGORIES}")
-        }
-        if clauses.contains("i_n.") {
-            query_string = format!("{query_string} {SQL_JOIN_INPUT_IDS_ITEMS}")
-        }
-        if clauses.contains("i_g.") {
-            query_string = format!("{query_string} {SQL_JOIN_INGREDIENTS_ITEMS}")
-        }
-        query_string
-    }
-
-    pub async fn ids_from_filter_str(&self, filter_str: &str) -> Result<Vec<u32>> {
+    pub(crate) async fn ids_from_filter_str(&self, filter_str: &str) -> Result<Vec<u32>> {
         let start = Instant::now();
-        let (clauses, binds) = Filter::apply_filter_str(filter_str);
-        if clauses.is_empty() {
+        let Some(FilterBindingInfo { clause, binds }) = Filter::from_filter_str(filter_str) else {
             return Ok(Vec::new());
-        }
+        };
 
-        let query_string = strip_whitespace(format!(
-            "{} WHERE {clauses}",
-            Self::get_query_string(&clauses)
-        ));
+        let query_string = strip_whitespace(format!("{SQL_SELECT} WHERE {clause}"));
         let mut sql_query = sqlx::query(&query_string);
         for bind in binds {
             sql_query = sql_query.bind(bind);
@@ -58,25 +35,7 @@ impl ItemDB {
     }
 }
 
-const SQL_SELECT: &str = formatcp!("SELECT i.id, i.name FROM {ITEM_TABLE_NAME} AS i");
-
-const SQL_JOIN_RECIPES: &str = formatcp!("INNER JOIN {RECIPE_TABLE_NAME} AS r ON r.id = i.id");
-
-const SQL_JOIN_UI_CATEGORIES: &str =
-    formatcp!("INNER JOIN {UI_CATEGORY_TABLE_NAME} AS c ON i.ui_category = c.id");
-
-const SQL_JOIN_INPUT_IDS_ITEMS: &str = formatcp!(
-    "INNER JOIN {INPUT_IDS_TABLE_NAME}  AS n   ON n.item_id = i.id
-    INNER JOIN {ITEM_TABLE_NAME}        AS i_n ON i_n.id = n.input_id"
+const SQL_SELECT: &str = formatcp!(
+    "SELECT i.id, i.name FROM {} AS i",
+    ItemInfoTable::SQL_TABLE_NAME
 );
-
-const SQL_JOIN_INGREDIENTS_ITEMS: &str = formatcp!(
-    "INNER JOIN {INGREDIENTS_TABLE_NAME}    AS g    ON g.item_id = i.id
-    INNER JOIN {ITEM_TABLE_NAME}            AS i_g  ON i_g.id = g.input_id"
-);
-
-const ITEM_TABLE_NAME: &str = ItemInfoTable::SQL_TABLE_NAME;
-const RECIPE_TABLE_NAME: &str = RecipeTable::SQL_TABLE_NAME;
-const UI_CATEGORY_TABLE_NAME: &str = UiCategoryTable::SQL_TABLE_NAME;
-const INPUT_IDS_TABLE_NAME: &str = InputIdsTable::SQL_TABLE_NAME;
-const INGREDIENTS_TABLE_NAME: &str = IngredientTable::SQL_TABLE_NAME;
