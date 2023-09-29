@@ -3,6 +3,7 @@ import Statistics from "./statistics.js";
 import Util from "../util/util.js";
 import Api from "../util/api.js";
 import { CancelData } from "./custom.js";
+import MarketRequest from "./market_request_ws.js";
 
 ////////////////////////////////////////////////////
 
@@ -62,6 +63,11 @@ export type ListingJson = {
         failures: number[],
         listings: Record<number, Listing[]>,
     }
+}
+
+export type ListingOutputJson = {
+    failures: number[],
+    listings: Record<number, Listing[]>,
 }
 
 export class CancelError extends Error {
@@ -153,6 +159,17 @@ export default class CustomInfo {
         return this.customInfoFromJson(info as CustomInfoJson, countFn());
     }
 
+    static async fetch_ws(searchFilter: string, dataCenter: string, countFn?: () => number, statusFn?: (_: string) => void, cancelData?: CancelData): Promise<CustomInfo> {
+        countFn ??= () => 1;
+
+        const market_request = new MarketRequest(searchFilter, dataCenter);
+        if (statusFn !== undefined) market_request.setStatusFn(statusFn);
+        if (cancelData !== undefined) market_request.setCancelData(cancelData);
+
+        let recipeInfo = await market_request.fetch();
+        return this.customInfoFromJson(recipeInfo, countFn());
+    }
+
     static async apiCancel(id: string): Promise<void> {
         await Api.call(this.api.cancel.put(id));
     }
@@ -199,14 +216,7 @@ export default class CustomInfo {
     ////////////////////////////////////////////////////
 
     private static async apiGetDebug(): Promise<CustomInfoJson> {
-        try {
-            let request = await Api.getPage(`crafting-mats.json`);
-            let json = await request.json();
-            return json;
-        } catch (err) {
-            console.error(err);
-            throw err;
-        }
+        throw new Error("Old API, needs rewriting");
     }
 
     calcRecStatistics(count: number) {

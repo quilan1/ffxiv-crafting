@@ -21,6 +21,10 @@ impl MarketState {
         self.processor.async_processor()
     }
 
+    pub fn processor(&self) -> UniversalisProcessor {
+        self.processor.clone()
+    }
+
     pub(super) fn insert_handle<S: AsRef<str>>(&self, uuid: S, info: UniversalisHandle) {
         let mut requests = self.handles.lock();
         requests.entry(uuid.as_ref().into()).or_insert(info);

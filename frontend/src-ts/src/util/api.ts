@@ -9,14 +9,14 @@ export type ApiCall = {
 }
 
 export default class Api {
-    private static readonly WEBPAGE: string = "http://127.0.0.1:3001";
+    private static readonly WEBPAGE: string = "127.0.0.1:3001";
 
-    static getPage(fileName: string): Promise<Response> {
-        return this.fetch(`web/${fileName}`);
+    static getUrl(path: string): string {
+        return `${this.WEBPAGE}/${path}`;
     }
 
     private static fetch(path: string, args?: object): Promise<Response> {
-        return window.fetch(`${this.WEBPAGE}/${path}`, args);
+        return window.fetch(`http://${this.WEBPAGE}/${path}`, args);
     }
 
     static async call<T>(call: ApiInfo, formData?: object, body?: object): Promise<T> {

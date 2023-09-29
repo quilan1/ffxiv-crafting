@@ -27,4 +27,14 @@ impl ItemDB {
     pub async fn items_from_ids<I: ItemId>(&self, ids: &[I]) -> Result<Vec<ItemInfo>> {
         ItemInfoTable::new(self).by_item_ids(ids).await
     }
+
+    pub async fn all_from_filters<S: AsRef<str>>(
+        &self,
+        filter_str: S,
+    ) -> Result<(Vec<u32>, Vec<u32>, Vec<ItemInfo>)> {
+        let top_ids = self.ids_from_filters(filter_str).await?;
+        let all_ids = self.associated_ids(&top_ids).await?;
+        let items = self.items_from_ids(&all_ids).await?;
+        Ok((top_ids, all_ids, items))
+    }
 }

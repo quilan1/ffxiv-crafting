@@ -3,6 +3,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 mod market;
+mod market_ws;
 mod recipe;
 mod responses;
 mod server;

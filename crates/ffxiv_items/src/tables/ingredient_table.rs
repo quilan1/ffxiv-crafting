@@ -48,8 +48,8 @@ impl IngredientTable<'_> {
         }
 
         let start = Instant::now();
-        let ids = ids.iter().map(|id| id.item_id().to_string()).join(",");
         let num_ids = ids.len();
+        let ids = ids.iter().map(|id| id.item_id().to_string()).join(",");
         let query_string = strip_whitespace(format!("{} ({ids})", SQL_SELECT));
 
         let mut ingredients = Vec::new();

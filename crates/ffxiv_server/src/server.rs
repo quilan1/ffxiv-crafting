@@ -11,6 +11,7 @@ use tower_http::cors::{Any, CorsLayer};
 
 use crate::{
     market::{self, MarketState},
+    market_ws::market_ws,
     recipe,
 };
 
@@ -42,10 +43,15 @@ impl Server {
             .layer(axum_server_timing::ServerTimingLayer::new("MarketService"))
             .with_state((market_state.clone(), db.clone()));
 
+        let market_service_ws = Router::new()
+            .route("/market_ws", get(market_ws))
+            .with_state((market_state.processor(), db.clone()));
+
         let v1_router = Router::new()
             .merge(recipe_service)
             .merge(market_service)
-            .merge(health_service);
+            .merge(health_service)
+            .merge(market_service_ws);
 
         let app = Router::new().nest("/v1", v1_router).layer(
             CorsLayer::new()

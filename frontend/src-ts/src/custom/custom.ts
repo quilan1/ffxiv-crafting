@@ -39,7 +39,7 @@ class CustomDlg {
             if (debug === true) {
                 this.info = await CustomInfo.fetchDebug(FiltersDlg.countValue) as CustomInfo;
             } else {
-                this.info = await CustomInfo.fetch(FiltersDlg.searchValue, FiltersDlg.dataCenter, countFn, statusFn, cancelData) as CustomInfo;
+                this.info = await CustomInfo.fetch_ws(FiltersDlg.searchValue, FiltersDlg.dataCenter, countFn, statusFn, cancelData) as CustomInfo;
             }
         });
 
