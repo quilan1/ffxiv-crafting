@@ -19,16 +19,16 @@ pub struct UniversalisProcessorData {
 impl UniversalisProcessorData {
     pub fn new(
         async_processor: AsyncProcessor,
-        worlds: Vec<String>,
-        ids: Vec<u32>,
+        worlds: &[String],
+        ids: &[u32],
         retain_num_days: f32,
     ) -> Self {
         let num_requests = ((ids.len() + MAX_CHUNK_SIZE - 1) / MAX_CHUNK_SIZE) * worlds.len();
         UniversalisProcessorData {
             uuid: Uuid::new_v4().to_string(),
             async_processor: async_processor.clone(),
-            worlds,
-            ids,
+            worlds: worlds.to_vec(),
+            ids: ids.to_vec(),
             retain_num_days,
             num_requests,
             status: UniversalisStatus::new(async_processor),

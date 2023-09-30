@@ -37,7 +37,7 @@ The Rust crates are inside of the 'crates' directory, and the Javascript / Types
 
 ## Brief API overview
 
-* GET `ws://{host}/v1/universalis`: Connects to a websocket that transmits data about the universalis request
+* GET `ws://{SERVER_ADDR}/v1/universalis`: Connects to a websocket that transmits data about the universalis request
 
 ## Customization
 

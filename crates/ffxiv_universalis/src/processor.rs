@@ -35,8 +35,8 @@ impl UniversalisProcessor {
 
     pub fn make_request<T: UniversalisRequestType>(
         &self,
-        worlds: Vec<String>,
-        ids: Vec<u32>,
+        worlds: &[String],
+        ids: &[u32],
         retain_num_days: f32,
     ) -> UniversalisHandle {
         let data =

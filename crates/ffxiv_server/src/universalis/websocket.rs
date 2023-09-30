@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use anyhow::{bail, Result};
 use axum::{
@@ -10,11 +10,9 @@ use axum::{
 };
 use ffxiv_items::ItemDB;
 use ffxiv_universalis::UniversalisProcessor;
-use futures::FutureExt;
-use tokio::time::sleep;
 use uuid::Uuid;
 
-use super::{make_universalis_handles, process_universalis_handle, send_recipes, Input};
+use super::{send_recipes, wait_for_universalis, Input};
 
 ////////////////////////////////////////////////////////////
 
@@ -44,21 +42,19 @@ async fn handle_socket(
         log::info!(target: "ffxiv_server", "New request for '{}'", payload.filters);
         let (top_ids, all_ids, items) = db.all_from_filters(&payload.filters).await?;
         send_recipes(socket, &top_ids, items).await?;
-        let (mut history_handle, mut listing_handle) =
-            make_universalis_handles(&universalis_processor, payload, all_ids, &server_uuid);
-
-        while history_handle.is_some() || listing_handle.is_some() {
-            if let Some(None) = socket.recv().now_or_never() {
-                break;
-            }
-            process_universalis_handle(socket, "history", &mut history_handle).await?;
-            process_universalis_handle(socket, "listing", &mut listing_handle).await?;
-            sleep(Duration::from_millis(50)).await;
-        }
+        wait_for_universalis(
+            socket,
+            &universalis_processor,
+            payload,
+            &all_ids,
+            &server_uuid,
+        )
+        .await?;
         Ok(())
     }
 
     if let Err(err) = inner(&mut socket, universalis_processor, db).await {
+        log::error!(target: "ffxiv_server", "WebSocket exiting: {err:}");
         let _ = socket
             .send(Message::Close(Some(CloseFrame {
                 code: close_code::ERROR,

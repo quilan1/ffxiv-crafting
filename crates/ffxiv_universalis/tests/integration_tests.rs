@@ -28,7 +28,7 @@ mod docker {
             std::env::set_var("UNIVERSALIS_URL", addr);
 
             let async_processor = processor.async_processor();
-            let mut universalis_handle = processor.make_request::<T>(worlds, all_ids, 7.0);
+            let mut universalis_handle = processor.make_request::<T>(&worlds, &all_ids, 7.0);
             universalis_handle.wait_for_ready().await;
 
             async_processor.disconnect();

@@ -1,5 +1,8 @@
+use std::time::Duration;
+
 use async_processor::{AmValue, AsyncProcessor};
-use futures::FutureExt;
+use futures::{channel::oneshot::Receiver, future::Shared, FutureExt};
+use tokio::time::sleep;
 
 use crate::{UniversalisRequestHandle, MAX_UNIVERSALIS_CONCURRENT_FUTURES};
 
@@ -28,6 +31,30 @@ impl UniversalisStatus {
 
     pub(crate) fn set_value(&self, value: UniversalisStatusState) {
         self.0.lock().state = value;
+    }
+
+    pub async fn signals(&self) -> Vec<Shared<Receiver<()>>> {
+        loop {
+            {
+                let state = &self.0.lock().state;
+                match state {
+                    UniversalisStatusState::Processing(handles) => {
+                        return handles
+                            .iter()
+                            .flat_map(|handle| {
+                                vec![handle.signal_active.clone(), handle.signal_finished.clone()]
+                            })
+                            .collect();
+                    }
+                    UniversalisStatusState::Cleanup | UniversalisStatusState::Finished => {
+                        return Vec::new()
+                    }
+                    UniversalisStatusState::Queued => {}
+                }
+            }
+
+            sleep(Duration::from_millis(10)).await;
+        }
     }
 
     pub fn text(&self) -> String {
