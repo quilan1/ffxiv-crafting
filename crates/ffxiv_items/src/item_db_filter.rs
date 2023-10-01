@@ -6,9 +6,8 @@ use futures::TryStreamExt;
 use sqlx::Row;
 
 use crate::{
-    filter::FilterBindingInfo,
     tables::{strip_whitespace, ItemInfoTable},
-    Filter, ItemDB,
+    Filter, FilterBindingInfo, ItemDB,
 };
 
 impl ItemDB {

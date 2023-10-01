@@ -2,7 +2,7 @@ use anyhow::Result;
 use axum::extract::ws::{Message, WebSocket};
 use tokio::task::spawn_blocking;
 
-use super::{Ingredient, ItemInfo, Recipe, RecipeOutput};
+use super::{Ingredient, ItemInfo, Output, Recipe};
 
 ////////////////////////////////////////////////////////////
 
@@ -39,8 +39,7 @@ async fn get_recipe_info_data(
     })
     .await?;
 
-    Ok(serde_json::to_string(&RecipeOutput {
-        msg_type: "recipe".into(),
+    Ok(serde_json::to_string(&Output::Recipe {
         top_ids: top_ids.to_vec(),
         item_info,
     })?)

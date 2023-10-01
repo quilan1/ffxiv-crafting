@@ -13,7 +13,7 @@ mod parsers;
 mod recipe;
 mod tables;
 
-use filter::Filter;
+use filter::{Filter, FilterBindingInfo};
 use item_id::ItemId;
 
 pub use item_db::ItemDB;

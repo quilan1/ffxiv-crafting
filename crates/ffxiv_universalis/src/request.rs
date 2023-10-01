@@ -12,6 +12,8 @@ use crate::{ItemMarketInfoMap, UniversalisProcessorData, UniversalisRequestType}
 
 ////////////////////////////////////////////////////////////
 
+pub type Signal<T> = Shared<Receiver<T>>;
+
 pub struct UniversalisRequest<T: UniversalisRequestType> {
     data: UniversalisProcessorData,
     url: String,
@@ -20,8 +22,8 @@ pub struct UniversalisRequest<T: UniversalisRequestType> {
 }
 
 pub struct UniversalisRequestHandle {
-    pub signal_active: Shared<Receiver<()>>,
-    pub signal_finished: Shared<Receiver<()>>,
+    pub signal_active: Signal<()>,
+    pub signal_finished: Signal<bool>,
     pub id: usize,
 }
 
@@ -52,7 +54,7 @@ impl<T: UniversalisRequestType> UniversalisRequest<T> {
     ) {
         let async_processor = self.data.async_processor.clone();
         let (signal_active_tx, signal_active_rx) = oneshot::channel();
-        let (signal_finished_tx, signal_finished_rx) = oneshot::channel();
+        let (signal_finished_tx, signal_finished_rx) = oneshot::channel::<bool>();
 
         let future = async move {
             let _ = signal_active_tx.send(());
@@ -63,7 +65,7 @@ impl<T: UniversalisRequestType> UniversalisRequest<T> {
                 self.data.retain_num_days,
             )
             .await;
-            let _ = signal_finished_tx.send(());
+            let _ = signal_finished_tx.send(results.is_some());
             results
         };
 

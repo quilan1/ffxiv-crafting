@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use ffxiv_universalis::ItemMarketInfoMap;
+use ffxiv_universalis::{ItemMarketInfoMap, UniversalisProcessorState};
 use serde::{Deserialize, Serialize};
 
 ////////////////////////////////////////////////////////////
@@ -15,25 +15,43 @@ pub struct Input {
 ////////////////////////////////////////////////////////////
 
 #[derive(Serialize)]
-pub struct RecipeOutput {
-    pub msg_type: String,
-    pub top_ids: Vec<u32>,
-    pub item_info: BTreeMap<u32, ItemInfo>,
+#[serde(rename_all = "camelCase")]
+pub enum Output {
+    Recipe {
+        top_ids: Vec<u32>,
+        item_info: BTreeMap<u32, ItemInfo>,
+    },
+    Result {
+        listing_type: String,
+        listings: ItemMarketInfoMap,
+        failures: Vec<u32>,
+    },
+    TextStatus {
+        listing_type: String,
+        status: String,
+    },
+    DetailedStatus {
+        listing_type: String,
+        status: Vec<DetailedStatus>,
+    },
 }
 
 #[derive(Serialize)]
-pub struct ListingOutput {
-    pub msg_type: String,
-    pub listing_type: String,
-    pub listings: ItemMarketInfoMap,
-    pub failures: Vec<u32>,
+#[serde(rename_all = "camelCase")]
+pub enum DetailedStatus {
+    Active,
+    Finished(bool),
+    Queued(i32),
 }
 
-#[derive(Serialize)]
-pub struct ListingStatus {
-    pub msg_type: String,
-    pub listing_type: String,
-    pub status: String,
+impl From<UniversalisProcessorState> for DetailedStatus {
+    fn from(value: UniversalisProcessorState) -> Self {
+        match value {
+            UniversalisProcessorState::Active => Self::Active,
+            UniversalisProcessorState::Finished(successful) => Self::Finished(successful),
+            UniversalisProcessorState::Queued(position) => Self::Queued(position),
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////

@@ -17,8 +17,9 @@ use status::UniversalisStatusState;
 pub use handle::{UniversalisHandle, UniversalisHandleOutput};
 pub use json::ItemMarketInfoMap;
 pub use processor::UniversalisProcessor;
+pub use request::Signal;
 pub use request_type::{UniversalisHistory, UniversalisListing, UniversalisRequestType};
-pub use status::UniversalisStatus;
+pub use status::{UniversalisProcessorState, UniversalisStatus, UniversalisStatusValues};
 
 #[cfg(test)]
 mod tests {

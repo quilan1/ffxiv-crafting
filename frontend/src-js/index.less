@@ -9,6 +9,11 @@
 @fg-color-border: #202020;
 @fg-color-label: #C0C0C0;
 
+@universalis-color-active: #FFEE00;
+@universalis-color-queued: #DDDDDD;
+@universalis-color-pass: green;
+@universalis-color-fail: red;
+
 html, body {
     display: flex;
     flex-direction: column;
@@ -393,6 +398,38 @@ Misc Classes
     color: #fff;
     border-radius: 2px;
     animation: fadeIn 0.6s;
+}
+
+#custom-filters-status {
+    display: flex;
+    align-items: center;
+    > div:first-child {
+        margin-right: 1em;
+    }
+}
+
+.universalis {
+    width: 1em;
+    height: 1em;
+    border: 1px solid black;
+
+    &-status {
+        display: flex;
+        align-items: center;
+    }
+
+    &-active {
+        background-color: @universalis-color-active;
+    }
+    &-queued {
+        background-color: @universalis-color-queued;
+    }
+    &-pass {
+        background-color: @universalis-color-pass;
+    }
+    &-fail {
+        background-color: @universalis-color-fail;
+    }
 }
 
 .bestOption {

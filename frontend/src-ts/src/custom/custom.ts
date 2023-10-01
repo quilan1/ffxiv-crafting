@@ -525,7 +525,7 @@ class FiltersDlg {
     }
 
     static setStatus(status: string) {
-        this.selectors.status.innerText = status;
+        this.selectors.status.innerHTML = status;
     }
 };
 

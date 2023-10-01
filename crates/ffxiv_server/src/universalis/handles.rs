@@ -3,14 +3,13 @@ use std::time::{Duration, Instant};
 use anyhow::Result;
 use axum::extract::ws::{Message, WebSocket};
 use ffxiv_universalis::{
-    UniversalisHandle, UniversalisHistory, UniversalisListing, UniversalisProcessor,
+    Signal, UniversalisHandle, UniversalisHistory, UniversalisListing, UniversalisProcessor,
+    UniversalisStatusValues,
 };
-use futures::{channel::oneshot::Receiver, future::Shared, FutureExt};
+use futures::{Future, FutureExt};
 use tokio::time::sleep;
 
-use super::{Input, ListingOutput, ListingStatus};
-
-type Signal = Shared<Receiver<()>>;
+use super::{DetailedStatus, Input, Output};
 
 ////////////////////////////////////////////////////////////
 
@@ -31,6 +30,7 @@ pub async fn wait_for_universalis(
     market_request_info
         .process_handles(socket, (true, true))
         .await?;
+    market_request_info.retain_fresh_signals();
 
     // Wait until we've finished all history and listings
     let timeouts = [DUR_TIMEOUT, Duration::from_millis(50)];
@@ -95,7 +95,8 @@ async fn make_market_request_info(
 enum MarketRequestState {
     Processing {
         handle: UniversalisHandle,
-        signals: Vec<Signal>,
+        signals_active: Vec<Signal<()>>,
+        signals_finished: Vec<Signal<bool>>,
         last_update: Instant,
     },
     Done,
@@ -103,15 +104,22 @@ enum MarketRequestState {
 
 ////////////////////////////////////////////////////////////
 
-fn is_signal_done(signal: &Signal) -> bool {
+fn is_signal_done<T>(signal: &Signal<T>) -> bool
+where
+    Signal<T>: Future,
+{
     signal.clone().now_or_never().is_some()
 }
 
 impl MarketRequestState {
-    fn new(handle: UniversalisHandle, signals: Vec<Signal>) -> Self {
+    fn new(
+        handle: UniversalisHandle,
+        (signals_active, signals_finished): (Vec<Signal<()>>, Vec<Signal<bool>>),
+    ) -> Self {
         Self::Processing {
             handle,
-            signals,
+            signals_active,
+            signals_finished,
             last_update: Instant::now(),
         }
     }
@@ -119,7 +127,14 @@ impl MarketRequestState {
     fn are_any_signals_done(&self) -> bool {
         match self {
             MarketRequestState::Done => false,
-            MarketRequestState::Processing { signals, .. } => signals.iter().any(is_signal_done),
+            MarketRequestState::Processing {
+                signals_active,
+                signals_finished,
+                ..
+            } => {
+                signals_active.iter().any(is_signal_done)
+                    || signals_finished.iter().any(is_signal_done)
+            }
         }
     }
 
@@ -130,7 +145,11 @@ impl MarketRequestState {
     fn is_waiting_for_cleanup(&self) -> bool {
         match self {
             MarketRequestState::Done => true,
-            MarketRequestState::Processing { signals, .. } => signals.is_empty(),
+            MarketRequestState::Processing {
+                signals_active,
+                signals_finished,
+                ..
+            } => signals_active.is_empty() && signals_finished.is_empty(),
         }
     }
 
@@ -152,8 +171,14 @@ impl MarketRequestState {
     }
 
     fn retain_fresh_signals(&mut self) {
-        if let MarketRequestState::Processing { signals, .. } = self {
-            signals.retain(|signal| !is_signal_done(signal));
+        if let MarketRequestState::Processing {
+            signals_active,
+            signals_finished,
+            ..
+        } = self
+        {
+            signals_active.retain(|signal| !is_signal_done(signal));
+            signals_finished.retain(|signal| !is_signal_done(signal));
         }
     }
 
@@ -169,22 +194,27 @@ impl MarketRequestState {
 
         *last_update = Instant::now();
 
-        let message_text = if let Some(result) = handle.now_or_never() {
+        let output = if let Some(result) = handle.now_or_never() {
             let (listings, failures) = result?;
             *self = MarketRequestState::Done;
-            serde_json::to_string(&ListingOutput {
-                msg_type: "output".into(),
+            Output::Result {
                 listing_type: listing_type.into(),
                 listings,
                 failures,
-            })?
+            }
         } else {
-            serde_json::to_string(&ListingStatus {
-                msg_type: "status".into(),
-                listing_type: listing_type.into(),
-                status: handle.status().text(),
-            })?
+            match handle.status().values() {
+                UniversalisStatusValues::Text(status) => Output::TextStatus {
+                    listing_type: listing_type.into(),
+                    status,
+                },
+                UniversalisStatusValues::Processing(values) => Output::DetailedStatus {
+                    listing_type: listing_type.into(),
+                    status: values.into_iter().map(DetailedStatus::from).collect(),
+                },
+            }
         };
+        let message_text = serde_json::to_string(&output)?;
         socket.send(Message::Text(message_text)).await?;
 
         Ok(())
@@ -202,8 +232,8 @@ impl MarketRequestInfo {
     fn new(
         history_handle: UniversalisHandle,
         listing_handle: UniversalisHandle,
-        history_signals: Vec<Signal>,
-        listing_signals: Vec<Signal>,
+        history_signals: (Vec<Signal<()>>, Vec<Signal<bool>>),
+        listing_signals: (Vec<Signal<()>>, Vec<Signal<bool>>),
     ) -> Self {
         Self {
             history: MarketRequestState::new(history_handle, history_signals),
