@@ -1,0 +1,93 @@
+@import '../colors.less';
+
+.queries {
+    flex: 0;
+    height: 200px;
+    display: flex;
+    padding: 10px;
+    border: 1px solid @color-fg-border;
+    border-top: unset;
+
+    label {
+        color: @color-fg-label
+    }
+
+    input, select, button {
+        background-color: @color-bg-input
+    }
+
+    > * {
+        margin-left: 5px;
+        margin-right: 5px;
+        // border: 1px solid @color-fg-border;
+    }
+
+    > :first-child {
+        margin-left: 0px;
+    }
+
+    > :last-child {
+        margin-right: 0px;
+    }
+}
+
+.queryOptions {
+    flex: 60%;
+
+    > .labelRow {
+        display: flex;
+
+        > label:first-child {
+            flex: 0 5em;
+            min-width: 5em;
+        }
+
+        > :nth-child(2) {
+            flex: 1;
+        }
+
+        > * {
+            flex: 0;
+        }
+    }
+
+    > .queryString {
+        font-size: 60%;
+    }
+
+    > .optionsBlock {
+        display: flex;
+        flex-direction: row;
+
+        > div {
+            flex: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-left: 2px;
+            margin-right: 2px;
+        }
+
+        > div:first-child {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-left: 0px;
+        }
+
+        > div:last-child {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            margin-right: 0px;
+        }
+    }
+}
+
+.fetchButton {
+    flex: 0;
+}
+
+.fetchStatus {
+    flex: auto;
+}
