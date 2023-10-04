@@ -1,0 +1,27 @@
+{
+  "name": "ffxiv-crafting",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently --kill-others \"less-watch-compiler --config less-watcher.config.json\" \"next dev\"",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "concurrently": "^8.2.1",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "less": "^4.2.0",
+    "less-watch-compiler": "^1.16.3",
+    "typescript": "latest"
+  }
+}

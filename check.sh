@@ -1,4 +1,4 @@
-#/bin/sh
+#!/bin/sh
 set -e
 cargo fmt
 cargo check

@@ -1,0 +1,30 @@
+@import 'colors.less';
+
+.header {
+    flex: 0;
+    display: flex;
+    flex-direction: row;
+    border: 1px solid @color-fg-border;
+    border-bottom: unset;
+    cursor: pointer;
+
+    > div {
+        flex: 50%;
+        background-color: @color-bg-header;
+        text-align: center;
+        font-size: large;
+        border-left: 2px solid @color-fg-border;
+    }
+
+    > div:first-child {
+        border-left: unset;
+    }
+
+    > div:not([data-selected]) {
+        border-bottom: 2px solid @color-fg-border;
+    }
+
+    > div[data-selected] {
+        border-bottom: unset;
+    }
+}
