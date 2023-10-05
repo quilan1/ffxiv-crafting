@@ -1,31 +1,55 @@
-import { ChangeEvent, useState } from 'react';
+import { ChangeEvent, Dispatch, useReducer, useRef, useState } from 'react';
 import styles from './queries.module.css';
+import UniversalisRequest from './(universalis)/universalis_api';
+import { QueryReducerAction, QueryReducerState, processQuery, queryReducer } from './queries-reducer';
 
 export function Queries() {
+    const defaultReducerState: QueryReducerState = {
+        query: preparedQueries[0].value,
+        dataCenter: dataCenters[0],
+        count: '100',
+        limit: '',
+        minVelocity: '',
+    };
+    const [queryState, dispatch] = useReducer(queryReducer, processQuery(defaultReducerState.query, defaultReducerState));
     return (
         <div className={styles.queries}>
-            <FilterOptions />
-            <FetchButton />
+            <FilterOptions queryState={queryState} dispatch={dispatch} />
+            <FetchButton queryState={queryState} />
             <div className={styles.fetchStatus}><label>Loading Status...</label></div>
         </div>
     )
 }
 
-export function FilterOptions() {
-    const [queryString, setQueryString] = useState(preparedQueries[0].value);
-    // const [curSelection, setCurSelection] = useState(preparedQueries[0].value);
-    const onChangeSelect = (e: ChangeEvent<HTMLSelectElement>) => setQueryString(e.target.value);
-    // const onLoadClick = () => setQueryString(curSelection);
+export function FilterOptions(
+    { queryState, dispatch }:
+        { queryState: QueryReducerState, dispatch: Dispatch<{ type: QueryReducerAction, value: any }> }
+) {
+    const onChangeQuerySelect = (e: ChangeEvent<HTMLSelectElement>) => {
+        dispatch({ type: QueryReducerAction.SET_QUERY, value: e.target.value });
+    }
+    const onChangeDataCenter = (e: ChangeEvent<HTMLSelectElement>) => {
+        dispatch({ type: QueryReducerAction.SET_DATA_CENTER, value: e.target.value });
+    }
+    const onChangeCount = (e: ChangeEvent<HTMLInputElement>) => {
+        dispatch({ type: QueryReducerAction.SET_COUNT, value: e.target.value });
+    }
+    const onChangeLimit = (e: ChangeEvent<HTMLInputElement>) => {
+        dispatch({ type: QueryReducerAction.SET_LIMIT, value: e.target.value });
+    }
+    const onChangeMinVelocity = (e: ChangeEvent<HTMLInputElement>) => {
+        dispatch({ type: QueryReducerAction.SET_MIN_VELOCITY, value: e.target.value });
+    }
 
     return (
         <div className={styles.queryOptions}>
             <div className={styles.labelRow}>
                 <label>Query:</label>
-                <input type="text" readOnly value={queryString} className={styles.queryString}></input>
+                <input type="text" readOnly value={queryState.query} className={styles.queryString}></input>
             </div>
             <div className={styles.labelRow}>
                 <label>Examples:</label>
-                <select onChange={onChangeSelect}>{
+                <select onChange={onChangeQuerySelect}>{
                     preparedQueries.map(info =>
                         <option key={info.value} value={info.value}>
                             {info.label}
@@ -36,24 +60,22 @@ export function FilterOptions() {
             <div style={{ height: '5px' }}></div>
             <div className={styles.optionsBlock}>
                 <div><div>
-                    <label>Limit: </label>
-                    <input type="number" defaultValue="20" style={{width: '2.5em'}} />
+                    <label>Count: </label>
+                    <input type="number" value={queryState.count} onChange={onChangeCount} style={{ width: '3em' }} />
                 </div></div>
                 <div><div>
-                    <label>Count: </label>
-                    <input type="number" defaultValue="100" style={{width: '3em'}} />
+                    <label>Limit: </label>
+                    <input type="number" value={queryState.limit} onChange={onChangeLimit} style={{ width: '2.5em' }} />
                 </div></div>
                 <div><div>
                     <label>Min Velocity: </label>
-                    <input type="number" defaultValue="10.0" style={{width: '3.5em'}} />
+                    <input type="number" value={queryState.minVelocity} onChange={onChangeMinVelocity} style={{ width: '3.5em' }} />
                 </div></div>
                 <div><div>
                     <label>Data Center: </label>
-                    <select>
-                        <option defaultValue="Seraph">Seraph</option>
-                        <option defaultValue="Dynamis">Dynamis</option>
-                        <option defaultValue="North-America">North-America</option>
-                    </select>
+                    <select onChange={onChangeDataCenter}>{
+                        dataCenters.map(dc => <option key={dc} value={dc}>{dc}</option>)
+                    }</select>
                 </div></div>
                 <div><div>
                     <label>HQ: </label>
@@ -64,12 +86,34 @@ export function FilterOptions() {
     );
 }
 
-export function FetchButton() {
-    const [isFetching, setIsFetching] = useState(false);
-    const onClick = () => setIsFetching(!isFetching);
-    return <button type="button" className={styles.fetchButton} onClick={onClick}>
-        {isFetching ? "Cancel" : "Fetch"}
-    </button>;
+enum FetchState {
+    FETCH = "Fetch",
+    CANCEL = "Cancel",
+}
+
+export function FetchButton({ queryState }: { queryState: QueryReducerState }) {
+    const [fetchState, setFetchState] = useState(FetchState.FETCH);
+    const isCancelled = useRef(false);
+
+    const onClick = async () => {
+        if (fetchState == FetchState.FETCH) {
+            setFetchState(FetchState.CANCEL);
+
+            isCancelled.current = false;
+            try {
+                let result = await new UniversalisRequest(queryState.query, queryState.dataCenter)
+                    .setIsCancelled(() => isCancelled.current)
+                    .fetch();
+                console.log(result);
+            } finally {
+                setFetchState(FetchState.FETCH);
+            }
+        } else {
+            isCancelled.current = true;
+        }
+    };
+
+    return <button type="button" className={styles.fetchButton} onClick={onClick}>{fetchState}</button>;
 }
 
 const preparedQueries = [
@@ -83,4 +127,10 @@ const preparedQueries = [
     { label: 'Level 70 White Scrips', value: ':count 40, :limit 2, :name ^Rarefied, :rlevel 71|79' },
     { label: 'Level 80 White Scrips', value: ':count 40, :limit 2, :name ^Rarefied, :rlevel 81|89' },
     { label: 'Level 90 White Scrips', value: ':count 40, :limit 2, :name ^Rarefied, :rlevel 90' },
+];
+
+const dataCenters = [
+    "Seraph",
+    "Dynamis",
+    "North-America",
 ];

@@ -14,6 +14,7 @@ pub struct ItemListing {
     pub price: u32,
     pub count: u32,
     pub is_hq: bool,
+    #[serde(skip_serializing_if = "String::is_empty")]
     pub world: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub name: String,
