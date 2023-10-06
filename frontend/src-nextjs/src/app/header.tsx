@@ -5,7 +5,7 @@ import { MarketForm } from './page';
 export default function Header(
     { setForm }: { setForm: React.Dispatch<React.SetStateAction<MarketForm>> }
 ) {
-    let [curSelected, setCurSelected] = useState(MarketForm.QUERY);
+    const [curSelected, setCurSelected] = useState(MarketForm.QUERY);
 
     const headersInfo = [
         { form: MarketForm.QUERY, title: 'Query' },

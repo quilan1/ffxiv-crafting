@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import styles from './market-information.module.css';
 
 export function MarketInformation() {
@@ -15,19 +16,33 @@ export function MarketInformation() {
     );
 }
 
-function TableRow({ isHeader, checked, name, perDay, perWeek, perBiWeek, count, sell, buy, craft, profit }: any) {
+type TableRow = {
+    isHeader?: boolean,
+    checked: string,
+    name: string,
+    perDay: string,
+    perWeek: string,
+    perBiWeek: string,
+    count: string,
+    sell: string,
+    buy: string,
+    craft: string,
+    profit: string,
+}
+
+function TableRow({ isHeader, checked, name, perDay, perWeek, perBiWeek, count, sell, buy, craft, profit }: TableRow) {
     const rowStyle = isHeader ? `${styles.tableRow} ${styles.heading}` : styles.tableRow;
 
-    type sfunc = (_: string) => any;
-    const col = (value: string, classes?: string[]): sfunc => {
+    type SFunc = (_: string) => ReactNode;
+    const col = (value: string, classes?: string[]): SFunc => {
         const style = [styles.rowItem, ...classes ?? []].join(' ');
-        // eslint-disable-next-line react/display-name
-        return (key: string) => {
+        function colNode(key: string) {
             return isHeader ? <th className={style} key={key}>{value}</th> : <td className={style} key={key}>{value}</td>;
         }
+        return colNode;
     };
 
-    let children = [
+    const children = [
         col(checked, [styles.checkInclude]),
         col(name, [styles.itemName]),
         col(perDay),

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Header from './header'
 import styles from './index.module.css';
-import { QueryContainer } from './(query)/query-container';
+import { QueryContainer } from './(query)/query';
 import { FirmamentContainer } from './(firmament)/firmament-container';
 
 export enum MarketForm {
@@ -11,7 +11,7 @@ export enum MarketForm {
 }
 
 export default function Home() {
-    let [curForm, setForm] = useState(MarketForm.QUERY);
+    const [curForm, setForm] = useState(MarketForm.QUERY);
 
     let form = <div className={styles.error}>Invalid MarketForm value: {curForm}</div>;
     if (curForm == MarketForm.QUERY) {

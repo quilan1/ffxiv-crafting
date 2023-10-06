@@ -2,6 +2,10 @@ export type Mutable<T> = {
     -readonly [k in keyof T]: T[k];
 };
 
+export type KeysMatching<T extends object, V> = {
+    [K in keyof T]-?: T[K] extends V ? K : never
+}[keyof T];
+
 export default class Util {
     static sorted<T>(_arr: Iterable<T>): T[] {
         const arr = [..._arr];
@@ -31,9 +35,9 @@ export default class Util {
         } else if (Array.isArray(obj)) {
             return obj.map(value => Util.cloneDeep(value)) as T;
         } else if (typeof obj === 'object') {
-            const ret = {} as any;
+            const ret = {} as T;
             for (const [key, value] of Object.entries(obj as object)) {
-                ret[key] = this.cloneDeep(value);
+                ret[key as keyof T] = this.cloneDeep(value);
             }
             return ret;
         } else {
@@ -41,12 +45,14 @@ export default class Util {
         }
     }
 
-    static equalsDeep(a: any, b: any): boolean {
+    static equalsDeep<T>(a: T, b: T): boolean {
         if (typeof a !== typeof b) {
             return false;
         }
 
-        if (typeof a === 'string' || typeof a === 'number' || a === null || a === undefined) {
+        if (typeof a === 'string' || typeof a === 'number' || a === null || a === undefined ||
+            typeof b === 'string' || typeof b === 'number' || b === null || b === undefined)
+        {
             return a === b;
         } else if (Array.isArray(a)) {
             if (!Array.isArray(b)) {
@@ -54,8 +60,8 @@ export default class Util {
             }
             return a.length === b.length && a.every((v, i) => this.equalsDeep(v, b[i]));
         } else if (typeof a === 'object' && typeof b === 'object') {
-            let keysA = Object.keys(a);
-            let keysB = Object.keys(b);
+            const keysA = Object.keys(a);
+            const keysB = Object.keys(b);
             keysA.sort();
             keysB.sort();
 
@@ -63,7 +69,7 @@ export default class Util {
                 return false;
             }
 
-            return keysA.every(k => this.equalsDeep(a[k], b[k]));
+            return keysA.every(k => this.equalsDeep(a[k as keyof T], b[k as keyof T]));
         }
 
         return a == b;

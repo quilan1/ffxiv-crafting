@@ -56,11 +56,11 @@ export class OptionType<T> {
         return Some([this.value as T, v.unwrap()]);
     }
 
-    zip_all(...params: OptionType<any>[]): OptionType<any[]> {
+    zip_all<U>(...params: OptionType<U>[]): OptionType<(U|T)[]> {
         if (this._is_none) return None();
         if (params.some(v => v.is_none())) return None();
-        let values = params.map(v => v.unwrap());
-        return Some([this.value, ...values]);
+        const values = params.map(v => v.unwrap());
+        return Some([this.value!, ...values]);
     }
 
     ////////

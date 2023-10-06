@@ -99,8 +99,8 @@ export default class UniversalisRequest {
 
         const universalisInfo = state.recipeJson as UniversalisInfo;
         for (const [id, item] of Object.entries(universalisInfo.item_info)) {
-            item.listings = state.listingInfo.listings[id as any] ?? [];
-            item.history = state.historyInfo.listings[id as any] ?? [];
+            item.listings = state.listingInfo.listings[parseInt(id)] ?? [];
+            item.history = state.historyInfo.listings[parseInt(id)] ?? [];
         }
 
         return universalisInfo;
@@ -133,23 +133,18 @@ export default class UniversalisRequest {
     }
 
     private onMessage(state: UniversalisRequestState, e: MessageEvent) {
-        const checkMember = (obj: any, key: string): boolean => obj[key] !== undefined;
-        const isRecipe = (message: Message): message is MessageRecipe => checkMember(message, "recipe");
-        const isTextStatus = (message: Message): message is MessageTextStatus => checkMember(message, "textStatus");
-        const isDetailedStatus = (message: Message): message is MessageDetailedStatus => checkMember(message, "detailedStatus");
-        const isResult = (message: Message): message is MessageResult => checkMember(message, "result");
-
-        let message: Message = JSON.parse(e.data);
-        if (isRecipe(message)) {
+        const message: Message = JSON.parse(e.data);
+        if ("recipe" in message) {
             this.onMessageRecipe(state, message.recipe);
-        } else if (isTextStatus(message)) {
+        } else if ("textStatus" in message) {
             this.onMessageTextStatus(state, message.textStatus);
-        } else if (isDetailedStatus(message)) {
+        } else if ("detailedStatus" in message) {
             this.onMessageDetailedStatus(state, message.detailedStatus);
-        } else if (isResult(message)) {
+        } else if ("result" in message) {
             this.onMessageResult(state, message.result);
         } else {
-            throw new Error(`Unknown message type: ${message}`);
+            const _check: never = message;
+            throw new Error(`Unknown message type: ${_check}`);
         }
     }
 
@@ -162,25 +157,25 @@ export default class UniversalisRequest {
             state.listingStatus = { status: statusInfo.status };
         } else if (statusInfo.listing_type === "history") {
             state.historyStatus = { status: statusInfo.status };
+        } else {
+            const _check: never = statusInfo.listing_type;
+            throw new Error(`Unknown listing_type: ${_check}`);
         }
         this.updateStatus(state)
     }
 
     private onMessageDetailedStatus(state: UniversalisRequestState, statusInfo: MessageDetailedStatusInfo) {
-        const isActive = (status: DetailedStatus) => status === 'active';
-        const isFinished = (status: DetailedStatus): status is { finished: boolean } => (status as any).finished !== undefined;
-        const isQueued = (status: DetailedStatus): status is { queued: number } => (status as any).queued !== undefined;
-
-        let listings: ListingRequestStatus[] = [];
+        const listings: ListingRequestStatus[] = [];
         for (const status of statusInfo.status) {
-            if (isActive(status)) {
+            if (status === "active") {
                 listings.push({ active: true });
-            } else if (isFinished(status)) {
+            } else if ("finished" in status) {
                 listings.push({ finished: status.finished });
-            } else if (isQueued(status)) {
+            } else if ("queued" in status) {
                 listings.push({ queued: status.queued });
             } else {
-                throw new Error(`Invalid detailed status: ${status}`);
+                const _check: never = status;
+                throw new Error(`Invalid detailed status: ${_check}`);
             }
         }
 
@@ -188,6 +183,9 @@ export default class UniversalisRequest {
             state.listingStatus = { listings };
         } else if (statusInfo.listing_type === "history") {
             state.historyStatus = { listings };
+        } else {
+            const _check: never = statusInfo.listing_type;
+            throw new Error(`Invalid listing_type: ${_check}`);
         }
         this.updateStatus(state)
     }
@@ -199,6 +197,9 @@ export default class UniversalisRequest {
         } else if (listingInfo.listing_type === 'history') {
             state.historyInfo = listingInfo;
             state.historyStatus = { status: 'Done' };
+        } else {
+            const _check: never = listingInfo.listing_type;
+            throw new Error(`Invalid listing_type: ${_check}`);
         }
     }
 }

@@ -1,51 +1,44 @@
-import { ChangeEvent, Dispatch, useReducer, useRef, useState } from 'react';
-import styles from './queries.module.css';
-import UniversalisRequest from './(universalis)/universalis_api';
-import { QueryReducerAction, QueryReducerState, processQuery, queryReducer } from './queries-reducer';
+import { ChangeEvent, useRef, useState } from 'react';
+import styles from './query.module.css';
+import UniversalisRequest from '../(universalis)/universalis_api';
+import { processQuery } from './reducer';
+import QueryContextProvider, { useQueryContext } from './context';
+import { MarketInformation } from './market-information';
+import { WorldInformation } from './world-information';
 
-export function Queries() {
-    const defaultReducerState: QueryReducerState = {
-        query: preparedQueries[0].value,
-        dataCenter: dataCenters[0],
-        count: '100',
-        limit: '',
-        minVelocity: '',
-    };
-    const [queryState, dispatch] = useReducer(queryReducer, processQuery(defaultReducerState.query, defaultReducerState));
+export function QueryContainer() {
+    return (
+        <QueryContextProvider>
+            <QueryPanel />
+            <MarketInformation />
+            {false && <WorldInformation />}
+        </QueryContextProvider>
+    );
+}
+
+export function QueryPanel() {
     return (
         <div className={styles.queries}>
-            <FilterOptions queryState={queryState} dispatch={dispatch} />
-            <FetchButton queryState={queryState} />
+            <FilterOptions />
+            <FetchButton />
             <div className={styles.fetchStatus}><label>Loading Status...</label></div>
         </div>
     )
 }
 
-export function FilterOptions(
-    { queryState, dispatch }:
-        { queryState: QueryReducerState, dispatch: Dispatch<{ type: QueryReducerAction, value: any }> }
-) {
-    const onChangeQuerySelect = (e: ChangeEvent<HTMLSelectElement>) => {
-        dispatch({ type: QueryReducerAction.SET_QUERY, value: e.target.value });
-    }
-    const onChangeDataCenter = (e: ChangeEvent<HTMLSelectElement>) => {
-        dispatch({ type: QueryReducerAction.SET_DATA_CENTER, value: e.target.value });
-    }
-    const onChangeCount = (e: ChangeEvent<HTMLInputElement>) => {
-        dispatch({ type: QueryReducerAction.SET_COUNT, value: e.target.value });
-    }
-    const onChangeLimit = (e: ChangeEvent<HTMLInputElement>) => {
-        dispatch({ type: QueryReducerAction.SET_LIMIT, value: e.target.value });
-    }
-    const onChangeMinVelocity = (e: ChangeEvent<HTMLInputElement>) => {
-        dispatch({ type: QueryReducerAction.SET_MIN_VELOCITY, value: e.target.value });
-    }
+export function FilterOptions() {
+    const state = useQueryContext();
+    const onChangeQuerySelect = (e: ChangeEvent<HTMLSelectElement>) => state.query = e.target.value;
+    const onChangeDataCenter = (e: ChangeEvent<HTMLSelectElement>) => state.dataCenter = e.target.value;
+    const onChangeCount = (e: ChangeEvent<HTMLInputElement>) => state.count = e.target.value;
+    const onChangeLimit = (e: ChangeEvent<HTMLInputElement>) => state.limit = e.target.value;
+    const onChangeMinVelocity = (e: ChangeEvent<HTMLInputElement>) => state.minVelocity = e.target.value;
 
     return (
         <div className={styles.queryOptions}>
             <div className={styles.labelRow}>
                 <label>Query:</label>
-                <input type="text" readOnly value={queryState.query} className={styles.queryString}></input>
+                <input type="text" readOnly value={state.query} className={styles.queryString}></input>
             </div>
             <div className={styles.labelRow}>
                 <label>Examples:</label>
@@ -61,15 +54,15 @@ export function FilterOptions(
             <div className={styles.optionsBlock}>
                 <div><div>
                     <label>Count: </label>
-                    <input type="number" value={queryState.count} onChange={onChangeCount} style={{ width: '3em' }} />
+                    <input type="number" value={state.count} onChange={onChangeCount} style={{ width: '3em' }} />
                 </div></div>
                 <div><div>
                     <label>Limit: </label>
-                    <input type="number" value={queryState.limit} onChange={onChangeLimit} style={{ width: '2.5em' }} />
+                    <input type="number" value={state.limit} onChange={onChangeLimit} style={{ width: '2.5em' }} />
                 </div></div>
                 <div><div>
                     <label>Min Velocity: </label>
-                    <input type="number" value={queryState.minVelocity} onChange={onChangeMinVelocity} style={{ width: '3.5em' }} />
+                    <input type="number" value={state.minVelocity} onChange={onChangeMinVelocity} style={{ width: '3.5em' }} />
                 </div></div>
                 <div><div>
                     <label>Data Center: </label>
@@ -91,9 +84,10 @@ enum FetchState {
     CANCEL = "Cancel",
 }
 
-export function FetchButton({ queryState }: { queryState: QueryReducerState }) {
+export function FetchButton() {
     const [fetchState, setFetchState] = useState(FetchState.FETCH);
     const isCancelled = useRef(false);
+    const state = useQueryContext();
 
     const onClick = async () => {
         if (fetchState == FetchState.FETCH) {
@@ -101,10 +95,11 @@ export function FetchButton({ queryState }: { queryState: QueryReducerState }) {
 
             isCancelled.current = false;
             try {
-                let result = await new UniversalisRequest(queryState.query, queryState.dataCenter)
+                const universalisInfo = await new UniversalisRequest(state.query, state.dataCenter)
                     .setIsCancelled(() => isCancelled.current)
                     .fetch();
-                console.log(result);
+
+                state.universalisInfo = universalisInfo;
             } finally {
                 setFetchState(FetchState.FETCH);
             }
@@ -114,6 +109,20 @@ export function FetchButton({ queryState }: { queryState: QueryReducerState }) {
     };
 
     return <button type="button" className={styles.fetchButton} onClick={onClick}>{fetchState}</button>;
+}
+
+export function defaultQueryState() {
+    const defaultQuery = preparedQueries[0].value;
+    const defaultDataCenter = dataCenters[0];
+    const defaultState = {
+        query: defaultQuery,
+        dataCenter: defaultDataCenter,
+        count: '',
+        limit: '',
+        minVelocity: '',
+        universalisInfo: null
+    };
+    return processQuery(defaultState.query, defaultState);
 }
 
 const preparedQueries = [
