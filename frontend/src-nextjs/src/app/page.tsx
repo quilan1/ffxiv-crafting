@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import Header from './header'
-import styles from './index.module.css';
+import styles from './main.module.css';
 import { QueryContainer } from './(query)/query';
 import { FirmamentContainer } from './(firmament)/firmament-container';
 

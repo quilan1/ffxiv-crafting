@@ -285,8 +285,8 @@ class CustomDlg {
                 continue;
             }
 
-            counts[item.item_id] ??= 0;
-            counts[item.item_id] += count;
+            counts[item.itemId] ??= 0;
+            counts[item.itemId] += count;
         }
 
         // Copy the listings

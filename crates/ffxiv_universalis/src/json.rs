@@ -10,6 +10,7 @@ use crate::json_types::{
 };
 
 #[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ItemListing {
     pub price: u32,
     pub count: u32,

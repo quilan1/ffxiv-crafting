@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import style from './header.module.css';
+import style from './main.module.css';
 import { MarketForm } from './page';
 
 export default function Header(
@@ -25,7 +25,7 @@ export default function Header(
                         key={info.title}
                         title={info.title}
                         isSelected={curSelected == info.form}
-                        setSelection={() => setSelection(info.form)}
+                        setSelection={() => { setSelection(info.form); }}
                     />
                 )
             })}
@@ -33,7 +33,7 @@ export default function Header(
     )
 }
 
-type HeaderSegmentProps = {
+interface HeaderSegmentProps {
     title: string,
     isSelected: boolean,
     setSelection: () => void,

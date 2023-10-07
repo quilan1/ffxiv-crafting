@@ -42,8 +42,8 @@ export default class Statistics {
 function generateQuality<T, O>(name: string, listings: Listing[], filter_fns: ((item: Listing) => boolean)[], map_fn: (item: Listing) => T, reduce_fn: (items: T[]) => O): Quality<O> | undefined {
     if (listings.length === 0) return undefined;
 
-    const isHq = (item: Listing) => item.is_hq;
-    const isNq = (item: Listing) => !item.is_hq;
+    const isHq = (item: Listing) => item.isHq;
+    const isNq = (item: Listing) => !item.isHq;
 
     return {
         aq: reduceListings(`${name} aq`, listings, filter_fns, map_fn, reduce_fn) as O,

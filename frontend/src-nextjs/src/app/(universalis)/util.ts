@@ -13,18 +13,6 @@ export default class Util {
         return arr;
     }
 
-    static fixFlexOverflow() {
-        const overflowElems = document.querySelectorAll('.table-scroll');
-        for (const elem of overflowElems) {
-            let node = elem.parentNode as HTMLElement;
-            while (node) {
-                if (node.tagName === 'BODY') break;
-                node.style.minHeight = '0px';
-                node = node.parentNode as HTMLElement;
-            }
-        }
-    }
-
     static equals<T>(a: T[], b: T[]) {
         return a.length === b.length && a.every((v, i) => v === b[i]);
     }
@@ -33,10 +21,11 @@ export default class Util {
         if (typeof obj === 'string' || typeof obj === 'number' || obj === null || obj === undefined) {
             return obj;
         } else if (Array.isArray(obj)) {
-            return obj.map(value => Util.cloneDeep(value)) as T;
+            return obj.map(value => this.cloneDeep(value as unknown)) as T;
         } else if (typeof obj === 'object') {
             const ret = {} as T;
             for (const [key, value] of Object.entries(obj as object)) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 ret[key as keyof T] = this.cloneDeep(value);
             }
             return ret;
@@ -108,7 +97,7 @@ export default class Util {
             'Lamia': 'Primal',
             'Leviathan': 'Primal',
             'Ultros': 'Primal',
-        }[world] as string;
+        }[world] ?? "<UNKNOWN>" as string;
     }
 
     static sleep(ms: number) {

@@ -1,4 +1,4 @@
-import './global.css';
+import styles from './main.module.css';
 
 export const metadata = {
     title: 'FFXIV Crafting',
@@ -12,7 +12,7 @@ export default function RootLayout({
 }) {
     return (
         <html lang="en">
-            <body>{children}</body>
+            <body className={styles.body}>{children}</body>
         </html>
     )
 }

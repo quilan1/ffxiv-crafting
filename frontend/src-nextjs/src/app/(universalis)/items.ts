@@ -1,27 +1,27 @@
 export type Id = number;
 export type IdChain = number[];
 
-export type RecipeData = {
-    item_id: Id,
+export interface Ingredient {
+    itemId: Id,
     count: number,
 }
 
-export type Recipe = {
-    inputs: RecipeData[],
+export interface Recipe {
+    inputs: Ingredient[],
     outputs: number,
 }
 
-export type Listing = {
+export interface Listing {
     price: number,
     count: number,
-    is_hq: boolean,
+    isHq: boolean,
     world?: string,
     name?: string,
     posting: number,
 }
 
-export type ItemInfo = {
-    item_id: number,
+export interface ItemInfo {
+    itemId: number,
     name: string,
     listings: Listing[],
     history: Listing[],

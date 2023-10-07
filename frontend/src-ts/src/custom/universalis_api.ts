@@ -24,7 +24,7 @@ type Message = {
 }
 
 type Listing = {
-    listing_type: string;
+    listingType: string;
 }
 
 type TextStatus = Listing & {
@@ -76,10 +76,10 @@ export default class UniversalisRequest {
             if (state.serverError != null) {
                 throw new Error(`Server error: ${state.serverError}`);
             }
-            return { item_info: {}, top_ids: [], failure_ids: [] };
+            return { itemInfo: {}, topIds: [], failureIds: [] };
         }
 
-        for (const [id, item] of Object.entries(state.recipeInfo.item_info)) {
+        for (const [id, item] of Object.entries(state.recipeInfo.itemInfo)) {
             item.listings = state.listingInfo.listings[id as any] ?? [];
             item.history = state.historyInfo.listings[id as any] ?? [];
         }
@@ -132,9 +132,9 @@ export default class UniversalisRequest {
     }
 
     private onMessageTextStatus(state: UniversalisRequestState, statusInfo: TextStatus) {
-        if (statusInfo.listing_type === "listing") {
+        if (statusInfo.listingType === "listing") {
             state.listingStatus = statusInfo.status;
-        } else if (statusInfo.listing_type === "history") {
+        } else if (statusInfo.listingType === "history") {
             state.historyStatus = statusInfo.status;
         }
         this.updateStatus(state)
@@ -163,19 +163,19 @@ export default class UniversalisRequest {
         const queuedText = hasActive ? "" : `<div style="margin-left: 10px">Queued: #${queue}</div>`;
 
         const statusString = output.join("") + queuedText;
-        if (statusInfo.listing_type === "listing") {
+        if (statusInfo.listingType === "listing") {
             state.listingStatus = statusString;
-        } else if (statusInfo.listing_type === "history") {
+        } else if (statusInfo.listingType === "history") {
             state.historyStatus = statusString;
         }
         this.updateStatus(state)
     }
 
     private onMessageResult(state: UniversalisRequestState, listingInfo: Result) {
-        if (listingInfo.listing_type === "listing") {
+        if (listingInfo.listingType === "listing") {
             state.listingInfo = listingInfo;
             state.listingStatus = "Done";
-        } else if (listingInfo.listing_type === "history") {
+        } else if (listingInfo.listingType === "history") {
             state.historyInfo = listingInfo;
             state.historyStatus = "Done";
         }

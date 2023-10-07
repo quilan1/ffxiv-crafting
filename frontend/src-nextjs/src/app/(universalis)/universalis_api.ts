@@ -1,4 +1,5 @@
-import { Id, ItemInfo, Listing } from "./items";
+import { Id, ItemInfo } from "./items";
+import { Validate, MessageResultInfo, RecipeJson, MessageTextStatusInfo, MessageDetailedStatusInfo } from "./universalis_api_json";
 import Util from "./util";
 
 export class CancelError extends Error {
@@ -12,21 +13,13 @@ export type ListingRequestStatus = { active: boolean } | { finished: boolean } |
 export type ListingStatus = { status: string } | { listings: ListingRequestStatus[] };
 export type ListingStatusInfo = { status: string } | { listingStatus: ListingStatus, historyStatus: ListingStatus };
 
-export type UniversalisInfo = {
-    item_info: Record<Id, ItemInfo>,
-    top_ids: number[],
-    failure_ids: number[],
+export interface UniversalisInfo {
+    itemInfo: Record<Id, ItemInfo>,
+    topIds: number[],
+    failureIds: number[],
 }
 
-type RecipeJson = {
-    item_info: Record<Id, {
-        item_id: number,
-        name: string,
-    }>,
-    top_ids: number[],
-}
-
-type UniversalisRequestState = {
+interface UniversalisRequestState {
     socket: WebSocket;
     isProcessing: boolean;
     listingStatus?: ListingStatus;
@@ -37,23 +30,11 @@ type UniversalisRequestState = {
     serverError?: string;
 }
 
-type MessageListing = { listing_type: 'listing' | 'history' };
-type MessageRecipe = { recipe: RecipeJson };
-type MessageDetailedStatus = { detailedStatus: MessageDetailedStatusInfo };
-type MessageDetailedStatusInfo = MessageListing & { status: DetailedStatus[] };
-type DetailedStatus = 'active' | { finished: boolean } | { queued: number };
-type MessageTextStatus = { textStatus: MessageTextStatusInfo };
-type MessageTextStatusInfo = MessageListing & { status: string };
-type MessageResult = { result: MessageResultInfo };
-type MessageResultInfo = MessageListing & ListingResults;
-type ListingResults = { failures: number[], listings: Record<number, Listing[]> };
-
-type Message = MessageRecipe | MessageDetailedStatus | MessageTextStatus | MessageResult;
-
 type ListingStatusFn = (_: ListingStatusInfo) => void;
 type IsCancelledFn = () => boolean;
 
 export default class UniversalisRequest {
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
     private statusFn: ListingStatusFn = () => { };
     private isCancelledFn: IsCancelledFn = () => false;
     private searchFilter: string;
@@ -80,13 +61,13 @@ export default class UniversalisRequest {
         const state: UniversalisRequestState = { socket, isProcessing: true };
 
         const recipePayload = JSON.stringify({ filters: this.searchFilter, data_center: this.dataCenter, retain_num_days: 14.0 });
-        socket.addEventListener("open", () => socket.send(recipePayload));
-        socket.addEventListener("close", e => this.onClose(state, e));
-        socket.addEventListener("message", e => this.onMessage(state, e));
+        socket.addEventListener("open", () => { socket.send(recipePayload); });
+        socket.addEventListener("close", e => { this.onClose(state, e); });
+        socket.addEventListener("message", e => { this.onMessage(state, e); });
 
         while (state.isProcessing) {
             await Util.sleep(100);
-            await this.checkCancel(state);
+            this.checkCancel(state);
         }
 
         this.statusFn({ status: '' });
@@ -98,7 +79,7 @@ export default class UniversalisRequest {
         }
 
         const universalisInfo = state.recipeJson as UniversalisInfo;
-        for (const [id, item] of Object.entries(universalisInfo.item_info)) {
+        for (const [id, item] of Object.entries(universalisInfo.itemInfo)) {
             item.listings = state.listingInfo.listings[parseInt(id)] ?? [];
             item.history = state.historyInfo.listings[parseInt(id)] ?? [];
         }
@@ -111,9 +92,7 @@ export default class UniversalisRequest {
     }
 
     private checkCancel(state: UniversalisRequestState) {
-        if (this.isCancelledFn() !== true)
-            return;
-
+        if (!this.isCancelledFn()) return;
         this.statusFn({ status: '' });
         state.socket.close();
         state.isProcessing = false;
@@ -133,19 +112,17 @@ export default class UniversalisRequest {
     }
 
     private onMessage(state: UniversalisRequestState, e: MessageEvent) {
-        const message: Message = JSON.parse(e.data);
-        if ("recipe" in message) {
+        const message = JSON.parse(e.data as string) as unknown;
+        Validate.assertIsMessage(message);
+        if (Validate.isMessageRecipe(message)) {
             this.onMessageRecipe(state, message.recipe);
-        } else if ("textStatus" in message) {
+        } else if (Validate.isMessageTextStatus(message)) {
             this.onMessageTextStatus(state, message.textStatus);
-        } else if ("detailedStatus" in message) {
+        } else if (Validate.isMessageDetailedStatus(message)) {
             this.onMessageDetailedStatus(state, message.detailedStatus);
-        } else if ("result" in message) {
+        } else if (Validate.isMessageResult(message)) {
             this.onMessageResult(state, message.result);
-        } else {
-            const _check: never = message;
-            throw new Error(`Unknown message type: ${_check}`);
-        }
+        } else { const _: never = message; }
     }
 
     private onMessageRecipe(state: UniversalisRequestState, recipeJson: RecipeJson) {
@@ -153,53 +130,46 @@ export default class UniversalisRequest {
     }
 
     private onMessageTextStatus(state: UniversalisRequestState, statusInfo: MessageTextStatusInfo) {
-        if (statusInfo.listing_type === "listing") {
+        Validate.assertIsMessageListing(statusInfo);
+        if (statusInfo.listingType === "listing") {
             state.listingStatus = { status: statusInfo.status };
-        } else if (statusInfo.listing_type === "history") {
-            state.historyStatus = { status: statusInfo.status };
         } else {
-            const _check: never = statusInfo.listing_type;
-            throw new Error(`Unknown listing_type: ${_check}`);
+            state.historyStatus = { status: statusInfo.status };
         }
         this.updateStatus(state)
     }
 
     private onMessageDetailedStatus(state: UniversalisRequestState, statusInfo: MessageDetailedStatusInfo) {
+        Validate.assertIsMessageListing(statusInfo);
+
         const listings: ListingRequestStatus[] = [];
         for (const status of statusInfo.status) {
-            if (status === "active") {
+            Validate.assertIsDetailedStatus(status);
+            if (Validate.isDetailedStatusActive(status)) {
                 listings.push({ active: true });
-            } else if ("finished" in status) {
+            } else if (Validate.isDetailedStatusFinished(status)) {
                 listings.push({ finished: status.finished });
-            } else if ("queued" in status) {
+            } else if (Validate.isDetailedStatusQueued(status)) {
                 listings.push({ queued: status.queued });
-            } else {
-                const _check: never = status;
-                throw new Error(`Invalid detailed status: ${_check}`);
-            }
+            } else { const _: never = status; }
         }
 
-        if (statusInfo.listing_type === "listing") {
+        if (statusInfo.listingType === "listing") {
             state.listingStatus = { listings };
-        } else if (statusInfo.listing_type === "history") {
-            state.historyStatus = { listings };
         } else {
-            const _check: never = statusInfo.listing_type;
-            throw new Error(`Invalid listing_type: ${_check}`);
+            state.historyStatus = { listings };
         }
         this.updateStatus(state)
     }
 
     private onMessageResult(state: UniversalisRequestState, listingInfo: MessageResultInfo) {
-        if (listingInfo.listing_type === 'listing') {
+        Validate.assertIsMessageListing(listingInfo);
+        if (listingInfo.listingType === 'listing') {
             state.listingInfo = listingInfo;
             state.listingStatus = { status: 'Done' };
-        } else if (listingInfo.listing_type === 'history') {
+        } else {
             state.historyInfo = listingInfo;
             state.historyStatus = { status: 'Done' };
-        } else {
-            const _check: never = listingInfo.listing_type;
-            throw new Error(`Invalid listing_type: ${_check}`);
         }
     }
 }

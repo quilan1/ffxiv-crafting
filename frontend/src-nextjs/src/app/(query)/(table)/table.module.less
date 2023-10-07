@@ -1,0 +1,67 @@
+@import '../../colors.less';
+
+.marketInfo {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid @color-fg-border;
+    min-height: 0px;
+
+    label {
+        color: @color-fg-label
+    }
+}
+
+.tableContainer {
+    overflow: auto;
+    max-height: 100%;
+}
+
+.informationTable {
+    border: 1px solid black;
+    width: 100%;
+    border-collapse: collapse;
+
+    .tableRow {
+        width: 100%;
+        background-color: @color-bg-table
+    }
+
+    .heading {
+        background-color: @color-bg-table-header;
+        border-bottom: 1px solid black;
+    }
+
+    .rowItem {
+        text-align: center;
+    }
+
+    td.name {
+        width: 40%;
+        text-align: left;
+        padding-left: 1em;
+        padding-right: 1em;
+    }
+
+    td {
+        border: unset;
+        border-bottom: 1px solid black;
+    }
+
+    .leftBorder {
+        border-left: 1px solid black;
+    }
+
+    .rightBorder {
+        border-right: 1px solid black;
+    }
+
+    td.velocity {
+        background-color: darken(@color-bg-table, 10%);
+    }
+
+    td.costs {
+        background-color: darken(@color-bg-table, 10%);
+    }
+
+    //.profit { }
+}

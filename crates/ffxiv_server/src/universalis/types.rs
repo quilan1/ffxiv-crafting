@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 ////////////////////////////////////////////////////////////
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Input {
     pub filters: String,
     pub data_center: Option<String>,
@@ -17,19 +18,23 @@ pub struct Input {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Output {
+    #[serde(rename_all = "camelCase")]
     Recipe {
         top_ids: Vec<u32>,
         item_info: BTreeMap<u32, ItemInfo>,
     },
+    #[serde(rename_all = "camelCase")]
     Result {
         listing_type: String,
         listings: ItemMarketInfoMap,
         failures: Vec<u32>,
     },
+    #[serde(rename_all = "camelCase")]
     TextStatus {
         listing_type: String,
         status: String,
     },
+    #[serde(rename_all = "camelCase")]
     DetailedStatus {
         listing_type: String,
         status: Vec<DetailedStatus>,
@@ -57,6 +62,7 @@ impl From<UniversalisProcessorState> for DetailedStatus {
 ////////////////////////////////////////////////////////////
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ItemInfo {
     pub item_id: u32,
     pub name: String,
@@ -71,6 +77,7 @@ pub struct Recipe {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Ingredient {
     pub item_id: u32,
     pub count: u32,

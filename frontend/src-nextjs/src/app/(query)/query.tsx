@@ -3,15 +3,15 @@ import styles from './query.module.css';
 import UniversalisRequest from '../(universalis)/universalis_api';
 import { processQuery } from './reducer';
 import QueryContextProvider, { useQueryContext } from './context';
-import { MarketInformation } from './market-information';
-import { WorldInformation } from './world-information';
+import { MarketInformation } from './(table)/table';
+// import { WorldInformation } from './world-information';
 
 export function QueryContainer() {
     return (
         <QueryContextProvider>
             <QueryPanel />
             <MarketInformation />
-            {false && <WorldInformation />}
+            {/* <WorldInformation /> */}
         </QueryContextProvider>
     );
 }
@@ -89,23 +89,25 @@ export function FetchButton() {
     const isCancelled = useRef(false);
     const state = useQueryContext();
 
-    const onClick = async () => {
-        if (fetchState == FetchState.FETCH) {
-            setFetchState(FetchState.CANCEL);
+    const onClick = () => {
+        void (async () => {
+            if (fetchState == FetchState.FETCH) {
+                setFetchState(FetchState.CANCEL);
 
-            isCancelled.current = false;
-            try {
-                const universalisInfo = await new UniversalisRequest(state.query, state.dataCenter)
-                    .setIsCancelled(() => isCancelled.current)
-                    .fetch();
+                isCancelled.current = false;
+                try {
+                    const universalisInfo = await new UniversalisRequest(state.query, state.dataCenter)
+                        .setIsCancelled(() => isCancelled.current)
+                        .fetch();
 
-                state.universalisInfo = universalisInfo;
-            } finally {
-                setFetchState(FetchState.FETCH);
+                    state.universalisInfo = universalisInfo;
+                } finally {
+                    setFetchState(FetchState.FETCH);
+                }
+            } else {
+                isCancelled.current = true;
             }
-        } else {
-            isCancelled.current = true;
-        }
+        })();
     };
 
     return <button type="button" className={styles.fetchButton} onClick={onClick}>{fetchState}</button>;
@@ -120,7 +122,8 @@ export function defaultQueryState() {
         count: '',
         limit: '',
         minVelocity: '',
-        universalisInfo: null
+        universalisInfo: null,
+        tableRows: null,
     };
     return processQuery(defaultState.query, defaultState);
 }

@@ -9,7 +9,7 @@ export type Id = number;
 export type IdChain = number[];
 
 export type RecipeData = {
-    item_id: Id,
+    itemId: Id,
     count: number,
 }
 
@@ -21,14 +21,14 @@ export type Recipe = {
 export type Listing = {
     price: number,
     count: number,
-    is_hq: boolean,
+    isHq: boolean,
     world: string,
     name: string,
     posting: number,
 }
 
 export type ItemInfo = {
-    item_id: number,
+    itemId: number,
     name: string,
     listings: Listing[],
     history: Listing[],
@@ -38,26 +38,26 @@ export type ItemInfo = {
 }
 
 export type CustomInfoJson = {
-    item_info: Record<Id, ItemInfo>,
-    top_ids: number[],
-    failure_ids: number[],
+    itemInfo: Record<Id, ItemInfo>,
+    topIds: number[],
+    failureIds: number[],
 }
 
 export type CustomInfoLazyJson = {
     id: string,
     status?: string,
-    output_info?: CustomInfoJson,
+    outputInfo?: CustomInfoJson,
 }
 
 export type RecipeJson = {
-    top_ids: number[],
-    item_info: Record<Id, ItemInfo>,
+    topIds: number[],
+    itemInfo: Record<Id, ItemInfo>,
 };
 
 export type ListingJson = {
     id: string,
     status?: string,
-    output_info?: {
+    outputInfo?: {
         failures: number[],
         listings: Record<number, Listing[]>,
     }
@@ -83,8 +83,8 @@ export default class CustomInfo {
     readonly rec_statistics: RecStatisticsCollection;
 
     constructor(json: CustomInfoJson, count: number) {
-        this.item_info = json.item_info;
-        this.top_ids = json.top_ids;
+        this.item_info = json.itemInfo;
+        this.top_ids = json.topIds;
         this.rec_statistics = new RecStatisticsCollection();
         this.calcRecStatistics(count);
     }
@@ -101,9 +101,9 @@ export default class CustomInfo {
     }
 
     private static customInfoFromJson(info: CustomInfoJson, count: number): CustomInfo {
-        info.item_info = Object.fromEntries(Object.entries(info.item_info).map(([key, value]) => [Number.parseInt(key), value]));
+        info.itemInfo = Object.fromEntries(Object.entries(info.itemInfo).map(([key, value]) => [Number.parseInt(key), value]));
 
-        for (const [_, item] of Object.entries(info.item_info)) {
+        for (const [_, item] of Object.entries(info.itemInfo)) {
             if (item.recipe === null) {
                 delete item.recipe;
             }

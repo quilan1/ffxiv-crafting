@@ -1,14 +1,17 @@
 import { Dispatch } from "react";
 import { UniversalisInfo } from "../(universalis)/universalis_api";
 import { KeysMatching } from "../(universalis)/util";
+import { KeyedTableRow } from "./(table)/table";
+import UniversalisAnalysis from "../(universalis)/analysis";
 
-export type QueryState = {
+export interface QueryState {
     query: string,
     dataCenter: string,
     count: string,
     limit: string,
     minVelocity: string,
     universalisInfo: UniversalisInfo | null,
+    tableRows: KeyedTableRow[] | null,
 }
 
 export enum QueryReducerAction {
@@ -20,7 +23,7 @@ export enum QueryReducerAction {
     SET_UNIVERSALIS_INFO,
 }
 
-type ValidDispatchType<Action, Value> = { type: Action, value: Value };
+interface ValidDispatchType<Action, Value> { type: Action, value: Value };
 type ValidDispatch =
     ValidDispatchType<QueryReducerAction.SET_QUERY, string>
     | ValidDispatchType<QueryReducerAction.SET_COUNT, string>
@@ -42,7 +45,14 @@ export function QueryReducer(state: QueryState, action: ValidDispatch): QuerySta
         case QueryReducerAction.SET_MIN_VELOCITY:
             return { ...state, minVelocity: action.value };
         case QueryReducerAction.SET_UNIVERSALIS_INFO:
-            return { ...state, universalisInfo: action.value };
+            const universalisInfo = action.value;
+            const analysis = new UniversalisAnalysis(universalisInfo);
+            const _count = parseInt(state.count);
+            const count = Number.isNaN(_count) ? 1 : _count;
+            const _limit = parseInt(state.limit);
+            const limit = Number.isNaN(_limit) ? 100 : _limit;
+            const tableRows = analysis.generateTableData(count, limit);
+            return { ...state, universalisInfo, tableRows };
         default:
             return state;
     }
@@ -70,6 +80,7 @@ export class QueryDispatcher {
     set universalisInfo(value: UniversalisInfo | null) {
         if (value !== null) this.dispatch({ type: QueryReducerAction.SET_UNIVERSALIS_INFO, value });
     }
+    get tableRows() { return this.state.tableRows; }
 }
 
 export function processQuery(queryString: string, state: QueryState): QueryState {

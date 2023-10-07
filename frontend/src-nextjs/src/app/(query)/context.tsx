@@ -3,7 +3,7 @@ import { UniversalisInfo } from "../(universalis)/universalis_api";
 import { QueryReducer, QueryDispatcher } from "./reducer";
 import { defaultQueryState } from "./query";
 
-export type QueryState = {
+export interface QueryState {
     query: string,
     dataCenter: string,
     count: string,

@@ -122,7 +122,7 @@ export default class RecStatistics {
     readonly count: number;
 
     private constructor(ingredient: RecipeData, allItems: Record<Id, ItemInfo>, multiplier: number) {
-        this.item = allItems[ingredient.item_id];
+        this.item = allItems[ingredient.itemId];
         if (this.item === undefined) {
             throw new Error('Invalid item id');
         }
@@ -142,7 +142,7 @@ export default class RecStatistics {
         this.inputs = new RecStatisticsCollection();
         let minCraftPrice = undefined;
         for (const recipeData of recipe.inputs) {
-            const inputItem = allItems[recipeData.item_id];
+            const inputItem = allItems[recipeData.itemId];
             if (inputItem === undefined) {
                 continue;
             }
@@ -156,7 +156,7 @@ export default class RecStatistics {
                 continue;
             }
 
-            this.inputs.set(recipeData.item_id, childRecStatistics);
+            this.inputs.set(recipeData.itemId, childRecStatistics);
             if (childRecStatistics.minBuyPrice === undefined && childRecStatistics.minCraftPrice === undefined) {
                 continue;
             }
@@ -173,7 +173,7 @@ export default class RecStatistics {
 
     static from(id: Id, count: number, allItems: Record<Id, ItemInfo>): RecStatistics | undefined {
         try {
-            return new RecStatistics({ item_id: id, count }, allItems, 1);
+            return new RecStatistics({ itemId: id, count }, allItems, 1);
         } catch(_) {
             return undefined;
         }

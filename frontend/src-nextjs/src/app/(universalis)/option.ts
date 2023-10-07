@@ -1,82 +1,84 @@
 type FnOpt<T, U> = (_: T) => OptionType<U>;
 type Fn<T, U> = (_: T) => U;
 
+interface HasData<T> { value: NonNullable<T> };
+
 export class OptionType<T> {
     private _is_none: boolean;
-    private value?: T;
+    protected value?: T;
 
     constructor(is_none: boolean, value?: T) {
         this._is_none = is_none;
         this.value = value;
     }
 
-    is_some(): boolean {
+    is_some(): this is HasData<T> {
         return !this._is_none;
-    }
-
-    is_none(): boolean {
-        return this._is_none;
     }
 
     ////////
 
     map<U>(f: FnOpt<T, U>): OptionType<U> {
-        if (this._is_none) return None();
-        return f(this.value as T);
+        if (!this.is_some()) return None();
+        return f(this.value);
     }
 
     map_or<U>(d: U, f: Fn<T, U>): OptionType<U> {
-        if (this._is_none) return Some(d);
-        return Some(f(this.value as T));
+        if (!this.is_some()) return Some(d);
+        return Some(f(this.value));
     }
 
     and<U>(v: OptionType<U>): OptionType<U> {
-        if (this._is_none) return None();
+        if (!this.is_some()) return None();
         return v;
     }
 
     and_then<U>(f: FnOpt<T, U>): OptionType<U> {
-        if (this._is_none) return None();
-        return f(this.value as T);
+        if (!this.is_some()) return None();
+        return f(this.value);
     }
 
     flatmap<U>(f: FnOpt<T, U>): OptionType<U> {
-        if (this._is_none) return None();
-        return f(this.value as T);
+        if (!this.is_some()) return None();
+        return f(this.value);
     }
 
     or(v: OptionType<T>): OptionType<T> {
-        if (this._is_none) return v;
-        return Some(this.value as T);
+        if (!this.is_some()) return v;
+        return Some(this.value);
     }
 
     zip<U>(v: OptionType<U>): OptionType<[T, U]> {
-        if (this._is_none) return None();
-        if (v._is_none) return None();
+        if (!this.is_some()) return None();
+        if (!v.is_some()) return None();
         return Some([this.value as T, v.unwrap()]);
     }
 
     zip_all<U>(...params: OptionType<U>[]): OptionType<(U|T)[]> {
-        if (this._is_none) return None();
-        if (params.some(v => v.is_none())) return None();
-        const values = params.map(v => v.unwrap());
-        return Some([this.value!, ...values]);
+        if (!this.is_some()) return None();
+        if (params.some(v => !v.is_some())) return None();
+        const values = params.map(v => v.unwrap_unchecked());
+        return Some([this.value, ...values]);
     }
 
     ////////
 
     expect(msg: string): T {
-        if (this._is_none) throw new Error(msg);
-        return this.value!;
+        if (!this.is_some()) throw new Error(msg);
+        return this.value;
     }
 
-    unwrap(): T {
+    unwrap(this: this extends HasData<T> ? this : never): T {
+        return this.unwrap_unchecked();
+    }
+
+    unwrap_unchecked(): T {
         return this.expect("Attempting to unwrap a None value");
     }
 
     unwrap_or(v: T): T {
-        if (this._is_none) return v;
-        return this.value!;
+        if (!this.is_some()) return v;
+        return this.value;
     }
 }
 
