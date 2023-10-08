@@ -1,87 +1,100 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { KeyedTableRow } from "../(query)/(table)/table";
+import { ItemInfo } from "./items";
 import { None, OptionType, Some } from "./option";
 import { Statistics, statisticsOf } from "./statistics";
 import { UniversalisInfo } from "./universalis_api"
 
-type ItemCounts<T = number> = Record<number, T>;
+type ItemStats = Record<number, Statistics>;
+type ItemInfos = Record<number, ItemInfo>;
+interface CraftInfo { key: number[], itemId: number, count: number };
+type KeyedProfitStats = CraftInfo & ProfitStats;
+interface TopProfitStats { top: KeyedProfitStats, children: KeyedProfitStats[] };
 
-export default class UniversalisAnalysis {
-    private info: UniversalisInfo;
+export interface RecursiveStats {
+    itemStats: ItemStats,
+    topProfitStats: TopProfitStats[],
+}
 
-    constructor(info: UniversalisInfo) {
-        this.info = info;
+interface ProfitStats {
+    sell: OptionType<number>,
+    buy: OptionType<number>,
+    craft: OptionType<number>,
+    profit: OptionType<number>,
+}
+
+interface ChildStats {
+    itemId: number,
+    count: number,
+    stats: ProfitStats,
+    childStats: ChildStats[],
+}
+
+export const allRecursiveStatsOf = (count: number, info: UniversalisInfo): RecursiveStats => {
+    const allIds = allIdsOf(info);
+    const itemStats = allIds
+        .reduce<ItemStats>((prev, itemId) => ({ ...prev, [itemId]: statisticsOf(info.itemInfo[itemId]) }), {});
+    const itemInfos = info.itemInfo;
+
+    const topProfitStats = [];
+    for (const itemId of info.topIds) {
+        const childStats = recursiveStatsOf(itemId, count, itemInfos, itemStats);
+        const [top, ...children] = flattenChildStats(childStats);
+        topProfitStats.push({ top, children });
     }
 
-    generateTableData(_count: OptionType<number>, _limit: OptionType<number>, _minVelocity: OptionType<number>): KeyedTableRow[] {
-        const _toFixed = (v: number) => v.toFixed(2);
-        const _toString = (v: number) => Math.floor(v).toString();
+    return { itemStats, topProfitStats };
+}
 
-        const count = _count.unwrap_or(1);
-        const limit = _limit.unwrap_or(1000);
-        const minVelocity = _minVelocity.unwrap_or(0);
-
-        let items = this.info.topIds.map(id => ({ item: this.info.itemInfo[id], stats: statisticsOf(this.info.itemInfo[id]) }));
-        items.sort(({ stats: a }, { stats: b }) => {
-            const aProfit = profit(a.buyPrice.aq, a.sellPrice.aq);
-            const bProfit = profit(b.buyPrice.aq, b.sellPrice.aq);
-            const LOW = Number.MIN_SAFE_INTEGER;
-            return aProfit.zip(bProfit.or(Some(LOW))).map(([a, b]) => a - b).unwrap_or(LOW);
-        });
-        items.reverse();
-        items = items.filter(({stats}) => maxVelocity(stats) >= minVelocity);
-        items = items.slice(0, limit);
-
-        const rows = [];
-        for (const { item, stats } of items) {
-            const quantity = count > 1 ? `${count}x ` : '';
-            rows.push({
-                key: `${item.itemId}`,
-                row: {
-                    name: `${quantity}${item.name}`,
-                    checked: false,
-                    hidden: false,
-                    perDay: stats.velocityDay.aq.map(_toFixed).unwrap_or('-'),
-                    perWeek: stats.velocityWeek.aq.map(_toFixed).unwrap_or('-'),
-                    perBiWeek: stats.velocityWeeks.aq.map(_toFixed).unwrap_or('-'),
-                    count: stats.sellCount.aq.map(_toFixed).unwrap_or('-'),
-                    sell: stats.sellPrice.aq,
-                    buy: stats.buyPrice.aq,
-                    craft: '-',
-                    profit: profit(stats.buyPrice.aq, stats.sellPrice.aq).map(_toString).unwrap_or('-'),
-                }
-            });
+const flattenChildStats = (childStats: ChildStats, parents?: number[]): KeyedProfitStats[] => {
+    const key = (parents == undefined) ? [childStats.itemId] : [...parents, childStats.itemId];
+    const results = [{ key, itemId: childStats.itemId, count: childStats.count, ...childStats.stats }];
+    for (const child of childStats.childStats) {
+        for (const flattenedStats of flattenChildStats(child, key)) {
+            results.push(flattenedStats);
         }
-
-        return rows.map(row => ({
-            key: row.key,
-            row: {
-                ...row.row,
-                sell: row.row.sell.map(_toString).unwrap_or('-'),
-                buy: row.row.buy.map(_toString).unwrap_or('-'),
-            }
-        })).slice(0, limit);
     }
+    return results;
+}
 
-    private itemCountsForId(itemId: number, count: number): ItemCounts {
-        const totalCounts: ItemCounts<number | undefined> = {};
+const recursiveStatsOf = (itemId: number, count: number, itemInfos: ItemInfos, itemStats: ItemStats): ChildStats => {
+    const recipe = itemInfos[itemId].recipe;
+    const numOutputs = recipe?.outputs ?? 1;
+    const numCrafts = Math.floor((count + numOutputs - 1) / numOutputs);
+    const childStats = recipe?.inputs.map(input => recursiveStatsOf(input.itemId, input.count * numCrafts, itemInfos, itemStats)) ?? [];
 
-        const info = this.info;
-        function recurseCounts(itemId: number, multiplier: number) {
-            totalCounts[itemId] = (totalCounts[itemId] ?? 0) + multiplier;
+    // TODO: generate based on children, not just itself
+    const _stats = itemStats[itemId];
+    const sell = _stats.sellPrice.aq.map(v => v * numCrafts);
+    const buy = _stats.buyPrice.aq.map(v => v * numCrafts);
+    const stats = {
+        sell,
+        buy,
+        craft: None(),
+        profit: profit(buy, sell),
+    };
 
-            const recipe = info.itemInfo[itemId].recipe;
-            if (!recipe) return;
+    return {
+        itemId,
+        count: numCrafts,
+        stats,
+        childStats,
+    }
+}
 
-            const numCrafts = Math.floor((multiplier + recipe.outputs - 1) / recipe.outputs);
-            for (const { itemId, count } of recipe.inputs) {
-                recurseCounts(itemId, count * numCrafts);
-            }
+const allIdsOf = (info: UniversalisInfo, itemId?: number): number[] => {
+    const childIds: number[] = (itemId === undefined)
+        ? info.topIds
+        : (info.itemInfo[itemId].recipe === undefined)
+            ? []
+            : info.itemInfo[itemId].recipe?.inputs.map(ingredient => ingredient.itemId) ?? [];
+
+    const results = new Set<number>();
+    for (const childId of childIds) {
+        results.add(childId);
+        for (const id of allIdsOf(info, childId)) {
+            results.add(id);
         }
-
-        recurseCounts(itemId, count);
-        return totalCounts as ItemCounts;
     }
+    return [...results].toSorted((a, b) => a - b);
 }
 
 const profit = (buy: OptionType<number>, sell: OptionType<number>): OptionType<number> => {
@@ -90,13 +103,14 @@ const profit = (buy: OptionType<number>, sell: OptionType<number>): OptionType<n
     return sellBuy.or(buySell).map(([sell, buy]) => sell - buy);
 }
 
-const maxVelocity = (stats: Statistics) => {
-    const arr = [
-        stats.velocityDay.aq.unwrap_or(0),
-        stats.velocityWeek.aq.unwrap_or(0),
-        stats.velocityWeeks.aq.unwrap_or(0)
-    ].filter(v => v > 0);
+export interface BuySell {
+    buy: OptionType<number>,
+    sell: OptionType<number>,
+}
 
-    if (arr.length == 0) return 0;
-    return arr.reduce((a,b) => Math.max(a,b));
+export const sortByProfit = (a: BuySell, b: BuySell) => {
+    const aProfit = profit(a.buy, a.sell);
+    const bProfit = profit(b.buy, b.sell);
+    const LOW = Number.MIN_SAFE_INTEGER;
+    return aProfit.zip(bProfit.or(Some(LOW))).map(([a, b]) => a - b).unwrap_or(LOW);
 }

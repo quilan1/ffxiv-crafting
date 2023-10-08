@@ -1,16 +1,5 @@
 import { ReactNode, createContext, useContext, useReducer } from "react";
-import { UniversalisInfo } from "../(universalis)/universalis_api";
-import { QueryReducer, QueryDispatcher } from "./reducer";
-import { defaultQueryState } from "./query";
-
-export interface QueryState {
-    query: string,
-    dataCenter: string,
-    count: string,
-    limit: string,
-    minVelocity: string,
-    universalisInfo?: UniversalisInfo,
-}
+import { QueryReducer, QueryDispatcher, defaultQueryState } from "./reducer";
 
 export const QueryContext = createContext<QueryDispatcher | null>(null);
 

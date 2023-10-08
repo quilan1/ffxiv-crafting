@@ -28,6 +28,11 @@ export class OptionType<T> {
         return Some(f(this.value));
     }
 
+    map_or_else<U>(d: Fn<void, U>, f: Fn<T, U>): OptionType<U> {
+        if (!this.is_some()) return Some(d());
+        return Some(f(this.value));
+    }
+
     and<U>(v: OptionType<U>): OptionType<U> {
         if (!this.is_some()) return None();
         return v;
@@ -38,6 +43,11 @@ export class OptionType<T> {
         return f(this.value);
     }
 
+    filter(f: Fn<T, boolean>): OptionType<T> {
+        if (!this.is_some()) return None();
+        return !f(this.value) ? None() : this;
+    }
+
     flatmap<U>(f: FnOpt<T, U>): OptionType<U> {
         if (!this.is_some()) return None();
         return f(this.value);
@@ -46,6 +56,19 @@ export class OptionType<T> {
     or(v: OptionType<T>): OptionType<T> {
         if (!this.is_some()) return v;
         return Some(this.value);
+    }
+
+    or_else(f: FnOpt<void, T>): OptionType<T> {
+        if (!this.is_some()) return f();
+        return Some(this.value);
+    }
+
+    take(): OptionType<T> {
+        if (!this.is_some()) return None();
+        const ret = Some(this.value);
+        (this as OptionType<T>).value = undefined;
+        this._is_none = true;
+        return ret;
     }
 
     zip<U>(v: OptionType<U>): OptionType<[T, U]> {
@@ -62,6 +85,15 @@ export class OptionType<T> {
     }
 
     ////////
+
+    flatten(): T {
+        if (!this.is_some()) return None() as T;
+        if (this.value instanceof OptionType) {
+            return this.value as T;
+        } else {
+            return Some(this.value) as T;
+        }
+    }
 
     expect(msg: string): T {
         if (!this.is_some()) throw new Error(msg);

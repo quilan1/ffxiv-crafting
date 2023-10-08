@@ -1,7 +1,6 @@
 import { ChangeEvent, useRef, useState } from 'react';
 import styles from './query.module.css';
 import UniversalisRequest from '../(universalis)/universalis_api';
-import { processQuery } from './reducer';
 import QueryContextProvider, { useQueryContext } from './context';
 import { MarketInformation } from './(table)/table';
 // import { WorldInformation } from './world-information';
@@ -100,7 +99,7 @@ export function FetchButton() {
                         .setIsCancelled(() => isCancelled.current)
                         .fetch();
 
-                    state.universalisInfo = universalisInfo;
+                    state.universalisInfo = universalisInfo ?? undefined;
                 } finally {
                     setFetchState(FetchState.FETCH);
                 }
@@ -113,22 +112,7 @@ export function FetchButton() {
     return <button type="button" className={styles.fetchButton} onClick={onClick}>{fetchState}</button>;
 }
 
-export function defaultQueryState() {
-    const defaultQuery = preparedQueries[0].value;
-    const defaultDataCenter = dataCenters[0];
-    const defaultState = {
-        query: defaultQuery,
-        dataCenter: defaultDataCenter,
-        count: '',
-        limit: '',
-        minVelocity: '',
-        universalisInfo: null,
-        tableRows: null,
-    };
-    return processQuery(defaultState.query, defaultState);
-}
-
-const preparedQueries = [
+export const preparedQueries = [
     { label: 'Basic', value: ':count 100, :name Grade 4 Skybuilders\' Spinning Wheel' },
     { label: 'Level 90 Crafting Mats', value: ':count 20, :rlevel 90, :cat !Metal|Lumber|Leather|Stone|Cloth|Reagent' },
     { label: 'Quick Mats', value: ':limit 16, :min_velocity 50.0, :count 20, :rlevel 1|90, :cat !Metal|Lumber|Leather|Stone|Cloth|Reagent' },
@@ -141,7 +125,7 @@ const preparedQueries = [
     { label: 'Level 90 White Scrips', value: ':count 40, :limit 2, :name ^Rarefied, :rlevel 90' },
 ];
 
-const dataCenters = [
+export const dataCenters = [
     "Seraph",
     "Dynamis",
     "North-America",
