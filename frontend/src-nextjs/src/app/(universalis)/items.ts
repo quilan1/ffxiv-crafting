@@ -17,7 +17,7 @@ export interface Listing {
     isHq: boolean,
     world?: string,
     name?: string,
-    posting: number,
+    daysSince: number,
 }
 
 export interface ItemInfo {

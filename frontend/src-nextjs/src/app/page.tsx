@@ -16,7 +16,7 @@ export default function Home() {
     let form = <div className={styles.error}>Invalid MarketForm value: {curForm}</div>;
     if (curForm == MarketForm.QUERY) {
         form = <QueryContainer />;
-    } else if (curForm == MarketForm.FIRMAMENT) {
+    } else {
         form = <FirmamentContainer />;
     }
 

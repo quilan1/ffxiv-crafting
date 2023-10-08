@@ -18,9 +18,9 @@ export class OptionType<T> {
 
     ////////
 
-    map<U>(f: FnOpt<T, U>): OptionType<U> {
+    map<U>(f: Fn<T, U>): OptionType<U> {
         if (!this.is_some()) return None();
-        return f(this.value);
+        return Some(f(this.value));
     }
 
     map_or<U>(d: U, f: Fn<T, U>): OptionType<U> {

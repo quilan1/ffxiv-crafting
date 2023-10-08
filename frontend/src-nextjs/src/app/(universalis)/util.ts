@@ -1,3 +1,5 @@
+import { None, OptionType, Some } from "./option";
+
 export type Mutable<T> = {
     -readonly [k in keyof T]: T[k];
 };
@@ -11,6 +13,11 @@ export default class Util {
         const arr = [..._arr];
         arr.sort();
         return arr;
+    }
+
+    static tryParse(s: string): OptionType<number> {
+        const v = parseInt(s);
+        return Number.isNaN(v) ? None() : Some(v);
     }
 
     static equals<T>(a: T[], b: T[]) {

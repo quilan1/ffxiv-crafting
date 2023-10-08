@@ -19,7 +19,7 @@ pub struct ItemListing {
     pub world: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub name: String,
-    pub posting: u64,
+    pub days_since: f32,
 }
 
 pub type ItemMarketInfoMap = BTreeMap<u32, Vec<ItemListing>>;
@@ -83,9 +83,11 @@ where
                 is_hq: listing.hq,
                 world: listing.world_name.unwrap_or_default(),
                 name: listing.retainer_name.unwrap_or_default(),
-                posting: listing
-                    .last_review_time
-                    .unwrap_or(listing.timestamp.unwrap_or_default()),
+                days_since: posting_days(
+                    listing
+                        .last_review_time
+                        .unwrap_or(listing.timestamp.unwrap_or_default()),
+                ),
             })
             .collect()
     }
@@ -105,13 +107,15 @@ impl GeneralListingsTrait for HistoryView {
     }
 
     fn retain_recent_listings(&mut self, retain_num_days: f32) {
-        self.entries.retain(|listing| {
-            let timestamp = listing.timestamp.unwrap();
-            let days = SystemTime::UNIX_EPOCH + Duration::from_secs(timestamp);
-            let days = days.elapsed().unwrap().as_secs_f32() / (3600.0 * 24.0);
-            days <= retain_num_days
-        });
+        self.entries
+            .retain(|listing| posting_days(listing.timestamp.unwrap()) <= retain_num_days);
     }
+}
+
+fn posting_days(timestamp: u64) -> f32 {
+    let epoch = SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs_f32();
+    let stamp = Duration::from_secs(timestamp).as_secs_f32();
+    (epoch - stamp) / (3600.0 * 24.0)
 }
 
 ////////////////////////////////////////////////////////////

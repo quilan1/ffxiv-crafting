@@ -19,13 +19,13 @@ export default class Statistics {
 
     constructor(itemInfo: ItemInfo) {
         const isHomeworld = (listing: Listing) => listing.world === '' || listing.world === HOMEWORLD;
-        const isWithinDays = (days: number) => (listing: Listing) => postingToDays(listing.posting) <= days;
+        const isWithinDays = (days: number) => (listing: Listing) => listing.daysSince <= days;
         const toIdent = (listing: Listing) => listing;
         const toPrice = (listing: Listing) => listing.price;
         const toCount = (listing: Listing) => listing.count;
-        const toPostingPrice = (listing: Listing) => { return { posting: listing.posting, value: listing.price } };
-        const average = (values: number[]) => (values.length == 0) ? 0 : values.reduce((a,b) => a+b, 0) / values.length;
-        const median = (values: number[]) => { values.sort((a,b) => a - b); return values[(values.length / 3) | 0]; };
+        const toPostingPrice = (listing: Listing) => { return { days: listing.daysSince, value: listing.price } };
+        const average = (values: number[]) => (values.length == 0) ? 0 : values.reduce((a, b) => a + b, 0) / values.length;
+        const median = (values: number[]) => { values.sort((a, b) => a - b); return values[(values.length / 3) | 0]; };
         const min = (values: number[]) => values.reduce((prev: number | undefined, cur: number) => (prev === undefined || cur < prev) ? cur : prev, undefined) as number;
 
         this.minBuyPrice = generateQuality(itemInfo.name, itemInfo.listings, [], toPrice, min);
@@ -68,21 +68,16 @@ function reduceListings<T, O>(name: string, listings: Listing[], filter_fns: ((i
 
 function calculateVelocity(listings: Listing[]): number {
     const totalCount = listings.reduce((prev, item) => prev + item.count, 0);
-    const minPosting = Math.min(...listings.map(item => item.posting));
-    return totalCount / postingToDays(minPosting);
-}
-
-function postingToDays(posting: number) {
-    return (Date.now() / 1000.0 - posting) / 3600.0 / 24.0;
+    const maxDaysSince = Math.max(...listings.map(item => item.daysSince));
+    return totalCount / maxDaysSince;
 }
 
 // Creates a function that does a weighted-average, with a normal distribution
 function weightedTimeAverage(meanDays: number, stdDevDays: number) {
-    return (listingInfos: { posting: number, value: number }[]) => {
+    return (listingInfos: { days: number, value: number }[]) => {
         let numerator = 0, denomenator = 0;
-        for (const {posting, value} of listingInfos) {
-            let days = postingToDays(posting);
-            let coefficient = Math.exp(-(days-meanDays)*(days-meanDays)/(2*stdDevDays*stdDevDays));
+        for (const { days, value } of listingInfos) {
+            let coefficient = Math.exp(-(days - meanDays) * (days - meanDays) / (2 * stdDevDays * stdDevDays));
             numerator += coefficient * value;
             denomenator += coefficient;
         }

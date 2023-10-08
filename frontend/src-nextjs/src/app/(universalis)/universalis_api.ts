@@ -60,7 +60,7 @@ export default class UniversalisRequest {
         const socket = this.openWebSocket();
         const state: UniversalisRequestState = { socket, isProcessing: true };
 
-        const recipePayload = JSON.stringify({ filters: this.searchFilter, data_center: this.dataCenter, retain_num_days: 14.0 });
+        const recipePayload = JSON.stringify({ filters: this.searchFilter, dataCenter: this.dataCenter, retainNumDays: 14.0 });
         socket.addEventListener("open", () => { socket.send(recipePayload); });
         socket.addEventListener("close", e => { this.onClose(state, e); });
         socket.addEventListener("message", e => { this.onMessage(state, e); });

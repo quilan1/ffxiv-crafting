@@ -1,6 +1,6 @@
 import { Dispatch } from "react";
 import { UniversalisInfo } from "../(universalis)/universalis_api";
-import { KeysMatching } from "../(universalis)/util";
+import Util, { KeysMatching } from "../(universalis)/util";
 import { KeyedTableRow } from "./(table)/table";
 import UniversalisAnalysis from "../(universalis)/analysis";
 
@@ -33,29 +33,41 @@ type ValidDispatch =
     | ValidDispatchType<QueryReducerAction.SET_UNIVERSALIS_INFO, UniversalisInfo>;
 
 export function QueryReducer(state: QueryState, action: ValidDispatch): QueryState {
+    let recalc;
     switch (action.type) {
         case QueryReducerAction.SET_QUERY:
             return processQuery(action.value, { ...state });
         case QueryReducerAction.SET_DATA_CENTER:
             return { ...state, dataCenter: action.value };
         case QueryReducerAction.SET_LIMIT:
-            return { ...state, limit: action.value };
+            recalc = recalculateTableRows(state.count, action.value, state.minVelocity, state.universalisInfo);
+            return { ...state, ...recalc };
         case QueryReducerAction.SET_COUNT:
-            return { ...state, count: action.value };
+            recalc = recalculateTableRows(action.value, state.limit, state.minVelocity, state.universalisInfo);
+            return { ...state, ...recalc };
         case QueryReducerAction.SET_MIN_VELOCITY:
-            return { ...state, minVelocity: action.value };
+            recalc = recalculateTableRows(state.count, state.limit, action.value, state.universalisInfo);
+            return { ...state, ...recalc };
         case QueryReducerAction.SET_UNIVERSALIS_INFO:
             const universalisInfo = action.value;
-            const analysis = new UniversalisAnalysis(universalisInfo);
-            const _count = parseInt(state.count);
-            const count = Number.isNaN(_count) ? 1 : _count;
-            const _limit = parseInt(state.limit);
-            const limit = Number.isNaN(_limit) ? 100 : _limit;
-            const tableRows = analysis.generateTableData(count, limit);
-            return { ...state, universalisInfo, tableRows };
+            recalc = recalculateTableRows(state.count, state.limit, state.minVelocity, universalisInfo);
+            return { ...state, ...recalc };
         default:
             return state;
     }
+}
+
+const recalculateTableRows = (count: string, limit: string, minVelocity: string, universalisInfo?: UniversalisInfo | null) => {
+    if (universalisInfo == null) {
+        return { count, limit, minVelocity };
+    }
+
+    const analysis = new UniversalisAnalysis(universalisInfo);
+    const _count = Util.tryParse(count);
+    const _limit = Util.tryParse(limit);
+    const _minVelocity = Util.tryParse(minVelocity);
+    const tableRows = analysis.generateTableData(_count, _limit, _minVelocity);
+    return { count, limit, minVelocity, universalisInfo, tableRows };
 }
 
 export class QueryDispatcher {

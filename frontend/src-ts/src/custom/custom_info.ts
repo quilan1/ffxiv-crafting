@@ -24,7 +24,7 @@ export type Listing = {
     isHq: boolean,
     world: string,
     name: string,
-    posting: number,
+    daysSince: number,
 }
 
 export type ItemInfo = {
