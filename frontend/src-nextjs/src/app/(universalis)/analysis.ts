@@ -1,5 +1,5 @@
 import { ItemInfo } from "./items";
-import { None, OptionType, Some } from "./option";
+import { None, OptionType, optAdd, optMax, optMin, optSub } from "./option";
 import { Statistics, statisticsOf } from "./statistics";
 import { UniversalisInfo } from "./universalis_api"
 
@@ -61,15 +61,26 @@ const recursiveStatsOf = (itemId: number, count: number, itemInfos: ItemInfos, i
     const numCrafts = Math.floor((count + numOutputs - 1) / numOutputs);
     const childStats = recipe?.inputs.map(input => recursiveStatsOf(input.itemId, input.count * numCrafts, itemInfos, itemStats)) ?? [];
 
-    // TODO: generate based on children, not just itself
+    let craft = None<number>();
+    for (const child of childStats) {
+        const childBuy = child.stats.buy;
+        const childCraft = child.stats.craft;
+        const lowest = optMin(childBuy, childCraft);
+        craft = optAdd(craft, lowest);
+    }
+
     const _stats = itemStats[itemId];
     const sell = _stats.sellPrice.aq.map(v => v * numCrafts);
     const buy = _stats.buyPrice.aq.map(v => v * numCrafts);
+    const profitBuy = buy.and(optSub(sell, buy));
+    const profitCraft = craft.and(optSub(sell, craft));
+    const profit = optMax(profitBuy, profitCraft).or(sell);
+
     const stats = {
         sell,
         buy,
-        craft: None(),
-        profit: profit(buy, sell),
+        craft,
+        profit,
     };
 
     return {
@@ -85,7 +96,8 @@ const allIdsOf = (info: UniversalisInfo, itemId?: number): number[] => {
         ? info.topIds
         : (info.itemInfo[itemId].recipe === undefined)
             ? []
-            : info.itemInfo[itemId].recipe?.inputs.map(ingredient => ingredient.itemId) ?? [];
+            : info.itemInfo[itemId].recipe?.inputs.map(ingredient => ingredient.itemId)
+            ?? [];
 
     const results = new Set<number>();
     for (const childId of childIds) {
@@ -95,22 +107,4 @@ const allIdsOf = (info: UniversalisInfo, itemId?: number): number[] => {
         }
     }
     return [...results].toSorted((a, b) => a - b);
-}
-
-const profit = (buy: OptionType<number>, sell: OptionType<number>): OptionType<number> => {
-    const sellBuy = sell.zip(buy.or(Some(0)));
-    const buySell = sell.or(Some(0)).zip(buy);
-    return sellBuy.or(buySell).map(([sell, buy]) => sell - buy);
-}
-
-export interface BuySell {
-    buy: OptionType<number>,
-    sell: OptionType<number>,
-}
-
-export const sortByProfit = (a: BuySell, b: BuySell) => {
-    const aProfit = profit(a.buy, a.sell);
-    const bProfit = profit(b.buy, b.sell);
-    const LOW = Number.MIN_SAFE_INTEGER;
-    return aProfit.zip(bProfit.or(Some(LOW))).map(([a, b]) => a - b).unwrap_or(LOW);
 }

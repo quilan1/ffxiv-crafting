@@ -3,8 +3,9 @@ import { UniversalisInfo } from "../(universalis)/universalis_api";
 import Util, { KeysMatching } from "../(universalis)/util";
 import { KeyedTableRow } from "./(table)/table";
 import { Statistics } from "../(universalis)/statistics";
-import { RecursiveStats, allRecursiveStatsOf, sortByProfit } from "../(universalis)/analysis";
+import { RecursiveStats, allRecursiveStatsOf } from "../(universalis)/analysis";
 import { dataCenters, preparedQueries } from "./query";
+import { optSub } from "../(universalis)/option";
 
 export interface QueryState {
     query: string,
@@ -30,10 +31,9 @@ type ValidDispatch =
     | ValidDispatchType<QueryReducerAction.UPDATE_STATE, QueryState>
 
 export function QueryReducer(state: QueryState, action: ValidDispatch): QueryState {
-    console.log(`Query Reducer: ${action.type}`);
     switch (action.type) {
         case QueryReducerAction.SET_QUERY:
-            return processQuery(action.value, { ...state });
+            return { ...state, query: action.value };
         case QueryReducerAction.SET_DATA_CENTER:
             return { ...state, dataCenter: action.value };
         case QueryReducerAction.UPDATE_STATE:
@@ -60,7 +60,11 @@ export class QueryDispatcher {
     }
 
     get query() { return this.state.query; }
-    set query(value: string) { this.dispatch({ type: QueryReducerAction.SET_QUERY, value }); }
+    set query(value: string) { this.dispatch({ type: QueryReducerAction.SET_QUERY, value }) }
+    setQueryWithProcessing(value: string) {
+        const state = processQuery(value, { ...this.state });
+        this.dispatch({ type: QueryReducerAction.UPDATE_STATE, value: state });
+    }
     get dataCenter() { return this.state.dataCenter; }
     set dataCenter(value: string) { this.dispatch({ type: QueryReducerAction.SET_DATA_CENTER, value }); }
     get count() { return this.state.count; }
@@ -121,7 +125,7 @@ function generateTableData(
     const { itemStats, topProfitStats } = recursiveState;
 
     let items = topProfitStats;
-    items.sort(({ top: a }, { top: b }) => sortByProfit(a, b));
+    items.sort(({ top: a }, { top: b }) => optSub(a.profit, b.profit).unwrap_or(Number.MIN_SAFE_INTEGER));
     items.reverse();
     items = items.filter(({ top }) => maxVelocity(itemStats[top.itemId]) >= minVelocity);
     items = items.slice(0, limit);

@@ -27,7 +27,8 @@ export function QueryPanel() {
 
 export function FilterOptions() {
     const state = useQueryContext();
-    const onChangeQuerySelect = (e: ChangeEvent<HTMLSelectElement>) => state.query = e.target.value;
+    const onChangeQuery = (e: ChangeEvent<HTMLInputElement>) => state.query = e.target.value;
+    const onChangeQuerySelect = (e: ChangeEvent<HTMLSelectElement>) => { state.setQueryWithProcessing(e.target.value); };
     const onChangeDataCenter = (e: ChangeEvent<HTMLSelectElement>) => state.dataCenter = e.target.value;
     const onChangeCount = (e: ChangeEvent<HTMLInputElement>) => state.count = e.target.value;
     const onChangeLimit = (e: ChangeEvent<HTMLInputElement>) => state.limit = e.target.value;
@@ -37,7 +38,7 @@ export function FilterOptions() {
         <div className={styles.queryOptions}>
             <div className={styles.labelRow}>
                 <label>Query:</label>
-                <input type="text" readOnly value={state.query} className={styles.queryString}></input>
+                <input type="text" onChange={onChangeQuery} value={state.query} className={styles.queryString}></input>
             </div>
             <div className={styles.labelRow}>
                 <label>Examples:</label>

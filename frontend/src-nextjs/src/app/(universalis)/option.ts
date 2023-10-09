@@ -77,7 +77,7 @@ export class OptionType<T> {
         return Some([this.value as T, v.unwrap()]);
     }
 
-    zip_all<U>(...params: OptionType<U>[]): OptionType<(U|T)[]> {
+    zip_all<U>(...params: OptionType<U>[]): OptionType<(U | T)[]> {
         if (!this.is_some()) return None();
         if (params.some(v => !v.is_some())) return None();
         const values = params.map(v => v.unwrap_unchecked());
@@ -118,6 +118,22 @@ export const Some = <T>(v: T) => {
     return new OptionType(false, v);
 }
 
-export const None = <T=never>() => {
+export const None = <T = never>() => {
     return new OptionType<T>(true);
+}
+
+export const optMin = (a: OptionType<number>, b: OptionType<number>): OptionType<number> => {
+    return a.zip(b).map(([a, b]) => a < b ? a : b).or(a).or(b);
+}
+
+export const optMax = (a: OptionType<number>, b: OptionType<number>): OptionType<number> => {
+    return a.zip(b).map(([a, b]) => a > b ? a : b).or(a).or(b);
+}
+
+export const optAdd = (a: OptionType<number>, b: OptionType<number>): OptionType<number> => {
+    return a.zip(b).map(([a, b]) => a + b).or(a).or(b);
+}
+
+export const optSub = (a: OptionType<number>, b: OptionType<number>): OptionType<number> => {
+    return a.zip(b).map(([a, b]) => a - b).or(a).or(b.map(v => -v));
 }
