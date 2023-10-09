@@ -6,7 +6,7 @@ import { UniversalisInfo } from "./universalis_api"
 type ItemStats = Record<number, Statistics>;
 type ItemInfos = Record<number, ItemInfo>;
 interface CraftInfo { key: number[], itemId: number, count: number };
-type KeyedProfitStats = CraftInfo & ProfitStats;
+interface KeyedProfitStats extends CraftInfo, ProfitStats {};
 interface TopProfitStats { top: KeyedProfitStats, children: KeyedProfitStats[] };
 
 export interface RecursiveStats {
