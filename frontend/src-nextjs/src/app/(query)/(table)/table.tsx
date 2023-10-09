@@ -1,10 +1,11 @@
 import styles from './table.module.css';
 import { useQueryContext } from '../context';
-import { None, OptionType, Some } from '@/app/(universalis)/option';
+import { OptionType } from '@/app/(universalis)/option';
+import { ChangeEvent } from 'react';
 
 export interface TableRow {
+    _key: string,
     hidden: boolean,
-    checked: boolean,
     index: number,
     name: string,
     perDay: OptionType<number>,
@@ -68,18 +69,21 @@ function TableHeader() {
     );
 }
 
-function TableRow(props: TableRow & { index: number }) {
+function TableRow(props: TableRow) {
     const classNames = (classes: string[]) => [styles.rowItem, ...classes].join(' ');
     const _toFixed = (v: number) => v.toFixed(2);
     const _toString = (v: number) => Math.floor(v).toString();
     const _fixed = (o: OptionType<number>) => o.map(_toFixed).unwrap_or('-');
     const _string = (o: OptionType<number>) => o.map(_toString).unwrap_or('-');
 
-    const { index, name, perDay, perWeek, perBiWeek, count, sell, buy, craft, profit } = props;
-    const checkedNode = <input type='checkbox' checked={props.checked} readOnly></input>;
+    const { _key, index, name, perDay, perWeek, perBiWeek, count, sell, buy, craft, profit } = props;
+    const state = useQueryContext();
+
+    const isChecked = state.checkedKeys.has(_key);
+    const onChangeChecked = (e: ChangeEvent<HTMLInputElement>) => { state.setCheckKey(_key, e.target.checked); };
+    const checkedNode = <input type='checkbox' checked={isChecked} onChange={onChangeChecked}></input>;
 
     const rowStyle = (index % 2 == 0) ? styles.tableRow : styles.tableRowDark;
-
     return (
         <tr className={rowStyle}>
             <td className={classNames(columnHeaders.checked)}>{checkedNode}</td>
@@ -108,27 +112,3 @@ const columnHeaders = {
     craft: [styles.costs, styles.rightBorder],
     profit: [styles.profit],
 };
-
-const _defaultTable = (): KeyedTableRow[] => {
-    const table = [];
-    for (let key = 0; key < 100; ++key) {
-        table.push({
-            key: `${key}`,
-            row: {
-                index: key,
-                hidden: false,
-                checked: false,
-                name: '20x Titanoboa Leather',
-                perDay: None(),
-                perWeek: Some(7.24),
-                perBiWeek: Some(6.53),
-                count: Some(1.92),
-                sell: Some(528140),
-                buy: Some(167838),
-                craft: Some(194868),
-                profit: Some(360302)
-            }
-        })
-    }
-    return table;
-}

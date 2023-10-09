@@ -14,6 +14,7 @@ export interface QueryState {
     limit: string,
     minVelocity: string,
     isHq: boolean,
+    checkedKeys: Set<string>,
     universalisInfo?: UniversalisInfo,
     recursiveStats?: RecursiveStats,
     tableRows?: KeyedTableRow[],
@@ -22,6 +23,7 @@ export interface QueryState {
 export enum QueryReducerAction {
     SET_QUERY,
     SET_DATA_CENTER,
+    SET_CHECKED_KEYS,
     UPDATE_STATE,
 }
 
@@ -29,6 +31,7 @@ interface ValidDispatchType<Action, Value> { type: Action, value: Value };
 type ValidDispatch =
     ValidDispatchType<QueryReducerAction.SET_QUERY, string>
     | ValidDispatchType<QueryReducerAction.SET_DATA_CENTER, string>
+    | ValidDispatchType<QueryReducerAction.SET_CHECKED_KEYS, Set<string>>
     | ValidDispatchType<QueryReducerAction.UPDATE_STATE, QueryState>
 
 export function QueryReducer(state: QueryState, action: ValidDispatch): QueryState {
@@ -37,6 +40,8 @@ export function QueryReducer(state: QueryState, action: ValidDispatch): QuerySta
             return { ...state, query: action.value };
         case QueryReducerAction.SET_DATA_CENTER:
             return { ...state, dataCenter: action.value };
+        case QueryReducerAction.SET_CHECKED_KEYS:
+            return { ...state, checkedKeys: action.value };
         case QueryReducerAction.UPDATE_STATE:
             return { ...state, ...action.value };
         default:
@@ -95,14 +100,20 @@ export class QueryDispatcher {
         this.dispatch({ type: QueryReducerAction.UPDATE_STATE, value: state });
     }
     get tableRows() { return this.state.tableRows; }
+    get checkedKeys() { return this.state.checkedKeys; }
+    setCheckKey(key: string, isSet: boolean) {
+        const newKeys = this.setChildKeys(key, isSet);
+        this.dispatch({ type: QueryReducerAction.SET_CHECKED_KEYS, value: newKeys });
+    }
 
     private recalculateUniversalis(state: QueryState, changedState: ChangedState) {
         if (state.universalisInfo === undefined)
             return state;
 
         switch (changedState) {
-            case ChangedState.COUNT:
             case ChangedState.UNIVERSALIS_INFO:
+                state = { ...state, checkedKeys: new Set() };
+            case ChangedState.COUNT:
             case ChangedState.IS_HQ:
                 state = this.recalculateRecStatistics(state);
             default:
@@ -123,6 +134,18 @@ export class QueryDispatcher {
         const _minVelocity = Util.tryParse(state.minVelocity).unwrap_or(0);
         const tableRows = generateTableData(_count, _limit, _minVelocity, state.universalisInfo, state.recursiveStats);
         return { ...state, tableRows };
+    }
+
+    private setChildKeys(key: string, isSet: boolean): Set<string> {
+        const pred = (k: string) => k == key || k.startsWith(`${key}|`);
+        if (!isSet || !this.state.tableRows) {
+            return new Set([...this.state.checkedKeys].filter(k => !pred(k)));
+        } else {
+            const set = new Set(this.state.checkedKeys);
+            const newKeys = this.state.tableRows.map(r => r.key).filter(pred);
+            for (const k of newKeys) set.add(k);
+            return set;
+        }
     }
 }
 
@@ -146,13 +169,14 @@ function generateTableData(
             const stats = itemStats[info.itemId];
             const quantity = info.count > 1 ? `${info.count}x ` : '';
             const name = itemInfo[info.itemId].name;
+            const key = info.key.join("|");
 
             rows.push({
-                key: info.key.join("|"),
+                key,
                 row: {
+                    _key: key,
                     index,
                     name: `${quantity}${name}`,
-                    checked: false,
                     hidden: false,
                     perDay: stats.velocityDay.aq,
                     perWeek: stats.velocityWeek.aq,
@@ -193,6 +217,7 @@ export function defaultQueryState() {
         limit: '',
         minVelocity: '',
         isHq: false,
+        checkedKeys: new Set<string>(),
     };
     return processQuery(defaultState.query, defaultState);
 }
