@@ -52,6 +52,11 @@ function quality<T>(listings: Listing[], fn: (listings: SimpleArray<Listing>) =>
     }
 }
 
+export function preferHq<T>(quality: Quality<T>, isHq: boolean, reqHq: boolean) {
+    const hqOpt = isHq ? quality.hq : None();
+    return reqHq ? hqOpt : hqOpt.or(quality.aq);
+}
+
 class SimpleArray<T> {
     values: T[];
     constructor(values: T[]) {
@@ -87,6 +92,10 @@ const stripOutliersOfFn = (numStdDev: number) => {
     }
 }
 
+const isWithinDaysFn = (days: number) => {
+    return (listing: Listing) => listing.daysSince <= days;
+}
+
 const medianOfFn = (ratio = .5) => {
     return (values: number[]): OptionType<number> => {
         if (values.length == 0) return None();
@@ -100,10 +109,6 @@ const medianOfFn = (ratio = .5) => {
 const meanOf = (values: number[]): OptionType<number> => {
     if (values.length == 0) return None();
     return Some(values.reduce((a, b) => a + b) / values.length);
-}
-
-const isWithinDaysFn = (days: number) => {
-    return (listing: Listing) => listing.daysSince <= days;
 }
 
 function velocity(listings: Listing[]): OptionType<number> {

@@ -1,6 +1,6 @@
 import { ItemInfo } from "./items";
 import { None, OptionType, optAdd, optMax, optMin, optSub } from "./option";
-import { Statistics, statisticsOf } from "./statistics";
+import { Statistics, preferHq, statisticsOf } from "./statistics";
 import { UniversalisInfo } from "./universalis_api"
 
 type ItemStats = Record<number, Statistics>;
@@ -28,7 +28,7 @@ interface ChildStats {
     childStats: ChildStats[],
 }
 
-export const allRecursiveStatsOf = (count: number, info: UniversalisInfo): RecursiveStats => {
+export const allRecursiveStatsOf = (count: number, isHq: boolean, info: UniversalisInfo): RecursiveStats => {
     const allIds = allIdsOf(info);
     const itemStats = allIds
         .reduce<ItemStats>((prev, itemId) => ({ ...prev, [itemId]: statisticsOf(info.itemInfo[itemId]) }), {});
@@ -36,7 +36,7 @@ export const allRecursiveStatsOf = (count: number, info: UniversalisInfo): Recur
 
     const topProfitStats = [];
     for (const itemId of info.topIds) {
-        const childStats = recursiveStatsOf(itemId, count, itemInfos, itemStats);
+        const childStats = recursiveStatsOf(itemId, count, isHq, isHq, itemInfos, itemStats);
         const [top, ...children] = flattenChildStats(childStats);
         topProfitStats.push({ top, children });
     }
@@ -55,11 +55,11 @@ const flattenChildStats = (childStats: ChildStats, parents?: number[]): KeyedPro
     return results;
 }
 
-const recursiveStatsOf = (itemId: number, count: number, itemInfos: ItemInfos, itemStats: ItemStats): ChildStats => {
+const recursiveStatsOf = (itemId: number, count: number, isHq: boolean, isTop: boolean, itemInfos: ItemInfos, itemStats: ItemStats): ChildStats => {
     const recipe = itemInfos[itemId].recipe;
     const numOutputs = recipe?.outputs ?? 1;
     const numCrafts = Math.floor((count + numOutputs - 1) / numOutputs);
-    const childStats = recipe?.inputs.map(input => recursiveStatsOf(input.itemId, input.count * numCrafts, itemInfos, itemStats)) ?? [];
+    const childStats = recipe?.inputs.map(input => recursiveStatsOf(input.itemId, input.count * numCrafts, isHq, false, itemInfos, itemStats)) ?? [];
 
     let craft = None<number>();
     for (const child of childStats) {
@@ -70,8 +70,10 @@ const recursiveStatsOf = (itemId: number, count: number, itemInfos: ItemInfos, i
     }
 
     const _stats = itemStats[itemId];
-    const sell = _stats.sellPrice.aq.map(v => v * numCrafts);
-    const buy = _stats.buyPrice.aq.map(v => v * numCrafts);
+    const sellPrice = preferHq(_stats.sellPrice, isHq, isTop && craft.is_some());
+    const buyPrice = preferHq(_stats.buyPrice, isHq, isTop && craft.is_some());
+    const sell = sellPrice.map(v => v * numCrafts);
+    const buy = buyPrice.map(v => v * numCrafts);
     const profitBuy = buy.and(optSub(sell, buy));
     const profitCraft = craft.and(optSub(sell, craft));
     const profit = optMax(profitBuy, profitCraft).or(sell);

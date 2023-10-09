@@ -13,6 +13,7 @@ export interface QueryState {
     count: string,
     limit: string,
     minVelocity: string,
+    isHq: boolean,
     universalisInfo?: UniversalisInfo,
     recursiveStats?: RecursiveStats,
     tableRows?: KeyedTableRow[],
@@ -48,6 +49,7 @@ enum ChangedState {
     COUNT,
     LIMIT,
     MIN_VELOCITY,
+    IS_HQ,
     UNIVERSALIS_INFO,
 }
 
@@ -82,6 +84,11 @@ export class QueryDispatcher {
         const state = this.recalculateUniversalis({ ...this.state, minVelocity: value }, ChangedState.MIN_VELOCITY);
         this.dispatch({ type: QueryReducerAction.UPDATE_STATE, value: state });
     }
+    get isHq() { return this.state.isHq; }
+    set isHq(value: boolean) {
+        const state = this.recalculateUniversalis({ ...this.state, isHq: value }, ChangedState.IS_HQ);
+        this.dispatch({ type: QueryReducerAction.UPDATE_STATE, value: state });
+    }
     get universalisInfo() { return this.state.universalisInfo; }
     set universalisInfo(value: UniversalisInfo | undefined) {
         const state = this.recalculateUniversalis({ ...this.state, universalisInfo: value }, ChangedState.UNIVERSALIS_INFO);
@@ -96,6 +103,7 @@ export class QueryDispatcher {
         switch (changedState) {
             case ChangedState.COUNT:
             case ChangedState.UNIVERSALIS_INFO:
+            case ChangedState.IS_HQ:
                 state = this.recalculateRecStatistics(state);
             default:
                 return this.recalculateTableRows(state);
@@ -105,7 +113,7 @@ export class QueryDispatcher {
     private recalculateRecStatistics(state: QueryState): QueryState {
         if (state.universalisInfo === undefined) return state;
         const _count = Util.tryParse(state.count).unwrap_or(1);
-        return { ...state, recursiveStats: allRecursiveStatsOf(_count, state.universalisInfo) };
+        return { ...state, recursiveStats: allRecursiveStatsOf(_count, state.isHq, state.universalisInfo) };
     }
 
     private recalculateTableRows(state: QueryState): QueryState {
@@ -184,6 +192,7 @@ export function defaultQueryState() {
         count: '',
         limit: '',
         minVelocity: '',
+        isHq: false,
     };
     return processQuery(defaultState.query, defaultState);
 }

@@ -33,6 +33,7 @@ export function FilterOptions() {
     const onChangeCount = (e: ChangeEvent<HTMLInputElement>) => state.count = e.target.value;
     const onChangeLimit = (e: ChangeEvent<HTMLInputElement>) => state.limit = e.target.value;
     const onChangeMinVelocity = (e: ChangeEvent<HTMLInputElement>) => state.minVelocity = e.target.value;
+    const onChangeIsHq = (e: ChangeEvent<HTMLInputElement>) => state.isHq = e.target.checked;
 
     return (
         <div className={styles.queryOptions}>
@@ -72,7 +73,7 @@ export function FilterOptions() {
                 </div></div>
                 <div><div>
                     <label>HQ: </label>
-                    <input id="is-hq" type="checkbox" readOnly />
+                    <input id="is-hq" type="checkbox" onChange={onChangeIsHq} checked={state.isHq} />
                 </div></div>
             </div>
         </div>
