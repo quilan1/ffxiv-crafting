@@ -10,7 +10,6 @@ export interface Quality<T> {
 }
 
 export interface Statistics {
-    buyPriceHomeworld: Quality<number>,
     buyPrice: Quality<number>,
     sellPrice: Quality<number>,
     sellCount: Quality<number>,
@@ -19,7 +18,7 @@ export interface Statistics {
     velocityWeeks: Quality<number>,
 }
 
-export const statisticsOf = (itemInfo: ItemInfo): Statistics => {
+export const statisticsOf = (itemInfo: ItemInfo, count: number): Statistics => {
     const isHomeworld = (listing: Listing) => listing.world === undefined || listing.world === HOMEWORLD;
     const toPrice = (listing: Listing) => listing.price;
     const toCount = (listing: Listing) => listing.count;
@@ -28,10 +27,10 @@ export const statisticsOf = (itemInfo: ItemInfo): Statistics => {
     const isWithinWeek = isWithinDaysFn(7.0);
     const isWithinWeeks = isWithinDaysFn(14.0);
     const stripOutliersOf = stripOutliersOfFn(2.0);
-    const medianOf = medianOfFn(0.3);
+    const _medianOf = medianOfFn(0.3);
+    const minForCountOf = minForCountOfFn(count);
 
-    const buyPrice = quality(itemInfo.listings, _ => _.map(toPrice).apply(stripOutliersOf).apply(medianOf));
-    const buyPriceHomeworld = quality(itemInfo.listings, _ => _.filter(isHomeworld).map(toPrice).apply(stripOutliersOf).apply(medianOf));
+    const buyPrice = quality(itemInfo.listings, _ => _.apply(minForCountOf));
 
     const sellCount = quality(itemInfo.history, _ => _.filter(isHomeworld).filter(isWithinWeek).map(toCount).apply(meanOf));
     const sellPrice = quality(itemInfo.history, _ => _.filter(isHomeworld).map(toPrice).apply(stripOutliersOf).apply(meanOf));
@@ -39,7 +38,7 @@ export const statisticsOf = (itemInfo: ItemInfo): Statistics => {
     const velocityWeek = quality(itemInfo.history, _ => _.filter(isHomeworld).filter(isWithinWeek).apply(velocity));
     const velocityWeeks = quality(itemInfo.history, _ => _.filter(isHomeworld).filter(isWithinWeeks).apply(velocity));
 
-    return { buyPrice, buyPriceHomeworld, sellCount, sellPrice, velocityDay, velocityWeek, velocityWeeks };
+    return { buyPrice, sellCount, sellPrice, velocityDay, velocityWeek, velocityWeeks };
 }
 
 function quality<T>(listings: Listing[], fn: (listings: SimpleArray<Listing>) => OptionType<T>) {
@@ -109,6 +108,21 @@ const medianOfFn = (ratio = .5) => {
 const meanOf = (values: number[]): OptionType<number> => {
     if (values.length == 0) return None();
     return Some(values.reduce((a, b) => a + b) / values.length);
+}
+
+const minForCountOfFn = (count: number) => {
+    return (listings: Listing[]): OptionType<number> => {
+        if (listings.length == 0) return None();
+        const sortedListings = listings.toSorted((a, b) => a.price - b.price);
+        let totalPrice = 0, remCount = count;
+        for (const listing of sortedListings) {
+            if (remCount == 0) break;
+            const _count = Math.min(remCount, listing.count);
+            totalPrice += listing.price * _count;
+            remCount -= _count;
+        }
+        return Some(totalPrice / (count - remCount));
+    }
 }
 
 function velocity(listings: Listing[]): OptionType<number> {

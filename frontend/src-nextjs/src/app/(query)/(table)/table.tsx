@@ -5,8 +5,9 @@ import { ChangeEvent } from 'react';
 
 export interface TableRow {
     _key: string,
-    hidden: boolean,
+    itemId: number,
     index: number,
+    hasChildren: boolean,
     name: string,
     perDay: OptionType<number>,
     perWeek: OptionType<number>,
@@ -24,8 +25,8 @@ export interface KeyedTableRow {
 }
 
 export function MarketInformation() {
-    const _dispatcher = useQueryContext();
-    const tableRows = _dispatcher.tableRows;
+    const state = useQueryContext();
+    const tableRows = state.tableRows;
 
     return (
         <div className={styles.marketInfo}>
@@ -36,12 +37,10 @@ export function MarketInformation() {
                             <TableHeader />
                         </thead>
                         <tbody>
-                            {tableRows.map(keyedRow => {
-                                const generation = keyedRow.key.split('').reduce((prev, cur) => cur != '|' ? prev : (prev + 1), 0);
-                                const name = Array(generation * 2).fill('\u00A0').join('') + keyedRow.row.name;
-                                const row = { ...keyedRow.row, name };
-                                return <TableRow key={keyedRow.key} {...row} />
-                            })}
+                            {tableRows
+                                .filter(({ row }) => row.itemId > 19)
+                                .filter(({ key }) => !state.isChildOfHiddenKey(key))
+                                .map(({ key, row }) => <TableRow key={key} {...row} />)}
                         </tbody>
                     </table>
                     : <></>
@@ -76,18 +75,27 @@ function TableRow(props: TableRow) {
     const _fixed = (o: OptionType<number>) => o.map(_toFixed).unwrap_or('-');
     const _string = (o: OptionType<number>) => o.map(_toString).unwrap_or('-');
 
-    const { _key, index, name, perDay, perWeek, perBiWeek, count, sell, buy, craft, profit } = props;
+    const { _key, index, hasChildren, name, perDay, perWeek, perBiWeek, count, sell, buy, craft, profit } = props;
     const state = useQueryContext();
+
+    const generation = _key.split('').reduce((prev, cur) => cur != '|' ? prev : (prev + 1), 0);
+    const namePadding = generation * 1.8;
+    const onClickNameButton = () => { state.toggleHiddenKey(_key); };
+    const nameNode = !hasChildren ? name : <><button type='button' onClick={onClickNameButton}>{state.hiddenKeys.has(_key) ? '+' : '-'}</button>{name}</>;
 
     const isChecked = state.checkedKeys.has(_key);
     const onChangeChecked = (e: ChangeEvent<HTMLInputElement>) => { state.setCheckKey(_key, e.target.checked); };
     const checkedNode = <input type='checkbox' checked={isChecked} onChange={onChangeChecked}></input>;
 
-    const rowStyle = (index % 2 == 0) ? styles.tableRow : styles.tableRowDark;
+    const rowStyle = [
+        (index % 2 == 0) ? styles.tableRow : styles.tableRowDark,
+        (generation > 0) ? ` ${styles.isChildRow}` : ''
+    ].filter(s => s != '').join(' ');
+
     return (
         <tr className={rowStyle}>
             <td className={classNames(columnHeaders.checked)}>{checkedNode}</td>
-            <td className={classNames(columnHeaders.name)}>{name}</td>
+            <td className={classNames(columnHeaders.name)} style={{ paddingLeft: `${namePadding}em` }}>{nameNode}</td>
             <td className={classNames(columnHeaders.perDay)}>{_fixed(perDay)}</td>
             <td className={classNames(columnHeaders.perWeek)}>{_fixed(perWeek)}</td>
             <td className={classNames(columnHeaders.perBiWeek)}>{_fixed(perBiWeek)}</td>

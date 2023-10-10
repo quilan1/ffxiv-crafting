@@ -4,7 +4,7 @@ import Util, { KeysMatching } from "../(universalis)/util";
 import { KeyedTableRow } from "./(table)/table";
 import { Statistics } from "../(universalis)/statistics";
 import { RecursiveStats, allRecursiveStatsOf } from "../(universalis)/analysis";
-import { dataCenters, preparedQueries } from "./query";
+import { defaultDataCenter, preparedQueries } from "./query";
 import { optSub } from "../(universalis)/option";
 
 export interface QueryState {
@@ -15,6 +15,7 @@ export interface QueryState {
     minVelocity: string,
     isHq: boolean,
     checkedKeys: Set<string>,
+    hiddenKeys: Set<string>,
     universalisInfo?: UniversalisInfo,
     recursiveStats?: RecursiveStats,
     tableRows?: KeyedTableRow[],
@@ -24,6 +25,7 @@ export enum QueryReducerAction {
     SET_QUERY,
     SET_DATA_CENTER,
     SET_CHECKED_KEYS,
+    SET_HIDDEN_KEYS,
     UPDATE_STATE,
 }
 
@@ -32,6 +34,7 @@ type ValidDispatch =
     ValidDispatchType<QueryReducerAction.SET_QUERY, string>
     | ValidDispatchType<QueryReducerAction.SET_DATA_CENTER, string>
     | ValidDispatchType<QueryReducerAction.SET_CHECKED_KEYS, Set<string>>
+    | ValidDispatchType<QueryReducerAction.SET_HIDDEN_KEYS, Set<string>>
     | ValidDispatchType<QueryReducerAction.UPDATE_STATE, QueryState>
 
 export function QueryReducer(state: QueryState, action: ValidDispatch): QueryState {
@@ -42,6 +45,8 @@ export function QueryReducer(state: QueryState, action: ValidDispatch): QuerySta
             return { ...state, dataCenter: action.value };
         case QueryReducerAction.SET_CHECKED_KEYS:
             return { ...state, checkedKeys: action.value };
+        case QueryReducerAction.SET_HIDDEN_KEYS:
+            return { ...state, hiddenKeys: action.value };
         case QueryReducerAction.UPDATE_STATE:
             return { ...state, ...action.value };
         default:
@@ -102,8 +107,20 @@ export class QueryDispatcher {
     get tableRows() { return this.state.tableRows; }
     get checkedKeys() { return this.state.checkedKeys; }
     setCheckKey(key: string, isSet: boolean) {
-        const newKeys = this.setChildKeys(key, isSet);
+        const newKeys = this.setChildKeys(this.state.checkedKeys, key, isSet, true);
         this.dispatch({ type: QueryReducerAction.SET_CHECKED_KEYS, value: newKeys });
+    }
+    get hiddenKeys() { return this.state.hiddenKeys; }
+    toggleHiddenKey(key: string) {
+        const newKeys = new Set(this.state.hiddenKeys);
+        if (newKeys.has(key))
+            newKeys.delete(key);
+        else
+            newKeys.add(key);
+        this.dispatch({ type: QueryReducerAction.SET_HIDDEN_KEYS, value: newKeys });
+    }
+    isChildOfHiddenKey(key: string): boolean {
+        return ![...this.hiddenKeys].every(k => !key.startsWith(`${k}|`));
     }
 
     private recalculateUniversalis(state: QueryState, changedState: ChangedState) {
@@ -117,8 +134,23 @@ export class QueryDispatcher {
             case ChangedState.IS_HQ:
                 state = this.recalculateRecStatistics(state);
             default:
-                return this.recalculateTableRows(state);
+                state = this.recalculateTableRows(state);
         }
+
+        switch (changedState) {
+            case ChangedState.UNIVERSALIS_INFO:
+            case ChangedState.IS_HQ:
+                const hiddenKeys = new Set<string>();
+                for (const { key, row } of state.tableRows ?? []) {
+                    if (row.buy.unwrap_or(Number.MAX_SAFE_INTEGER) < row.craft.unwrap_or(Number.MIN_SAFE_INTEGER)) {
+                        hiddenKeys.add(key);
+                    }
+                }
+                state = { ...state, hiddenKeys };
+            default:
+        }
+
+        return state;
     }
 
     private recalculateRecStatistics(state: QueryState): QueryState {
@@ -129,19 +161,18 @@ export class QueryDispatcher {
 
     private recalculateTableRows(state: QueryState): QueryState {
         if (state.universalisInfo === undefined || state.recursiveStats === undefined) return state;
-        const _count = Util.tryParse(state.count).unwrap_or(1);
         const _limit = Util.tryParse(state.limit).unwrap_or(100);
         const _minVelocity = Util.tryParse(state.minVelocity).unwrap_or(0);
-        const tableRows = generateTableData(_count, _limit, _minVelocity, state.universalisInfo, state.recursiveStats);
+        const tableRows = generateTableData(_limit, _minVelocity, state.universalisInfo, state.recursiveStats);
         return { ...state, tableRows };
     }
 
-    private setChildKeys(key: string, isSet: boolean): Set<string> {
-        const pred = (k: string) => k == key || k.startsWith(`${key}|`);
+    private setChildKeys(keySet: Set<string>, key: string, isSet: boolean, includeSelf: boolean): Set<string> {
+        const pred = (k: string) => (includeSelf && k == key) || k.startsWith(`${key}|`);
         if (!isSet || !this.state.tableRows) {
-            return new Set([...this.state.checkedKeys].filter(k => !pred(k)));
+            return new Set([...keySet].filter(k => !pred(k)));
         } else {
-            const set = new Set(this.state.checkedKeys);
+            const set = new Set(keySet);
             const newKeys = this.state.tableRows.map(r => r.key).filter(pred);
             for (const k of newKeys) set.add(k);
             return set;
@@ -150,7 +181,7 @@ export class QueryDispatcher {
 }
 
 function generateTableData(
-    count: number, limit: number, minVelocity: number, universalisInfo: UniversalisInfo, recursiveState: RecursiveStats
+    limit: number, minVelocity: number, universalisInfo: UniversalisInfo, recursiveState: RecursiveStats
 ): KeyedTableRow[] {
     const itemInfo = universalisInfo.itemInfo;
     const { itemStats, topProfitStats } = recursiveState;
@@ -158,7 +189,7 @@ function generateTableData(
     let items = topProfitStats;
     items.sort(({ top: a }, { top: b }) => optSub(a.profit, b.profit).unwrap_or(Number.MIN_SAFE_INTEGER));
     items.reverse();
-    items = items.filter(({ top }) => maxVelocity(itemStats[top.itemId]) >= minVelocity);
+    items = items.filter(({ top }) => maxVelocityOf(itemStats[top.itemId]) >= minVelocity);
     items = items.slice(0, limit);
 
     let index = 0;
@@ -176,8 +207,9 @@ function generateTableData(
                 row: {
                     _key: key,
                     index,
+                    itemId: info.itemId,
+                    hasChildren: info.hasChildren,
                     name: `${quantity}${name}`,
-                    hidden: false,
                     perDay: stats.velocityDay.aq,
                     perWeek: stats.velocityWeek.aq,
                     perBiWeek: stats.velocityWeeks.aq,
@@ -196,7 +228,7 @@ function generateTableData(
     return rows;
 }
 
-const maxVelocity = (stats: Statistics) => {
+const maxVelocityOf = (stats: Statistics) => {
     const arr = [
         stats.velocityDay.aq.unwrap_or(0),
         stats.velocityWeek.aq.unwrap_or(0),
@@ -209,7 +241,6 @@ const maxVelocity = (stats: Statistics) => {
 
 export function defaultQueryState() {
     const defaultQuery = preparedQueries[0].value;
-    const defaultDataCenter = dataCenters[0];
     const defaultState = {
         query: defaultQuery,
         dataCenter: defaultDataCenter,
@@ -218,6 +249,7 @@ export function defaultQueryState() {
         minVelocity: '',
         isHq: false,
         checkedKeys: new Set<string>(),
+        hiddenKeys: new Set<string>(),
     };
     return processQuery(defaultState.query, defaultState);
 }

@@ -24,14 +24,17 @@
     .tableRow {
         background-color: @color-bg-table;
 
-        td.velocity, td.costs {
+        td.velocity,
+        td.costs {
             background-color: darken(@color-bg-table, 10%);
         }
     }
 
     .tableRowDark {
         background-color: darken(@color-bg-table, 10%);
-        td.velocity, td.costs {
+
+        td.velocity,
+        td.costs {
             background-color: darken(@color-bg-table, 20%);
         }
     }
@@ -43,6 +46,11 @@
 
     .rowItem {
         text-align: center;
+    }
+
+    .isChildRow {
+        font-style: italic;
+        font-size: smaller;
     }
 
     td.name {
@@ -65,4 +73,8 @@
     }
 
     //.profit { }
+
+    button {
+        width: 1.8em;
+    }
 }

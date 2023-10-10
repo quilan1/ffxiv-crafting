@@ -4,6 +4,7 @@ import Header from './header'
 import styles from './main.module.css';
 import { QueryContainer } from './(query)/query';
 import { FirmamentContainer } from './(firmament)/firmament-container';
+import QueryContextProvider from './(query)/context';
 
 export enum MarketForm {
     QUERY,
@@ -22,8 +23,10 @@ export default function Home() {
 
     return (
         <main className={styles.main}>
-            <Header setForm={setForm} />
-            <div className={styles.contentContainer}>{form}</div>
+            <QueryContextProvider>
+                <Header setForm={setForm} />
+                <div className={styles.contentContainer}>{form}</div>
+            </QueryContextProvider>
         </main>
     )
 }

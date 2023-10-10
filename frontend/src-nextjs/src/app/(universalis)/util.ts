@@ -9,6 +9,14 @@ export type KeysMatching<T extends object, V> = {
 }[keyof T];
 
 export default class Util {
+    static keysOf<T extends Record<K, unknown>, K extends string | number | symbol>(o: T): (keyof T)[] {
+        return Object.keys(o) as (keyof T)[];
+    };
+
+    static entriesOf<T extends Record<K, unknown>, K extends string | number | symbol>(o: T): [keyof T, T[keyof T]][] {
+        return Object.entries(o) as [keyof T, T[keyof T]][];
+    };
+
     static sorted<T>(_arr: Iterable<T>): T[] {
         const arr = [..._arr];
         arr.sort();
@@ -47,8 +55,7 @@ export default class Util {
         }
 
         if (typeof a === 'string' || typeof a === 'number' || a === null || a === undefined ||
-            typeof b === 'string' || typeof b === 'number' || b === null || b === undefined)
-        {
+            typeof b === 'string' || typeof b === 'number' || b === null || b === undefined) {
             return a === b;
         } else if (Array.isArray(a)) {
             if (!Array.isArray(b)) {
