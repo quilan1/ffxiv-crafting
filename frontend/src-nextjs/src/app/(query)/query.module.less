@@ -21,7 +21,6 @@
     >* {
         margin-left: 5px;
         margin-right: 5px;
-        // border: 1px solid @color-fg-border;
     }
 
     > :first-child {
@@ -133,4 +132,89 @@
             background-color: grey;
         }
     }
+}
+
+.marketInfo {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid @color-fg-border;
+    min-height: 0px;
+
+    label {
+        color: @color-fg-label
+    }
+}
+
+.tableContainer {
+    overflow: auto;
+    max-height: 100%;
+}
+
+.informationTable {
+    border: 1px solid black;
+    width: 100%;
+    border-collapse: collapse;
+
+    .tableRow {
+        background-color: @color-bg-table;
+
+        td.velocity,
+        td.costs {
+            background-color: darken(@color-bg-table, 10%);
+        }
+    }
+
+    .tableRowDark {
+        background-color: darken(@color-bg-table, 10%);
+
+        td.velocity,
+        td.costs {
+            background-color: darken(@color-bg-table, 20%);
+        }
+    }
+
+    .heading {
+        background-color: @color-bg-table-header;
+        border-bottom: 1px solid black;
+    }
+
+    .rowItem {
+        text-align: center;
+    }
+
+    .isChildRow {
+        font-style: italic;
+        font-size: smaller;
+    }
+
+    td.name {
+        text-align: left;
+        padding-left: 1em;
+        padding-right: 1em;
+    }
+
+    td {
+        border: unset;
+        border-bottom: 1px solid black;
+    }
+
+    .leftBorder {
+        border-left: 1px solid black;
+    }
+
+    .rightBorder {
+        border-right: 1px solid black;
+    }
+
+    //.profit { }
+
+    button {
+        width: 1.8em;
+    }
+}
+
+.worldInfo {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid @color-fg-border;
 }

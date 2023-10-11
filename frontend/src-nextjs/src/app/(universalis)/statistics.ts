@@ -51,6 +51,17 @@ function quality<T>(listings: Listing[], fn: (listings: SimpleArray<Listing>) =>
     }
 }
 
+export const maxVelocityOf = (stats: Statistics) => {
+    const arr = [
+        stats.velocityDay.aq.unwrap_or(0),
+        stats.velocityWeek.aq.unwrap_or(0),
+        stats.velocityWeeks.aq.unwrap_or(0)
+    ].filter(v => v > 0);
+
+    if (arr.length == 0) return 0;
+    return arr.reduce((a, b) => Math.max(a, b));
+}
+
 export function preferHq<T>(quality: Quality<T>, isHq: boolean, reqHq: boolean) {
     const hqOpt = isHq ? quality.hq : None();
     return reqHq ? hqOpt : hqOpt.or(quality.aq);

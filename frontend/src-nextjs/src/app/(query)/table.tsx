@@ -1,5 +1,5 @@
-import styles from './table.module.css';
-import { useQueryContext } from '../context';
+import styles from './query.module.css';
+import { useQueryContext } from './context';
 import { OptionType } from '@/app/(universalis)/option';
 import { ChangeEvent } from 'react';
 
@@ -25,8 +25,8 @@ export interface KeyedTableRow {
 }
 
 export function MarketInformation() {
-    const state = useQueryContext();
-    const tableRows = state.tableRows;
+    const { queryData } = useQueryContext();
+    const tableRows = queryData.tableRows;
 
     return (
         <div className={styles.marketInfo}>
@@ -39,7 +39,7 @@ export function MarketInformation() {
                         <tbody>
                             {tableRows
                                 .filter(({ row }) => row.itemId > 19)
-                                .filter(({ key }) => !state.isChildOfHiddenKey(key))
+                                .filter(({ key }) => !queryData.isChildOfHiddenKey(key))
                                 .map(({ key, row }) => <TableRow key={key} {...row} />)}
                         </tbody>
                     </table>
@@ -76,15 +76,15 @@ function TableRow(props: TableRow) {
     const _string = (o: OptionType<number>) => o.map(_toString).unwrap_or('-');
 
     const { _key, index, hasChildren, name, perDay, perWeek, perBiWeek, count, sell, buy, craft, profit } = props;
-    const state = useQueryContext();
+    const { queryData } = useQueryContext();
 
     const generation = _key.split('').reduce((prev, cur) => cur != '|' ? prev : (prev + 1), 0);
     const namePadding = generation * 1.8;
-    const onClickNameButton = () => { state.toggleHiddenKey(_key); };
-    const nameNode = !hasChildren ? name : <><button type='button' onClick={onClickNameButton}>{state.hiddenKeys.has(_key) ? '+' : '-'}</button>{name}</>;
+    const onClickNameButton = () => { queryData.toggleHiddenKey(_key); };
+    const nameNode = !hasChildren ? name : <><button type='button' onClick={onClickNameButton}>{queryData.hiddenKeys.has(_key) ? '+' : '-'}</button>{name}</>;
 
-    const isChecked = state.checkedKeys.has(_key);
-    const onChangeChecked = (e: ChangeEvent<HTMLInputElement>) => { state.setCheckKey(_key, e.target.checked); };
+    const isChecked = queryData.checkedKeys.has(_key);
+    const onChangeChecked = (e: ChangeEvent<HTMLInputElement>) => { queryData.setCheckKey(_key, e.target.checked); };
     const checkedNode = <input type='checkbox' checked={isChecked} onChange={onChangeChecked}></input>;
 
     const rowStyle = [

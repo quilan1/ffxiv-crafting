@@ -1,14 +1,14 @@
-import { ReactNode, createContext, useContext, useReducer } from "react";
-import { QueryReducer, QueryDispatcher, defaultQueryState } from "./reducer";
+import { ReactNode, createContext, useContext } from "react";
+import { QueryState, useQueryStateDefault } from "./query-state";
 
-export const QueryContext = createContext<QueryDispatcher | null>(null);
+export const QueryContext = createContext<QueryState | null>(null);
 
-export default function QueryContextProvider({ children }: { children: ReactNode }) {
-    const dispatcher = new QueryDispatcher(...useReducer(QueryReducer, defaultQueryState()));
-    return <QueryContext.Provider value={dispatcher}>{children}</QueryContext.Provider>
+export function QueryContextProvider({ children }: { children: ReactNode }) {
+    const state: QueryState = useQueryStateDefault();
+    return <QueryContext.Provider value={state}>{children}</QueryContext.Provider>
 }
 
-export function useQueryContext(): QueryDispatcher {
+export function useQueryContext(): QueryState {
     const context = useContext(QueryContext);
     if (context === null) {
         throw new Error('You must use QueryContext inside of a QueryContextProvider');

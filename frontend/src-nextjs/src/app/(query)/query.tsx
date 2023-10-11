@@ -1,9 +1,10 @@
 import { ChangeEvent, useRef, useState } from 'react';
 import styles from './query.module.css';
-import UniversalisRequest, { ListingRequestStatus, ListingStatusInfo } from '../(universalis)/universalis_api';
+import UniversalisRequest, { ListingRequestStatus } from '../(universalis)/universalis_api';
 import { useQueryContext } from './context';
-import { MarketInformation } from './(table)/table';
-import { SimpleState } from '../(universalis)/simple_state';
+import { MarketInformation } from './table';
+import { KeysMatching } from '../(universalis)/util';
+import { signal } from '../(universalis)/signal';
 // import { WorldInformation } from './world-information';
 
 export function QueryContainer() {
@@ -14,20 +15,18 @@ export function QueryContainer() {
     </>;
 }
 
-type FetchStatusState = SimpleState<ListingStatusInfo | undefined>;
-
 export function QueryPanel() {
-    const listingStatusInfo = new SimpleState(useState<ListingStatusInfo | undefined>());
     return (
         <div className={styles.queries}>
             <QueryOptions />
-            <FetchButton listingStatusInfo={listingStatusInfo} />
-            <FetchStatus listingStatusInfo={listingStatusInfo} />
+            <FetchButton />
+            <FetchStatus />
         </div>
     )
 }
 
-function FetchStatus({ listingStatusInfo }: { listingStatusInfo: FetchStatusState }) {
+function FetchStatus() {
+    const { listingStatusInfo } = useQueryContext();
     const status = listingStatusInfo.value;
 
     const fetchClass = (status: ListingRequestStatus) => {
@@ -63,20 +62,24 @@ function FetchStatus({ listingStatusInfo }: { listingStatusInfo: FetchStatusStat
 }
 
 export function QueryOptions() {
-    const state = useQueryContext();
-    const onChangeQuery = (e: ChangeEvent<HTMLInputElement>) => state.query = e.target.value;
-    const onChangeQuerySelect = (e: ChangeEvent<HTMLSelectElement>) => { state.setQueryWithProcessing(e.target.value); };
-    const onChangeDataCenter = (e: ChangeEvent<HTMLSelectElement>) => state.dataCenter = e.target.value;
-    const onChangeCount = (e: ChangeEvent<HTMLInputElement>) => state.count = e.target.value;
-    const onChangeLimit = (e: ChangeEvent<HTMLInputElement>) => state.limit = e.target.value;
-    const onChangeMinVelocity = (e: ChangeEvent<HTMLInputElement>) => state.minVelocity = e.target.value;
-    const onChangeIsHq = (e: ChangeEvent<HTMLInputElement>) => state.isHq = e.target.checked;
+    const { dataCenter, queryString, queryData } = useQueryContext();
+    const onChangeQuery = (e: ChangeEvent<HTMLInputElement>) => { queryString.value = e.target.value; }
+    const onChangeQuerySelect = (e: ChangeEvent<HTMLSelectElement>) => {
+        const { queryString: _queryString, count, limit, minVelocity } = processQuery(e.target.value);
+        queryString.value = _queryString;
+        queryData.state = { ...queryData.state, count, limit, minVelocity };
+    };
+    const onChangeDataCenter = (e: ChangeEvent<HTMLSelectElement>) => { dataCenter.value = e.target.value; };
+    const onChangeCount = (e: ChangeEvent<HTMLInputElement>) => queryData.count = e.target.value;
+    const onChangeLimit = (e: ChangeEvent<HTMLInputElement>) => queryData.limit = e.target.value;
+    const onChangeMinVelocity = (e: ChangeEvent<HTMLInputElement>) => queryData.minVelocity = e.target.value;
+    const onChangeIsHq = (e: ChangeEvent<HTMLInputElement>) => queryData.isHq = e.target.checked;
 
     return (
         <div className={styles.queryOptions}>
             <div className={styles.labelRow}>
                 <label>Query:</label>
-                <input type="text" onChange={onChangeQuery} value={state.query} className={styles.queryString}></input>
+                <input type="text" onChange={onChangeQuery} value={queryString.value} className={styles.queryString}></input>
             </div>
             <div className={styles.labelRow}>
                 <label>Examples:</label>
@@ -92,58 +95,51 @@ export function QueryOptions() {
             <div className={styles.optionsBlock}>
                 <div><div>
                     <label>Count: </label>
-                    <input type="number" value={state.count} onChange={onChangeCount} style={{ width: '3em' }} />
+                    <input type="number" value={queryData.count} onChange={onChangeCount} style={{ width: '3em' }} />
                 </div></div>
                 <div><div>
                     <label>Limit: </label>
-                    <input type="number" value={state.limit} onChange={onChangeLimit} style={{ width: '2.5em' }} />
+                    <input type="number" value={queryData.limit} onChange={onChangeLimit} style={{ width: '2.5em' }} />
                 </div></div>
                 <div><div>
                     <label>Min Velocity: </label>
-                    <input type="number" value={state.minVelocity} onChange={onChangeMinVelocity} style={{ width: '3.5em' }} />
+                    <input type="number" value={queryData.minVelocity} onChange={onChangeMinVelocity} style={{ width: '3.5em' }} />
                 </div></div>
                 <div><div>
                     <label>Data Center: </label>
-                    <select onChange={onChangeDataCenter} defaultValue={defaultDataCenter}>{
+                    <select onChange={onChangeDataCenter} value={dataCenter.value}>{
                         dataCenters.map(dc => <option key={dc} value={dc}>{dc}</option>)
                     }</select>
                 </div></div>
                 <div><div>
                     <label>HQ: </label>
-                    <input id="is-hq" type="checkbox" onChange={onChangeIsHq} checked={state.isHq} />
+                    <input id="is-hq" type="checkbox" onChange={onChangeIsHq} checked={queryData.isHq} />
                 </div></div>
             </div>
         </div>
     );
 }
 
-enum FetchState {
-    FETCH = "Fetch",
-    CANCEL = "Cancel",
-}
-
-export function FetchButton({ listingStatusInfo }: { listingStatusInfo: FetchStatusState }) {
-    const [fetchButtonState, setFetchButtonState] = useState(FetchState.FETCH);
+export function FetchButton() {
+    const isFetching = signal(useState(false));
+    const { listingStatusInfo, queryString, dataCenter, queryData } = useQueryContext();
     const isCancelled = useRef(false);
-    const state = useQueryContext();
 
     const onClick = () => {
         void (async () => {
-            if (fetchButtonState == FetchState.FETCH) {
-                setFetchButtonState(FetchState.CANCEL);
-
+            if (!isFetching.value) {
+                isFetching.value = true;
                 isCancelled.current = false;
                 try {
-
-                    const universalisInfo = await new UniversalisRequest(state.query, state.dataCenter)
+                    const universalisInfo = await new UniversalisRequest(queryString.value, dataCenter.value)
                         .setIsCancelled(() => isCancelled.current)
                         .setStatusFn(status => { listingStatusInfo.value = status; })
                         .fetch();
 
                     listingStatusInfo.value = undefined;
-                    state.universalisInfo = universalisInfo ?? undefined;
+                    queryData.universalisInfo = universalisInfo ?? undefined;
                 } finally {
-                    setFetchButtonState(FetchState.FETCH);
+                    isFetching.value = false;
                 }
             } else {
                 isCancelled.current = true;
@@ -151,7 +147,7 @@ export function FetchButton({ listingStatusInfo }: { listingStatusInfo: FetchSta
         })();
     };
 
-    return <button type="button" className={styles.fetchButton} onClick={onClick}>{fetchButtonState}</button>;
+    return <button type="button" className={styles.fetchButton} onClick={onClick}>{isFetching.value ? 'Cancel' : 'Fetch'}</button>;
 }
 
 export const preparedQueries = [
@@ -173,4 +169,41 @@ export const dataCenters = [
     "North-America",
 ];
 
+export const defaultQueryString = processQuery(preparedQueries[0].value).queryString;
 export const defaultDataCenter = dataCenters[1];
+
+function processQuery(queryString: string) {
+    interface ProcessQueryResultType {
+        queryString: string,
+        count: string,
+        limit: string,
+        minVelocity: string,
+    };
+
+    const results: ProcessQueryResultType = {
+        queryString: '',
+        count: '',
+        limit: '',
+        minVelocity: '',
+    };
+
+    const setAndStrip = (variable: KeysMatching<ProcessQueryResultType, string>, regex: RegExp) => {
+        const match = queryString.match(regex);
+        if (match) {
+            results[variable] = match[1];
+            queryString = queryString.replaceAll(new RegExp(regex, 'g'), '');
+        }
+    }
+
+    setAndStrip('count', /:count ([0-9]*)\s*/);
+    setAndStrip('limit', /:limit ([0-9]*)\s*/);
+    setAndStrip('minVelocity', /:min_velocity ([0-9.]*)\s*/);
+    while (queryString.match(/, ,/)) {
+        queryString = queryString.replace(/, ,/, ',');
+    }
+    queryString = queryString.replace(/^,/, '');
+    queryString = queryString.replace(/,$/, '');
+    queryString = queryString.trim();
+    results.queryString = queryString;
+    return results;
+}
