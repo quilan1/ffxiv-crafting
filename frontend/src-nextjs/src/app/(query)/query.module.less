@@ -12,11 +12,13 @@
         color: @color-fg-label
     }
 
-    input, select, button {
+    input,
+    select,
+    button {
         background-color: @color-bg-input
     }
 
-    > * {
+    >* {
         margin-left: 5px;
         margin-right: 5px;
         // border: 1px solid @color-fg-border;
@@ -34,10 +36,10 @@
 .queryOptions {
     flex: 60%;
 
-    > .labelRow {
+    >.labelRow {
         display: flex;
 
-        > label:first-child {
+        >label:first-child {
             flex: 0 5em;
             min-width: 5em;
         }
@@ -46,20 +48,20 @@
             flex: 1;
         }
 
-        > * {
+        >* {
             flex: 0;
         }
     }
 
-    > .queryString {
+    >.queryString {
         font-size: 60%;
     }
 
-    > .optionsBlock {
+    >.optionsBlock {
         display: flex;
         flex-direction: row;
 
-        > div {
+        >div {
             flex: auto;
             display: flex;
             flex-direction: column;
@@ -68,14 +70,14 @@
             margin-right: 2px;
         }
 
-        > div:first-child {
+        >div:first-child {
             display: flex;
             flex-direction: column;
             align-items: flex-start;
             margin-left: 0px;
         }
 
-        > div:last-child {
+        >div:last-child {
             display: flex;
             flex-direction: column;
             align-items: flex-end;
@@ -89,5 +91,46 @@
 }
 
 .fetchStatus {
-    flex: auto;
+    flex: 1;
+
+    >div {
+        width: 100%;
+        display: flex;
+
+        >label {
+            font-weight: bolder;
+        }
+
+        >div:first-of-type {
+            border-left: 1px solid black;
+        }
+
+        >div:last-of-type {
+            border-right: 1px solid black;
+        }
+
+        .fetchRequest {
+            flex: 1;
+            border-top: 1px solid black;
+            border-bottom: 1px solid black;
+            max-width: 1em;
+            height: 1em;
+        }
+
+        .active {
+            background-color: yellow;
+        }
+
+        .finishedGood {
+            background-color: green;
+        }
+
+        .finishedBad {
+            background-color: red;
+        }
+
+        .queued {
+            background-color: grey;
+        }
+    }
 }

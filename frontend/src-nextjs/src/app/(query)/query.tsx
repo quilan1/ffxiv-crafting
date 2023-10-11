@@ -1,8 +1,9 @@
 import { ChangeEvent, useRef, useState } from 'react';
 import styles from './query.module.css';
-import UniversalisRequest from '../(universalis)/universalis_api';
+import UniversalisRequest, { ListingRequestStatus, ListingStatusInfo } from '../(universalis)/universalis_api';
 import { useQueryContext } from './context';
 import { MarketInformation } from './(table)/table';
+import { SimpleState } from '../(universalis)/simple_state';
 // import { WorldInformation } from './world-information';
 
 export function QueryContainer() {
@@ -13,17 +14,55 @@ export function QueryContainer() {
     </>;
 }
 
+type FetchStatusState = SimpleState<ListingStatusInfo | undefined>;
+
 export function QueryPanel() {
+    const listingStatusInfo = new SimpleState(useState<ListingStatusInfo | undefined>());
     return (
         <div className={styles.queries}>
-            <FilterOptions />
-            <FetchButton />
-            <div className={styles.fetchStatus}><label>Loading Status...</label></div>
+            <QueryOptions />
+            <FetchButton listingStatusInfo={listingStatusInfo} />
+            <FetchStatus listingStatusInfo={listingStatusInfo} />
         </div>
     )
 }
 
-export function FilterOptions() {
+function FetchStatus({ listingStatusInfo }: { listingStatusInfo: FetchStatusState }) {
+    const status = listingStatusInfo.value;
+
+    const fetchClass = (status: ListingRequestStatus) => {
+        return ("active" in status)
+            ? styles.active
+            : ("finished" in status)
+                ? (status.finished ? styles.finishedGood : styles.finishedBad)
+                : styles.queued;
+    };
+    const statusDiv = (key: number, status: ListingRequestStatus) => {
+        return <div key={key} className={`${styles.fetchRequest} ${fetchClass(status)}`} />;
+    };
+    const statusChild = (statusType: string, text: string, statuses: ListingRequestStatus[]) => {
+        return (text.length) ? <label>{statusType}: {text}</label> : <>{statuses.map((status, i) => statusDiv(i, status))}</>;
+    };
+
+    let children = <></>;
+    if (!status) {
+    } else if ("status" in status) {
+        children = <div><label>{status.status}</label></div>;
+    } else {
+        const listingStatusText = ("status" in status.listingStatus) ? status.listingStatus.status : '';
+        const historyStatusText = ("status" in status.historyStatus) ? status.historyStatus.status : '';
+        const listingStatuses = ("listings" in status.listingStatus) ? status.listingStatus.listings : [];
+        const historyStatuses = ("listings" in status.historyStatus) ? status.historyStatus.listings : [];
+        children = <>
+            <div>{statusChild("Listings", listingStatusText, listingStatuses)}</div>
+            <div>{statusChild("History", historyStatusText, historyStatuses)}</div>
+        </>;
+    }
+
+    return <div className={styles.fetchStatus}>{children}</div>
+}
+
+export function QueryOptions() {
     const state = useQueryContext();
     const onChangeQuery = (e: ChangeEvent<HTMLInputElement>) => state.query = e.target.value;
     const onChangeQuerySelect = (e: ChangeEvent<HTMLSelectElement>) => { state.setQueryWithProcessing(e.target.value); };
@@ -83,25 +122,28 @@ enum FetchState {
     CANCEL = "Cancel",
 }
 
-export function FetchButton() {
-    const [fetchState, setFetchState] = useState(FetchState.FETCH);
+export function FetchButton({ listingStatusInfo }: { listingStatusInfo: FetchStatusState }) {
+    const [fetchButtonState, setFetchButtonState] = useState(FetchState.FETCH);
     const isCancelled = useRef(false);
     const state = useQueryContext();
 
     const onClick = () => {
         void (async () => {
-            if (fetchState == FetchState.FETCH) {
-                setFetchState(FetchState.CANCEL);
+            if (fetchButtonState == FetchState.FETCH) {
+                setFetchButtonState(FetchState.CANCEL);
 
                 isCancelled.current = false;
                 try {
+
                     const universalisInfo = await new UniversalisRequest(state.query, state.dataCenter)
                         .setIsCancelled(() => isCancelled.current)
+                        .setStatusFn(status => { listingStatusInfo.value = status; })
                         .fetch();
 
+                    listingStatusInfo.value = undefined;
                     state.universalisInfo = universalisInfo ?? undefined;
                 } finally {
-                    setFetchState(FetchState.FETCH);
+                    setFetchButtonState(FetchState.FETCH);
                 }
             } else {
                 isCancelled.current = true;
@@ -109,7 +151,7 @@ export function FetchButton() {
         })();
     };
 
-    return <button type="button" className={styles.fetchButton} onClick={onClick}>{fetchState}</button>;
+    return <button type="button" className={styles.fetchButton} onClick={onClick}>{fetchButtonState}</button>;
 }
 
 export const preparedQueries = [
