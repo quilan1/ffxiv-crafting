@@ -1,7 +1,7 @@
 import { ItemInfo, Listing } from "./items";
 import { None, OptionType, Some } from "./option";
 
-const HOMEWORLD = "Seraph";
+export const HOMEWORLD = "Seraph";
 
 export interface Quality<T> {
     hq: OptionType<T>,

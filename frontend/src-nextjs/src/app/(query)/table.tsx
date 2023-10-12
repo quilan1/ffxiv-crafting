@@ -2,13 +2,13 @@ import styles from './query.module.css';
 import { useQueryContext } from './context';
 import { OptionType } from '@/app/(universalis)/option';
 import { ChangeEvent } from 'react';
+import { Ingredient } from '../(universalis)/items';
 
 export interface TableRow {
     _key: string,
-    itemId: number,
+    item: Ingredient,
     index: number,
     hasChildren: boolean,
-    name: string,
     perDay: OptionType<number>,
     perWeek: OptionType<number>,
     perBiWeek: OptionType<number>,
@@ -38,7 +38,7 @@ export function MarketInformation() {
                         </thead>
                         <tbody>
                             {tableRows
-                                .filter(({ row }) => row.itemId > 19)
+                                .filter(({ row }) => row.item.itemId > 19)
                                 .filter(({ key }) => !queryData.isChildOfHiddenKey(key))
                                 .map(({ key, row }) => <TableRow key={key} {...row} />)}
                         </tbody>
@@ -75,8 +75,12 @@ function TableRow(props: TableRow) {
     const _fixed = (o: OptionType<number>) => o.map(_toFixed).unwrap_or('-');
     const _string = (o: OptionType<number>) => o.map(_toString).unwrap_or('-');
 
-    const { _key, index, hasChildren, name, perDay, perWeek, perBiWeek, count, sell, buy, craft, profit } = props;
+    const { _key, index, item, hasChildren, perDay, perWeek, perBiWeek, count, sell, buy, craft, profit } = props;
     const { queryData } = useQueryContext();
+
+    const quantity = item.count > 1 ? `${item.count}x ` : '';
+    const baseName = queryData.universalisInfo?.itemInfo[item.itemId]?.name ?? '';
+    const name = `${quantity}${baseName}`;
 
     const generation = _key.split('').reduce((prev, cur) => cur != '|' ? prev : (prev + 1), 0);
     const namePadding = generation * 1.8;
@@ -109,7 +113,7 @@ function TableRow(props: TableRow) {
 }
 
 const columnHeaders = {
-    checked: [styles.checkInclude, styles.rightBorder],
+    checked: [styles.checkInclude],
     name: [styles.name],
     perDay: [styles.velocity, styles.leftBorder],
     perWeek: [styles.velocity],

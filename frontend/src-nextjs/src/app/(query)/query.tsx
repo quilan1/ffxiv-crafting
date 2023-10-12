@@ -5,13 +5,14 @@ import { useQueryContext } from './context';
 import { MarketInformation } from './table';
 import { KeysMatching } from '../(universalis)/util';
 import { signal } from '../(universalis)/signal';
-// import { WorldInformation } from './world-information';
+import { WorldInformation } from './world-information';
 
 export function QueryContainer() {
+    const { queryData } = useQueryContext();
     return <>
         <QueryPanel />
         <MarketInformation />
-        {/* <WorldInformation /> */}
+        {queryData.checkedKeys.size > 0 && <WorldInformation />}
     </>;
 }
 

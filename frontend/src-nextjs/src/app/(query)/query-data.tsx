@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { RecursiveStats, allRecursiveStatsOfAsync } from "../(universalis)/analysis";
+import { RecursiveStats } from "../(universalis)/analysis";
 import { optSub } from "../(universalis)/option";
 import { SimpleStateUse } from "../(universalis)/signal";
 import { maxVelocityOf } from "../(universalis)/statistics";
 import { UniversalisInfo } from "../(universalis)/universalis_api";
 import Util from "../(universalis)/util";
 import { KeyedTableRow } from "./table";
+import { allRecursiveStatsOfAsync } from "../(universalis)/analysis-async";
 
 export interface QueryData {
     count: string,
@@ -80,6 +81,7 @@ export class QueryDataState {
     isChildOfHiddenKey(key: string): boolean {
         return ![...this.hiddenKeys].every(k => !key.startsWith(`${k}|`));
     }
+    get recursiveStats() { return this._state.recursiveStats; }
 
     private async recalculateUniversalis(state: QueryData, changedState: ChangedState) {
         if (state.universalisInfo === undefined) {
@@ -124,7 +126,7 @@ export class QueryDataState {
         if (state.universalisInfo === undefined || state.recursiveStats === undefined) return state;
         const _limit = Util.tryParse(state.limit).unwrap_or(100);
         const _minVelocity = Util.tryParse(state.minVelocity).unwrap_or(0);
-        const tableRows = generateTableData(_limit, _minVelocity, state.universalisInfo, state.recursiveStats);
+        const tableRows = generateTableData(_limit, _minVelocity, state.recursiveStats);
         return { ...state, tableRows };
     }
 
@@ -141,10 +143,7 @@ export class QueryDataState {
     }
 }
 
-function generateTableData(
-    limit: number, minVelocity: number, universalisInfo: UniversalisInfo, recursiveStats: RecursiveStats
-): KeyedTableRow[] {
-    const itemInfo = universalisInfo.itemInfo;
+function generateTableData(limit: number, minVelocity: number, recursiveStats: RecursiveStats): KeyedTableRow[] {
     const { itemStats, topProfitStats } = recursiveStats;
 
     let items = topProfitStats;
@@ -159,8 +158,6 @@ function generateTableData(
         const allProfitStats = [top, ...children];
         for (const info of allProfitStats) {
             const stats = itemStats[info.itemId];
-            const quantity = info.count > 1 ? `${info.count}x ` : '';
-            const name = itemInfo[info.itemId].name;
             const key = info.key.join("|");
 
             rows.push({
@@ -168,9 +165,8 @@ function generateTableData(
                 row: {
                     _key: key,
                     index,
-                    itemId: info.itemId,
+                    item: { itemId: info.itemId, count: info.count },
                     hasChildren: info.hasChildren,
-                    name: `${quantity}${name}`,
                     perDay: stats.velocityDay.aq,
                     perWeek: stats.velocityWeek.aq,
                     perBiWeek: stats.velocityWeeks.aq,
