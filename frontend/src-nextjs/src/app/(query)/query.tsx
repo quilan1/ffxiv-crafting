@@ -136,8 +136,9 @@ export function FetchButton() {
                         .setStatusFn(status => { listingStatusInfo.value = status; })
                         .fetch();
 
+                    listingStatusInfo.value = { status: "Calculating statistics..." };
+                    await queryData.setUniversalisInfo(universalisInfo ?? undefined);
                     listingStatusInfo.value = undefined;
-                    queryData.universalisInfo = universalisInfo ?? undefined;
                 } finally {
                     isFetching.value = false;
                 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { RecursiveStats, allRecursiveStatsOf } from "../(universalis)/analysis";
+import { RecursiveStats, allRecursiveStatsOfAsync } from "../(universalis)/analysis";
 import { optSub } from "../(universalis)/option";
 import { SimpleStateUse } from "../(universalis)/signal";
 import { maxVelocityOf } from "../(universalis)/statistics";
@@ -51,15 +51,17 @@ export class QueryDataState {
     set state(value: QueryData) { this.setState({ ...value }); }
 
     get count() { return this._state.count; }
-    set count(count: string) { this.setState({ ...this.recalculateUniversalis({ ...this._state, count }, ChangedState.COUNT) }); }
+    set count(count: string) { void this.recalculateUniversalis({ ...this._state, count }, ChangedState.COUNT); }
     get limit() { return this._state.limit; }
-    set limit(limit: string) { this.setState({ ...this.recalculateUniversalis({ ...this._state, limit }, ChangedState.LIMIT) }); }
+    set limit(limit: string) { void this.recalculateUniversalis({ ...this._state, limit }, ChangedState.LIMIT); }
     get minVelocity() { return this._state.minVelocity; }
-    set minVelocity(minVelocity: string) { this.setState({ ...this.recalculateUniversalis({ ...this._state, minVelocity }, ChangedState.MIN_VELOCITY) }); }
+    set minVelocity(minVelocity: string) { void this.recalculateUniversalis({ ...this._state, minVelocity }, ChangedState.MIN_VELOCITY); }
     get isHq() { return this._state.isHq; }
-    set isHq(value: boolean) { this.setState({ ...this.recalculateUniversalis({ ...this._state, isHq: value }, ChangedState.IS_HQ) }); }
+    set isHq(value: boolean) { void this.recalculateUniversalis({ ...this._state, isHq: value }, ChangedState.IS_HQ); }
     get universalisInfo() { return this._state.universalisInfo; }
-    set universalisInfo(value: UniversalisInfo | undefined) { this.setState({ ...this.recalculateUniversalis({ ...this._state, universalisInfo: value }, ChangedState.UNIVERSALIS_INFO) }); }
+    async setUniversalisInfo(value: UniversalisInfo | undefined): Promise<void> {
+        await this.recalculateUniversalis({ ...this._state, universalisInfo: value }, ChangedState.UNIVERSALIS_INFO);
+    }
     get tableRows() { return this._state.tableRows; }
     get checkedKeys() { return this._state.checkedKeys; }
     setCheckKey(key: string, isSet: boolean) {
@@ -79,16 +81,19 @@ export class QueryDataState {
         return ![...this.hiddenKeys].every(k => !key.startsWith(`${k}|`));
     }
 
-    private recalculateUniversalis(state: QueryData, changedState: ChangedState) {
-        if (state.universalisInfo === undefined)
-            return state;
+    private async recalculateUniversalis(state: QueryData, changedState: ChangedState) {
+        if (state.universalisInfo === undefined) {
+            this.setState({ ...state });
+            return;
+        }
 
         switch (changedState) {
             case ChangedState.UNIVERSALIS_INFO:
                 state = { ...state, checkedKeys: new Set() };
             case ChangedState.COUNT:
             case ChangedState.IS_HQ:
-                state = this.recalculateRecStatistics(state);
+                const recursiveStats = await this.recalculateRecStatistics(state);
+                state = { ...state, recursiveStats };
             default:
                 state = this.recalculateTableRows(state);
         }
@@ -106,13 +111,13 @@ export class QueryDataState {
             default:
         }
 
-        return state;
+        this.setState({ ...state });
     }
 
-    private recalculateRecStatistics(state: QueryData): QueryData {
-        if (state.universalisInfo === undefined) return state;
+    private async recalculateRecStatistics(state: QueryData): Promise<RecursiveStats | undefined> {
+        if (state.universalisInfo === undefined) return undefined;
         const _count = Util.tryParse(state.count).unwrap_or(1);
-        return { ...state, recursiveStats: allRecursiveStatsOf(_count, state.isHq, state.universalisInfo) };
+        return await allRecursiveStatsOfAsync(_count, state.isHq, state.universalisInfo)
     }
 
     private recalculateTableRows(state: QueryData): QueryData {
@@ -137,10 +142,10 @@ export class QueryDataState {
 }
 
 function generateTableData(
-    limit: number, minVelocity: number, universalisInfo: UniversalisInfo, recursiveState: RecursiveStats
+    limit: number, minVelocity: number, universalisInfo: UniversalisInfo, recursiveStats: RecursiveStats
 ): KeyedTableRow[] {
     const itemInfo = universalisInfo.itemInfo;
-    const { itemStats, topProfitStats } = recursiveState;
+    const { itemStats, topProfitStats } = recursiveStats;
 
     let items = topProfitStats;
     items.sort(({ top: a }, { top: b }) => optSub(a.profit, b.profit).unwrap_or(Number.MIN_SAFE_INTEGER));
