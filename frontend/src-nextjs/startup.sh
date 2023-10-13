@@ -2,4 +2,5 @@
 
 corepack enable
 pnpm i
-tail -f /dev/null
+pnpm build
+pnpm start

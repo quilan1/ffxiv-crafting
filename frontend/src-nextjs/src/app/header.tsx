@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import style from './main.module.css';
-import { MarketForm } from './page';
+
+export enum MarketForm {
+    QUERY,
+    FIRMAMENT,
+}
 
 export default function Header(
     { setForm }: { setForm: React.Dispatch<React.SetStateAction<MarketForm>> }
