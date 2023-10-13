@@ -1,0 +1,61 @@
+@import '../colors.less';
+
+.firmament {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid @color-fg-border;
+    border-top: unset;
+    max-height: 100%;
+
+    .statusHeader {
+        flex: 0;
+        display: flex;
+        flex-direction: row;
+        border-bottom: 2px solid @color-fg-border;
+        padding: 10px;
+
+        .status {
+            display: flex;
+            flex-direction: column;
+
+            >label {
+                padding-left: 10px;
+                color: white;
+            }
+        }
+    }
+
+    .nothingLoaded {
+        padding: 10px;
+        font-weight: bold;
+        font-size: large;
+        color: white;
+    }
+
+    .allScrips {
+        max-height: 100%;
+        margin: 10px;
+        overflow: auto;
+        background-color: @color-bg-table;
+
+        >* {
+            padding-left: 10px;
+        }
+
+        .scripHeading {
+            font-weight: bold;
+        }
+
+        .scripTable {
+            margin: 10px;
+            border: 1px solid @color-fg-border;
+
+            .scripProfit {
+                display: flex;
+                flex-direction: row;
+            }
+        }
+
+    }
+}

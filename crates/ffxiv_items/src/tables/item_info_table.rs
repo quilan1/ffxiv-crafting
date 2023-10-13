@@ -102,7 +102,7 @@ impl ItemInfoTable<'_> {
 
             let item = CsvItem {
                 id,
-                name: name.clone(),
+                name: name.replace('\u{00A0}', " ").clone(),
                 ui_category,
                 ilevel,
                 equip_level,

@@ -27,7 +27,7 @@ impl Filter {
 
         FilterBindingInfo::join(
             " OR ",
-            Self::from_str(filter_str)
+            Self::parse_all_filters(filter_str)
                 .into_iter()
                 .map(Self::filter_group_clause),
         )
@@ -59,35 +59,53 @@ impl Filter {
         FilterBindingInfo::join(" AND ", db_filters.into_iter())
     }
 
-    fn from_str(filter_str: &str) -> Vec<Vec<Filter>> {
-        filter_str
-            .split(';')
-            .map(|chunk| {
-                chunk
-                    .split(',')
-                    .map(|filter| {
-                        let filter = filter.trim();
-                        let contents = filter.split(' ').collect::<Vec<_>>();
-                        let (ftype, options) = if contents.len() > 1 {
-                            (
-                                contents[0].to_string(),
-                                contents[1..]
-                                    .join(" ")
-                                    .split('|')
-                                    .map(str::trim)
-                                    .filter(|filter| !filter.is_empty())
-                                    .map(ToString::to_string)
-                                    .collect::<Vec<_>>(),
-                            )
-                        } else {
-                            (contents[0].to_string(), Vec::new())
-                        };
-                        Filter {
-                            tag: ftype,
-                            options,
-                        }
-                    })
-                    .collect()
+    fn parse_all_filters(filter_str: &str) -> Vec<Vec<Filter>> {
+        filter_str.split(';').map(Self::parse_filters).collect()
+    }
+
+    fn parse_filters(filter_str: &str) -> Vec<Filter> {
+        let filters = filter_str.split(',').collect_vec();
+        let mut merged_filters = Vec::new();
+        let mut accumulated = "".to_string();
+        for filter in filters {
+            let skip = filter.ends_with('\\');
+            let filter = if !skip {
+                filter
+            } else {
+                &filter[..filter.len() - 1]
+            };
+            let cur = format!("{}{filter}", accumulated);
+            accumulated = "".to_string();
+            if !skip {
+                merged_filters.push(cur);
+            } else {
+                accumulated = format!("{cur},");
+            }
+        }
+
+        merged_filters
+            .iter()
+            .map(|filter| {
+                let filter = filter.trim();
+                let contents = filter.split(' ').collect::<Vec<_>>();
+                let (ftype, options) = if contents.len() > 1 {
+                    (
+                        contents[0].to_string(),
+                        contents[1..]
+                            .join(" ")
+                            .split('|')
+                            .map(str::trim)
+                            .filter(|filter| !filter.is_empty())
+                            .map(ToString::to_string)
+                            .collect::<Vec<_>>(),
+                    )
+                } else {
+                    (contents[0].to_string(), Vec::new())
+                };
+                Filter {
+                    tag: ftype,
+                    options,
+                }
             })
             .collect()
     }
