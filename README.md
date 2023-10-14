@@ -15,18 +15,17 @@ This will take some time for the rust server to compile the project for the firs
 ### Example usage
 
 To access the webpage, simply navigate on your browser to:
-[http://localhost:8080](http://localhost:8080).
+[http://localhost:3000](http://localhost:3000).
 
 As an example of usage, where the 'Filters:' dropdown sits, choose 'Level 90 Crafting Mats' as an example, and click 'Refresh'. This should, after a brief communication, fill the table with crafting information.
 
 ## Project Organization
 
-The Rust crates are inside of the 'crates' directory, and the Javascript / Typescript files are inside the 'frontend' directory. The general flow of information is as follows:
+The Rust crates are inside of the 'crates' directory, and the Typescript files are inside the 'frontend' directory. The general flow of information is as follows:
 
 ### Frontend
 
-* [src-ts](frontend/src-ts): The typescript is compiled by the docker 'typescript-init' service, into the `src-js/js` directory. Calls `ffxiv_server` API routines when the Refresh / Cancel button is pressed.
-* [src-js](frontend/src-js): This houses the index.html and compiled typescript code.
+* [frontend](frontend): The frontend has been completely rewritten as a Next.JS React project. It's now hosted on port 3000.
 
 ### Backend
 
@@ -41,4 +40,4 @@ The Rust crates are inside of the 'crates' directory, and the Javascript / Types
 
 ## Customization
 
-This is all a personal project, and not intended for anyone else, but in the off-chance that someone wants to use it, references to the homeworld (Seraph) may be found in [frontend/src-ts/src/custom/statistics.ts](frontend/src-ts/src/custom/statistics.ts), as the HOMEWORLD variable.
+This is all a personal project, and not intended for anyone else, but in the off-chance that someone wants to use it, references to the homeworld (Seraph) may be found in [frontend/src/app/(universalis)/statistics.ts](frontend/src/app/(universalis)/statistics.ts), as the HOMEWORLD variable.

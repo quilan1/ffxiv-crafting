@@ -50,5 +50,5 @@ services:
     #   ffxiv-server:
     #     condition: service_healthy
     volumes:
-      - ./frontend/src-nextjs:/nextjs
+      - ./frontend:/nextjs
       - /nextjs/node_modules/
