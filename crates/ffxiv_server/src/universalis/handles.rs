@@ -3,8 +3,8 @@ use std::time::{Duration, Instant};
 use anyhow::Result;
 use axum::extract::ws::{Message, WebSocket};
 use ffxiv_universalis::{
-    Signal, UniversalisHandle, UniversalisHistory, UniversalisListing, UniversalisProcessor,
-    UniversalisStatusValues,
+    ReqwestDownloader, Signal, UniversalisHandle, UniversalisHistory, UniversalisListing,
+    UniversalisProcessor, UniversalisStatusValues,
 };
 use futures::{Future, FutureExt};
 use tokio::time::sleep;
@@ -65,11 +65,11 @@ async fn make_market_request_info(
 
     let retain_num_days = payload.retain_num_days.unwrap_or(7.0);
 
-    let history_handle =
-        universalis_processor.make_request::<UniversalisHistory>(&worlds, all_ids, retain_num_days);
+    let history_handle = universalis_processor
+        .make_request::<UniversalisHistory, ReqwestDownloader>(&worlds, all_ids, retain_num_days);
 
-    let listing_handle =
-        universalis_processor.make_request::<UniversalisListing>(&worlds, all_ids, retain_num_days);
+    let listing_handle = universalis_processor
+        .make_request::<UniversalisListing, ReqwestDownloader>(&worlds, all_ids, retain_num_days);
 
     log::info!(target: "ffxiv_server",
         "Server uuid {server_uuid} maps to history universalis uuid {}",

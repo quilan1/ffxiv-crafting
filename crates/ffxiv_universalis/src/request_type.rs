@@ -13,9 +13,8 @@ pub trait UniversalisRequestType {
 
 impl UniversalisRequestType for UniversalisListing {
     fn url<S: AsRef<str>>(world: S, ids: S) -> String {
-        let universalis_url = universalis_url();
         format!(
-            "{universalis_url}/api/v2/{}/{}?entries=0",
+            "https://universalis.app/api/v2/{}/{}?entries=0",
             world.as_ref(),
             ids.as_ref()
         )
@@ -32,9 +31,8 @@ impl UniversalisRequestType for UniversalisListing {
 
 impl UniversalisRequestType for UniversalisHistory {
     fn url<S: AsRef<str>>(world: S, ids: S) -> String {
-        let universalis_url = universalis_url();
         format!(
-            "{universalis_url}/api/v2/history/{}/{}",
+            "https://universalis.app/api/v2/history/{}/{}",
             world.as_ref(),
             ids.as_ref()
         )
@@ -47,10 +45,4 @@ impl UniversalisRequestType for UniversalisHistory {
     fn parse_json(json: String, retain_num_days: f32) -> Result<ItemMarketInfoMap> {
         UniversalisJson::parse_history(json, retain_num_days)
     }
-}
-
-fn universalis_url() -> String {
-    std::env::var("UNIVERSALIS_URL")
-        .ok()
-        .unwrap_or("https://universalis.app".into())
 }

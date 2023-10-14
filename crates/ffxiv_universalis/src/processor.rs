@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    ItemListing, ItemMarketInfoMap, UniversalisHandle, UniversalisProcessorData,
+    FileDownloader, ItemListing, ItemMarketInfoMap, UniversalisHandle, UniversalisProcessorData,
     UniversalisRequest, UniversalisRequestType, UniversalisStatusState,
 };
 
@@ -33,7 +33,7 @@ impl UniversalisProcessor {
         self.async_processor.clone()
     }
 
-    pub fn make_request<T: UniversalisRequestType>(
+    pub fn make_request<T: UniversalisRequestType, D: FileDownloader>(
         &self,
         worlds: &[String],
         ids: &[u32],
@@ -52,7 +52,7 @@ impl UniversalisProcessor {
 
             log::info!(target: "ffxiv_universalis", "{uuid} Queueing {} futures", T::fetch_type());
             let all_listings =
-                Self::fetch_and_process_market_info::<T>(data, ready_signal_tx).await;
+                Self::fetch_and_process_market_info::<T, D>(data, ready_signal_tx).await;
             status.set_value(UniversalisStatusState::Cleanup);
 
             let (listing_map, failure_ids) =
@@ -90,7 +90,7 @@ impl UniversalisProcessor {
         (listing_map, failure_ids)
     }
 
-    async fn fetch_and_process_market_info<T: UniversalisRequestType>(
+    async fn fetch_and_process_market_info<T: UniversalisRequestType, D: FileDownloader>(
         data: UniversalisProcessorData,
         ready_signal: Sender<()>,
     ) -> Vec<Option<ItemMarketInfoMap>> {
@@ -101,8 +101,12 @@ impl UniversalisProcessor {
         for ids in &id_chunks {
             for world in &data.worlds {
                 let ids_string = ids.iter().map(|id| id.to_string()).join(",");
-                let request =
-                    UniversalisRequest::<T>::new(data.clone(), world.clone(), ids_string, chunk_id);
+                let request = UniversalisRequest::<T, D>::new(
+                    data.clone(),
+                    world.clone(),
+                    ids_string,
+                    chunk_id,
+                );
                 handles.push(request.process_listing());
                 chunk_id += 1;
             }
