@@ -22,7 +22,7 @@ interface ActiveInfo {
 //   And: x[i] ∈ { 0, 1 }
 //
 // This algorithm is similar to Balas' Algorithm -- a branch & bound technique.
-export const calculatePurchases = (listings: Listing[], minCount: number): Listing[] => {
+export const calculatePurchases = (listings: Listing[], minCount: number): Listing[] | undefined => {
     listings = listings.filter(listing => listing.count > 0);
 
     // Sort by lowest total cost (count * price)
@@ -30,6 +30,7 @@ export const calculatePurchases = (listings: Listing[], minCount: number): Listi
 
     // Bootstrap with a simple greedy strategy
     let bestActive = greedyStrategy(listings, listingIndices, minCount);
+    if (bestActive == undefined) return undefined;
 
     // Create the active listings. This should probably be a Heap data structure in the future
     let activeListings = [] as ActiveInfo[];
@@ -78,11 +79,6 @@ export const calculatePurchases = (listings: Listing[], minCount: number): Listi
         // Short circuit the larger items -- this will elimenate huge swaths of the field quickly and
         // keep our activeListings small. This should also yield better optimizations quicker.
         activeListings.sort((a, b) => b.count - a.count);
-    }
-
-    // If we still have nothing, we're done
-    if (bestActive === undefined) {
-        return [];
     }
 
     // Reconstruct a set of listings, from the selected value of the bestActive variable

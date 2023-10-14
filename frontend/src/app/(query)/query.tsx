@@ -5,7 +5,7 @@ import { useQueryContext } from './context';
 import { MarketInformation } from './table';
 import { KeysMatching } from '../(util)/util';
 import { signal } from '../(util)/signal';
-import { WorldInformation } from './world-information';
+import { WorldInformation } from './purchase';
 
 export function QueryContainer() {
     const { queryData } = useQueryContext();
