@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "concurrently --kill-others \"less-watch-compiler --config less-watcher.config.json\" \"next dev\"",
-    "build": "next build",
+    "build": "less-watch-compiler --config less-watcher.config.json --run-once && next build",
     "start": "next start",
     "lint": "next lint"
   },
