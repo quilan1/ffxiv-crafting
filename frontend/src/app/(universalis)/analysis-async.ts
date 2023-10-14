@@ -1,8 +1,8 @@
 import { RecursiveStats } from "./analysis";
-import { OptionType, Some } from "./option";
+import { OptionType, Some } from "../(util)/option";
 import { Quality } from "./statistics";
-import { UniversalisInfo } from "./universalis_api";
-import Util from "./util";
+import { UniversalisInfo } from "./universalis-api";
+import { keysOf } from "../(util)/util";
 
 export const allRecursiveStatsOfAsync = (count: number, isHq: boolean, info: UniversalisInfo): Promise<RecursiveStats> => {
     return new Promise((resolve, _reject) => {
@@ -29,7 +29,7 @@ const reattachOptions = (stats: RecursiveStats) => {
         reattach(quality.aq);
     }
 
-    for (const key of Util.keysOf(stats.itemStats)) {
+    for (const key of keysOf(stats.itemStats)) {
         const val = stats.itemStats[key];
         reattachQuality(val.buyPrice);
         reattachQuality(val.sellCount);

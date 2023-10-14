@@ -1,5 +1,5 @@
 import { Listing } from "./items";
-import Util from "./util";
+import { cloneDeep } from "../(util)/util";
 
 interface ListingInfo {
     count: number,
@@ -57,8 +57,8 @@ export const calculatePurchases = (listings: Listing[], minCount: number): Listi
         const [curActive] = activeListings.splice(0, 1);
 
         // Create two nodes from the parent. One will ignore the next listing, one will add it
-        const newNode0 = Util.cloneDeep(curActive);
-        const newNode1 = Util.cloneDeep(curActive);
+        const newNode0 = cloneDeep(curActive);
+        const newNode1 = cloneDeep(curActive);
         newNode0.selected.push(false);
         newNode1.selected.push(true);
 

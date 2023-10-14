@@ -1,6 +1,6 @@
 import styles from './query.module.css';
 import { useQueryContext } from './context';
-import { OptionType } from '@/app/(universalis)/option';
+import { OptionType } from '@/app/(util)/option';
 import { ChangeEvent } from 'react';
 import { Ingredient } from '../(universalis)/items';
 

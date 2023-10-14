@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { RecursiveStats } from "../(universalis)/analysis";
-import { optSub } from "../(universalis)/option";
-import { SimpleStateUse } from "../(universalis)/signal";
+import { optSub } from "../(util)/option";
+import { SimpleStateUse } from "../(util)/signal";
 import { maxVelocityOf } from "../(universalis)/statistics";
-import { UniversalisInfo } from "../(universalis)/universalis_api";
-import Util from "../(universalis)/util";
+import { UniversalisInfo } from "../(universalis)/universalis-api";
 import { KeyedTableRow } from "./table";
 import { allRecursiveStatsOfAsync } from "../(universalis)/analysis-async";
+import { tryParse } from "../(util)/util";
 
 export interface QueryData {
     count: string,
@@ -118,14 +118,14 @@ export class QueryDataState {
 
     private async recalculateRecStatistics(state: QueryData): Promise<RecursiveStats | undefined> {
         if (state.universalisInfo === undefined) return undefined;
-        const _count = Util.tryParse(state.count).unwrap_or(1);
+        const _count = tryParse(state.count).unwrap_or(1);
         return await allRecursiveStatsOfAsync(_count, state.isHq, state.universalisInfo)
     }
 
     private recalculateTableRows(state: QueryData): QueryData {
         if (state.universalisInfo === undefined || state.recursiveStats === undefined) return state;
-        const _limit = Util.tryParse(state.limit).unwrap_or(100);
-        const _minVelocity = Util.tryParse(state.minVelocity).unwrap_or(0);
+        const _limit = tryParse(state.limit).unwrap_or(100);
+        const _minVelocity = tryParse(state.minVelocity).unwrap_or(0);
         const tableRows = generateTableData(_limit, _minVelocity, state.recursiveStats);
         return { ...state, tableRows };
     }

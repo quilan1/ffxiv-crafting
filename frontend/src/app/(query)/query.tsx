@@ -1,10 +1,10 @@
 import { ChangeEvent, useRef, useState } from 'react';
 import styles from './query.module.css';
-import UniversalisRequest, { ListingRequestStatus } from '../(universalis)/universalis_api';
+import UniversalisRequest, { ListingRequestStatus } from '../(universalis)/universalis-api';
 import { useQueryContext } from './context';
 import { MarketInformation } from './table';
-import { KeysMatching } from '../(universalis)/util';
-import { signal } from '../(universalis)/signal';
+import { KeysMatching } from '../(util)/util';
+import { signal } from '../(util)/signal';
 import { WorldInformation } from './world-information';
 
 export function QueryContainer() {

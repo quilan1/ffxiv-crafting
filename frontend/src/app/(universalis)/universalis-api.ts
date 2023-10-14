@@ -1,6 +1,6 @@
+import { sleep } from "../(util)/util";
 import { Id, ItemInfo } from "./items";
-import { Validate, MessageResultInfo, RecipeJson, MessageTextStatusInfo, MessageDetailedStatusInfo } from "./universalis_api_json";
-import Util from "./util";
+import { Validate, MessageResultInfo, RecipeJson, MessageTextStatusInfo, MessageDetailedStatusInfo } from "./universalis-api-json";
 
 export class CancelError extends Error {
     constructor(message?: string, options?: ErrorOptions) {
@@ -66,7 +66,7 @@ export default class UniversalisRequest {
         socket.addEventListener("message", e => { this.onMessage(state, e); });
 
         while (state.isProcessing) {
-            await Util.sleep(100);
+            await sleep(100);
             this.checkCancel(state);
         }
 

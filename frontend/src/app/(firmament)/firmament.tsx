@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { RecursiveStats } from '../(universalis)/analysis';
 import { allRecursiveStatsOfAsync } from '../(universalis)/analysis-async';
-import { None, OptionType, Some, optMax, optMin, optSub } from '../(universalis)/option';
-import { Signal, signal } from '../(universalis)/signal';
+import { None, OptionType, Some, optMax, optMin, optSub } from '../(util)/option';
+import { Signal, signal } from '../(util)/signal';
 import { HOMEWORLD } from '../(universalis)/statistics';
-import UniversalisRequest, { UniversalisInfo } from '../(universalis)/universalis_api';
-import Util from '../(universalis)/util';
+import UniversalisRequest, { UniversalisInfo } from '../(universalis)/universalis-api';
 import { useFirmamentContext } from './context';
 import styles from './firmament.module.css';
 import { ExchangeCost, ValidExchangeType, exchangeCosts, exchangeProfits } from './rewards';
+import { dataCenterOf } from '../(universalis)/data-center';
 
 export interface FirmamentState {
     isFetching: Signal<boolean>,
@@ -30,7 +30,7 @@ interface ProfitInfo {
     profit: OptionType<number>,
     pricePer: OptionType<number>,
     ratio: OptionType<number>,
-    velocity: OptionType<number>,
+    perWeek: OptionType<number>,
     name: string,
 }
 
@@ -90,7 +90,7 @@ function FirmamentAllScrips() {
                     <div style={{ width: '4em', fontWeight: 'bold' }}>Sell</div>
                     <div style={{ width: '4em', fontWeight: 'bold' }}>Cost</div>
                     <div style={{ width: '4em', fontWeight: 'bold' }}>Ratio</div>
-                    <div style={{ width: '4em', fontWeight: 'bold' }}>Velocity</div>
+                    <div style={{ width: '4em', fontWeight: 'bold' }}>#/Wk</div>
                     <div style={{ flex: '1', fontWeight: 'bold' }}>Name</div>
                 </div>
             </div>
@@ -112,7 +112,7 @@ function FirmamentInfo({ info }: { info: FirmamentInfo }) {
                     <div style={{ width: '4em' }}>{_toFixed0(info.profit)}</div>
                     <div style={{ width: '4em' }}>{_toFixed0(info.pricePer)}</div>
                     <div style={{ width: '4em', color: color(info) }}>{_toFixed2(info.ratio)}</div>
-                    <div style={{ width: '4em' }}>{_toFixed2(info.velocity)}</div>
+                    <div style={{ width: '4em' }}>{_toFixed2(info.perWeek)}</div>
                     <div style={{ flex: '1' }}>{info.name}</div>
                 </div>
             })}
@@ -148,13 +148,13 @@ const asyncProfitResults = async (cost: ExchangeCost, status: Signal<string>): P
     status.value = `${cost.name}: Calculating profit statistics`;
     const universalisInfoStatsProfit = await universalisStats(1, universalisInfoProfit);
     if (!universalisInfoStatsPrice || !universalisInfoStatsProfit) return null;
-    status.value = `${cost.name}: Finalizing`;
+    status.value = `${cost.name}: Waiting...`;
 
     const priceResult = calculatePrice(cost, universalisInfoStatsPrice);
     return calculateProfits(cost.type, priceResult.pricePer, universalisInfoStatsProfit);
 }
 
-const asyncPrice = async (search: string) => await new UniversalisRequest(search, Util.dataCenter(HOMEWORLD)).fetch();
+const asyncPrice = async (search: string) => await new UniversalisRequest(search, dataCenterOf(HOMEWORLD)).fetch();
 
 const asyncProfit = async (type: ValidExchangeType) => {
     const names = exchangeProfits
@@ -162,7 +162,7 @@ const asyncProfit = async (type: ValidExchangeType) => {
         .map(item => item.name.replaceAll(',', '\\,'))
         .join('|');
     const search = `:name !${names}`;
-    return await new UniversalisRequest(search, Util.dataCenter(HOMEWORLD)).fetch();
+    return await new UniversalisRequest(search, dataCenterOf(HOMEWORLD)).fetch();
 };
 
 const universalisStats = async (count: number, universalisInfo: UniversalisInfo | null) => {
@@ -214,7 +214,7 @@ const calculateProfits = (type: ValidExchangeType, pricePer: number, universalis
                 profit,
                 pricePer: None<number>(),
                 ratio: None<number>(),
-                velocity: None<number>(),
+                perWeek: None<number>(),
                 name: purchase.name,
             });
             continue;
@@ -226,7 +226,7 @@ const calculateProfits = (type: ValidExchangeType, pricePer: number, universalis
             profit,
             pricePer: Some(Math.round(itemPricePer)),
             ratio: profit.map(profit => profit / itemPricePer),
-            velocity: stats.perWeek,
+            perWeek: stats.perWeek,
             name: purchase.name,
         });
     }

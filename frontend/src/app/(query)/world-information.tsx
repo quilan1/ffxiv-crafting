@@ -1,7 +1,8 @@
+import { dataCenterOf } from '../(universalis)/data-center';
 import { Ingredient } from '../(universalis)/items';
 import { calculatePurchases } from '../(universalis)/purchases';
 import { HOMEWORLD } from '../(universalis)/statistics';
-import Util from '../(universalis)/util';
+import { entriesOf } from '../(util)/util';
 import { useQueryContext } from './context';
 import { QueryDataState } from './query-data';
 import styles from './query.module.css';
@@ -23,7 +24,7 @@ export function WorldInformation() {
     return (
         <div className={styles.worldInfo}>
             <div>
-                {Util.entriesOf(worldInfo).map(([dataCenter, worldsInfo]) => {
+                {entriesOf(worldInfo).map(([dataCenter, worldsInfo]) => {
                     return <DataCenterPurchaseInfo key={dataCenter} dataCenter={dataCenter} worldsInfo={worldsInfo} />
                 })}
             </div>
@@ -38,7 +39,7 @@ function DataCenterPurchaseInfo(
     return (
         <div>
             <div className={styles.dataCenterName}>{dataCenter}</div>
-            {Util.entriesOf(worldsInfo).map(([world, worldBuyInfo]) => {
+            {entriesOf(worldsInfo).map(([world, worldBuyInfo]) => {
                 return <WorldPurchaseInfo key={world} world={world} worldBuyInfo={worldBuyInfo} />
             })}
         </div>
@@ -86,7 +87,7 @@ const collectCheckedItems = (queryData: QueryDataState): Ingredient[] => {
         items[item.itemId] = (items[item.itemId] ?? 0) + item.count;
     }
 
-    return Util.entriesOf(items as Record<number, number>)
+    return entriesOf(items as Record<number, number>)
         .map(([key, val]) => ({ itemId: key, count: val }));
 }
 
@@ -106,7 +107,7 @@ const getPurchaseInfo = (queryData: QueryDataState, items: Ingredient[]): AllWor
         for (const listing of usedListings) {
             const world = listing.world ?? HOMEWORLD;
             const usedCount = listing.count;
-            const dataCenter = Util.dataCenter(world);
+            const dataCenter = dataCenterOf(world);
             worlds[dataCenter] ??= {};
             worlds[dataCenter][world] ??= [];
             worlds[dataCenter][world].push({

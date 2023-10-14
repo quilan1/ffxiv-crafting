@@ -1,5 +1,5 @@
 import { ItemInfo, Listing } from "./items";
-import { None, OptionType, Some } from "./option";
+import { None, OptionType, Some } from "../(util)/option";
 
 export const HOMEWORLD = "Seraph";
 

@@ -1,5 +1,5 @@
 import { allRecursiveStatsOf } from "./analysis";
-import { UniversalisInfo } from "./universalis_api";
+import { UniversalisInfo } from "./universalis-api";
 
 interface AnalysisEvent {
     count: number, isHq: boolean, info: UniversalisInfo;

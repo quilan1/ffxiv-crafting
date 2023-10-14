@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { ListingStatusInfo } from "../(universalis)/universalis_api";
-import { Signal, signal } from "../(universalis)/signal";
+import { ListingStatusInfo } from "../(universalis)/universalis-api";
+import { Signal, signal } from "../(util)/signal";
 import { defaultDataCenter, defaultQueryString } from "./query";
 import { QueryDataState, useQueryDataState } from "./query-data";
 

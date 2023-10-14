@@ -1,8 +1,8 @@
 import { ItemInfo } from "./items";
-import { None, OptionType, optAdd, optMax, optMin, optSub } from "./option";
+import { None, OptionType, optAdd, optMax, optMin, optSub } from "../(util)/option";
 import { Statistics, preferHq, statisticsOf } from "./statistics";
-import { UniversalisInfo } from "./universalis_api"
-import Util from "./util";
+import { UniversalisInfo } from "./universalis-api"
+import { entriesOf, keysOf } from "../(util)/util";
 
 type ItemStats = Record<number, Statistics>;
 type ItemInfos = Record<number, ItemInfo>;
@@ -126,9 +126,9 @@ const maxCountsOf = (info: Record<number, ItemInfo>, count: number, itemId?: num
     const maxCounts: Record<number, number | undefined> = {};
 
     if (itemId == undefined) {
-        for (const itemId of Util.keysOf(info)) {
+        for (const itemId of keysOf(info)) {
             const childMaxCounts = maxCountsOf(info, count, itemId);
-            for (const [childItemId, count] of Util.entriesOf(childMaxCounts)) {
+            for (const [childItemId, count] of entriesOf(childMaxCounts)) {
                 maxCounts[childItemId] = Math.max(maxCounts[childItemId] ?? 0, count);
             }
         }
@@ -141,7 +141,7 @@ const maxCountsOf = (info: Record<number, ItemInfo>, count: number, itemId?: num
 
         for (const ingredient of item.recipe?.inputs ?? []) {
             const childMaxCounts = maxCountsOf(info, numCrafts * ingredient.count, ingredient.itemId);
-            for (const [childItemId, count] of Util.entriesOf(childMaxCounts)) {
+            for (const [childItemId, count] of entriesOf(childMaxCounts)) {
                 maxCounts[childItemId] = (maxCounts[childItemId] ?? 0) + count;
             }
         }
