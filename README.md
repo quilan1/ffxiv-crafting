@@ -54,8 +54,8 @@ This is all a personal project, and not intended for anyone else, but in the off
   * **:name !\<exact-item-name>**: Matches the exact name, and nothing more. It must be the whole & complete name of the item.
   * **:name \<regexp>**: Matches a regex phrase for the name. Useful for complex queries.
   * **Examples**:
-    * `:name Persimmon Pudding`, returns both '*Permimmon Pudding*' and '*Rarefied Persimmon Pudding*'.
-    * `:name !Persimmon Pudding`, returns only '*Permimmon Pudding*'.
+    * `:name Persimmon Pudding`, returns both '*Persimmon Pudding*' and '*Rarefied Persimmon Pudding*'.
+    * `:name !Persimmon Pudding`, returns only '*Persimmon Pudding*'.
     * `:name Timeworn [O|K].*skin map`, returns '*Timeworn Ophiotauroskin Map*' and '*Timeworn Kumbhiraskin Map*'.
   * **Note:** All name matches are caseless.
 * **:rlevel \<min-level>|\<max-level>**: Matches on items with a recipe in the level range. Also accepts a single-argument version for an exact level match.
@@ -64,9 +64,9 @@ This is all a personal project, and not intended for anyone else, but in the off
   * `:elevel 90, :name Voidvessel`, returns all of the level 90 Voidvessel gear.
 * **:ilevel \<min-level>|\<max-level>**: Matches on an item's item level (1-~665), not character level (1-90). Also accepts a single-argument version for an exact level match.
   * `:ilevel 655, :name Voidvessel`, returns, same as above, all of the level 90 Voidvessel gear.
-* **:cat \<category #1>|<category #2>|<...>**: Matches on an item's category, as presented in the UI. May also take the '!' prefix for exact matches.
-  * `:rlevel 90, :cat !Metal|Lumber`, returns the metal and lumber crafted items, or regex.
+* **:cat \<category #1>|<category #2>|<...>**: Matches on an item's category, as presented in the UI. May also take the '!' prefix for exact matches or regex.
+  * `:rlevel 90, :cat !Metal|Lumber`, returns the metal and lumber crafted items.
 * **:contains \<name>**, first matches of an item's name, searches for items with the former as a primary ingredient in their recipe. May also take the '!' prefix for exact matches or regex.
   * `:contains eagle feather`, returns a number of items that use '*Eagle Feather*' as a primary ingredient, e.g. '*Blessed Fletchings*'.
 * **:includes \<name>**, like above, but the name matched item may live anywhere down the recipe ingredient chain. May also take the '!' prefix for exact matches or regex.
-  * `:includes !maple branch`, returns items that have '*Maple Wand*' anywhere down the recipe ingredient chain, e.g '*Budding Maple Wand*', which requires '*Maple Wand*', which requires '*Maple Branch*'
+  * `:includes !maple branch`, returns items that have '*Maple Branch*' anywhere down the recipe ingredient chain, e.g '*Budding Maple Wand*', which requires '*Maple Wand*', which requires '*Maple Branch*'
