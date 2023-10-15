@@ -10,7 +10,7 @@ The only real requirement is Docker Compose. For windows, this may be found by i
 
 > docker-compose up -d
 
-This will take some time for the rust server to compile the project for the first time (first in debug to run tests, then in release), but once the server is healthy, the http service will spin up. This will fire up an apache server on port 8080 for the frontend, and the rust server on port 3001.
+This will take some time for the rust server to compile the project for the first time (first in debug to run tests, then in release). It will simultaneously compile the frontend code at the same time. Once they're both done, a React server will have spun up on port 3000 for the frontend, and the rust server on port 3001.
 
 ### Example usage
 
@@ -29,7 +29,7 @@ The Rust crates are inside of the 'crates' directory, and the Typescript files a
 
 ### Backend
 
-* [ffxiv_server](crates/ffxiv_server): The main entry point for the rust code. Consumes `ffxiv_items` to turn a filter string (e.g. ":name Item Name") into a series of IDs.
+* [ffxiv_server](crates/ffxiv_server): The main entry point for the rust code. Consumes `ffxiv_items` to turn a query string (e.g. ":name Item Name") into a series of IDs.
 * [ffxiv_universalis](crates/ffxiv_universalis): Controls all of the interactions with the universalis website. Uses `async_processor` to ensure that all server requests are funneled through a pipe that executes no more than 8 requests concurrently.
 * [ffxiv_items](crates/ffxiv_items): Functions as an item info singleton repository.
 * [async_processor](crates/async_processor): Simple structure that executes futures concurrently, with at most `max_active` executed at a time.
@@ -41,3 +41,32 @@ The Rust crates are inside of the 'crates' directory, and the Typescript files a
 ## Customization
 
 This is all a personal project, and not intended for anyone else, but in the off-chance that someone wants to use it, references to the homeworld (Seraph) may be found in [frontend/src/app/(universalis)/statistics.ts](frontend/src/app/(universalis)/statistics.ts), as the HOMEWORLD variable.
+
+## Query Language
+
+* **Queries**: Queries consist of a set of clauses that are inclusively joined (boolean OR). Each clause is separated by a semicolon, e.g: '*<clause #1>; <clause #2>; <...>*'. The results of each individual clause are merged into the returned items.
+* **Clause**: A clause consists of several filters that are joined via a boolean AND operation. Each filter is separated by a comma, e.g. '*<filter #1>, <filter #2>, <...>*'. Each successive filter narrows the results of the final set of returned items.
+* **Filter**: A filter consists of a tag, typically followed by pipe (|) delimited options.
+
+### Tags
+
+* **:name \<item-name>**: Matches on the name of the item. An example filter of this is: `:name Iron`, which will return items that contain iron somewhere inside the name.
+  * **:name !\<exact-item-name>**: Matches the exact name, and nothing more. It must be the whole & complete name of the item.
+  * **:name \<regexp>**: Matches a regex phrase for the name. Useful for complex queries.
+  * **Examples**:
+    * `:name Persimmon Pudding`, returns both '*Permimmon Pudding*' and '*Rarefied Persimmon Pudding*'.
+    * `:name !Persimmon Pudding`, returns only '*Permimmon Pudding*'.
+    * `:name Timeworn [O|K].*skin map`, returns '*Timeworn Ophiotauroskin Map*' and '*Timeworn Kumbhiraskin Map*'.
+  * **Note:** All name matches are caseless.
+* **:rlevel \<min-level>|\<max-level>**: Matches on items with a recipe in the level range. Also accepts a single-argument version for an exact level match.
+  * `:name ^Rarefied, :rlevel 61|69`, returns the crafting scrip recipes for level 61 to 69, inclusive.
+* **:elevel \<min-level>|\<max-level>**: Matches on a character's level to wear/equip (1-90), not item level (1-~650). May change its name soon. Also accepts a single-argument version for an exact level match.
+  * `:elevel 90, :name Voidvessel`, returns all of the level 90 Voidvessel gear.
+* **:ilevel \<min-level>|\<max-level>**: Matches on an item's item level (1-~665), not character level (1-90). Also accepts a single-argument version for an exact level match.
+  * `:ilevel 655, :name Voidvessel`, returns, same as above, all of the level 90 Voidvessel gear.
+* **:cat \<category #1>|<category #2>|<...>**: Matches on an item's category, as presented in the UI. May also take the '!' prefix for exact matches.
+  * `:rlevel 90, :cat !Metal|Lumber`, returns the metal and lumber crafted items, or regex.
+* **:contains \<name>**, first matches of an item's name, searches for items with the former as a primary ingredient in their recipe. May also take the '!' prefix for exact matches or regex.
+  * `:contains eagle feather`, returns a number of items that use '*Eagle Feather*' as a primary ingredient, e.g. '*Blessed Fletchings*'.
+* **:includes \<name>**, like above, but the name matched item may live anywhere down the recipe ingredient chain. May also take the '!' prefix for exact matches or regex.
+  * `:includes !maple branch`, returns items that have '*Maple Wand*' anywhere down the recipe ingredient chain, e.g '*Budding Maple Wand*', which requires '*Maple Wand*', which requires '*Maple Branch*'

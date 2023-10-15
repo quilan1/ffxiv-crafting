@@ -163,6 +163,7 @@ export const preparedQueries = [
     { label: 'Level 70 White Scrips', value: ':count 40, :limit 2, :name ^Rarefied, :rlevel 71|79' },
     { label: 'Level 80 White Scrips', value: ':count 40, :limit 2, :name ^Rarefied, :rlevel 81|89' },
     { label: 'Level 90 White Scrips', value: ':count 40, :limit 2, :name ^Rarefied, :rlevel 90' },
+    { label: 'Maps', value: ':count 1, :limit 6, :name Timeworn .*skin Map' },
 ];
 
 export const dataCenters = [
