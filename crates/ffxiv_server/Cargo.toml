@@ -16,6 +16,7 @@ futures = "0.3.28"
 log = "0.4.20"
 ffxiv_items = { version = "0.1.0", path = "../ffxiv_items" }
 ffxiv_universalis = { version = "0.1.0", path = "../ffxiv_universalis" }
+mock_traits = { version = "0.1.0", path = "../mock_traits" }
 axum-macros = "0.3.8"
 env_logger = "0.10.0"
 chrono = "0.4.31"

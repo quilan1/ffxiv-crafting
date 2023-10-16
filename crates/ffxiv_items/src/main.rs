@@ -1,6 +1,7 @@
 use std::time::Instant;
 
 use anyhow::Result;
+use mock_traits::GithubDownloader;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -12,7 +13,7 @@ async fn main() -> Result<()> {
     let start = Instant::now();
     let item_db_conn = std::env::var("FFXIV_ITEM_DB_CONN").unwrap();
     let db = ItemDB::connect(item_db_conn).await?;
-    if db.initialize().await? {
+    if db.initialize::<GithubDownloader>().await? {
         println!("Initialized in {} ms", start.elapsed().as_millis());
     } else {
         println!("Done!");

@@ -5,15 +5,17 @@ use chrono::{DateTime, FixedOffset};
 use const_format::formatcp;
 use futures::{try_join, TryStreamExt};
 use itertools::Itertools;
+use mock_traits::FileDownloader;
 use sqlx::{QueryBuilder, Row};
 
 use crate::{last_updated_from_github, Ingredient, ItemDB, ItemId, Recipe};
 
-use super::{download_file, strip_whitespace, IngredientTable, BIND_MAX};
+use super::{download_csv, strip_whitespace, IngredientTable, BIND_MAX};
 
 ////////////////////////////////////////////////////////////
 
 impl_table!(RecipeTable);
+impl_table_builder!(RecipeTableBuilder, FileDownloader);
 
 impl RecipeTable<'_> {
     pub async fn by_item_ids<I: ItemId>(&self, ids: &[I]) -> Result<Vec<Recipe>> {
@@ -74,7 +76,7 @@ pub struct CsvRecipeLevel {
 const CSV_FILE_RECIPE: &str = "Recipe.csv";
 const CSV_FILE_RECIPE_LEVEL: &str = "RecipeLevelTable.csv";
 
-impl RecipeTable<'_> {
+impl<F: FileDownloader> RecipeTableBuilder<'_, F> {
     pub async fn initialize(&self, recipes: &[Recipe]) -> Result<()> {
         println!("Initializing Recipes Database Table");
         for recipes in &recipes.iter().chunks(BIND_MAX / 4) {
@@ -93,9 +95,9 @@ impl RecipeTable<'_> {
         Ok(())
     }
 
-    pub async fn last_updated_github() -> Result<DateTime<FixedOffset>> {
-        let recipe_updated = last_updated_from_github(CSV_FILE_RECIPE).await?;
-        let recipe_level_updated = last_updated_from_github(CSV_FILE_RECIPE_LEVEL).await?;
+    pub async fn last_updated_github(&self) -> Result<DateTime<FixedOffset>> {
+        let recipe_updated = last_updated_from_github::<F>(CSV_FILE_RECIPE).await?;
+        let recipe_level_updated = last_updated_from_github::<F>(CSV_FILE_RECIPE_LEVEL).await?;
         Ok(recipe_updated.max(recipe_level_updated))
     }
 
@@ -124,7 +126,7 @@ impl RecipeTable<'_> {
     }
 
     async fn download_recipe_csv() -> Result<Vec<CsvRecipe>> {
-        let reader = Cursor::new(download_file(CSV_FILE_RECIPE).await?);
+        let reader = Cursor::new(download_csv::<F>(CSV_FILE_RECIPE).await?);
         let mut recipes = BTreeMap::new();
         csv_parse!(reader => {
             level_id = U[2 + 1];
@@ -156,7 +158,7 @@ impl RecipeTable<'_> {
     }
 
     async fn download_recipe_level_csv() -> Result<BTreeMap<u32, CsvRecipeLevel>> {
-        let reader = Cursor::new(download_file(CSV_FILE_RECIPE_LEVEL).await?);
+        let reader = Cursor::new(download_csv::<F>(CSV_FILE_RECIPE_LEVEL).await?);
         let mut recipe_levels = BTreeMap::new();
         csv_parse!(reader => {
             id = U[0];

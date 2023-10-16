@@ -3,6 +3,7 @@ use axum::{http::Method, routing::get, Router};
 use ffxiv_items::ItemDB;
 use ffxiv_universalis::UniversalisProcessor;
 use futures::join;
+use mock_traits::FileDownloader;
 use std::{net::SocketAddr, sync::Arc};
 use tower_http::cors::{Any, CorsLayer};
 
@@ -12,7 +13,7 @@ pub struct Server;
 
 #[allow(unused_must_use)]
 impl Server {
-    pub async fn run(db: ItemDB) -> Result<()> {
+    pub async fn run<F: FileDownloader + 'static>(db: ItemDB) -> Result<()> {
         let universalis_processor = UniversalisProcessor::new();
         let async_processor = universalis_processor.async_processor();
         let db = Arc::new(db);
@@ -20,7 +21,7 @@ impl Server {
         let health_service = Router::new().route("/health", get(|| async { "OK" }));
 
         let market_service_ws = Router::new()
-            .route("/universalis", get(universalis_websocket))
+            .route("/universalis", get(universalis_websocket::<F>))
             .with_state((universalis_processor.clone(), db.clone()));
 
         let v1_router = Router::new().merge(health_service).merge(market_service_ws);

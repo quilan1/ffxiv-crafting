@@ -10,6 +10,7 @@ use axum::{
 };
 use ffxiv_items::ItemDB;
 use ffxiv_universalis::UniversalisProcessor;
+use mock_traits::FileDownloader;
 use uuid::Uuid;
 
 use super::{send_recipes, wait_for_universalis, Input};
@@ -17,21 +18,21 @@ use super::{send_recipes, wait_for_universalis, Input};
 ////////////////////////////////////////////////////////////
 
 #[allow(clippy::unused_async)]
-pub async fn universalis_websocket(
+pub async fn universalis_websocket<F: FileDownloader + 'static>(
     ws: WebSocketUpgrade,
     State((universalis_processor, db)): State<(UniversalisProcessor, Arc<ItemDB>)>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_socket(socket, universalis_processor, db.clone()))
+    ws.on_upgrade(move |socket| handle_socket::<F>(socket, universalis_processor, db.clone()))
 }
 
 ////////////////////////////////////////////////////////////
 
-async fn handle_socket(
+async fn handle_socket<F: FileDownloader>(
     mut socket: WebSocket,
     universalis_processor: UniversalisProcessor,
     db: Arc<ItemDB>,
 ) {
-    async fn inner(
+    async fn inner<F: FileDownloader>(
         socket: &mut WebSocket,
         universalis_processor: UniversalisProcessor,
         db: Arc<ItemDB>,
@@ -42,7 +43,7 @@ async fn handle_socket(
         log::info!(target: "ffxiv_server", "New request for '{}'", payload.filters);
         let (top_ids, all_ids, items) = db.all_from_filters(&payload.filters).await?;
         send_recipes(socket, &top_ids, items).await?;
-        wait_for_universalis(
+        wait_for_universalis::<F>(
             socket,
             &universalis_processor,
             payload,
@@ -53,7 +54,7 @@ async fn handle_socket(
         Ok(())
     }
 
-    if let Err(err) = inner(&mut socket, universalis_processor, db).await {
+    if let Err(err) = inner::<F>(&mut socket, universalis_processor, db).await {
         log::error!(target: "ffxiv_server", "WebSocket exiting: {err:}");
         let _ = socket
             .send(Message::Close(Some(CloseFrame {

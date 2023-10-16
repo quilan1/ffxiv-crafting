@@ -1,10 +1,14 @@
+use std::marker::PhantomData;
+
 use anyhow::Result;
 use futures::try_join;
+use mock_traits::FileDownloader;
 use sqlx::MySqlPool;
 use tuple_conv::RepeatedTuple;
 
 use crate::tables::{
-    IngredientTable, InputIdsTable, ItemInfoTable, RecipeTable, UiCategoryTable, UpdateTable,
+    IngredientTable, InputIdsTable, ItemInfoTable, ItemInfoTableBuilder, RecipeTable,
+    RecipeTableBuilder, UiCategoryTable, UiCategoryTableBuilder, UpdateTable,
 };
 
 #[derive(Debug)]
@@ -12,13 +16,17 @@ pub struct ItemDB {
     pub(super) pool: MySqlPool,
 }
 
-struct Tables<'a> {
+struct Tables<'a, F: FileDownloader> {
     items: ItemInfoTable<'a>,
+    items_builder: ItemInfoTableBuilder<'a, F>,
     recipes: RecipeTable<'a>,
+    recipes_builder: RecipeTableBuilder<'a, F>,
     ingredients: IngredientTable<'a>,
     input_ids: InputIdsTable<'a>,
     ui_categories: UiCategoryTable<'a>,
+    ui_categories_builder: UiCategoryTableBuilder<'a, F>,
     update_table: UpdateTable<'a>,
+    marker_f: PhantomData<fn() -> F>,
 }
 
 ////////////////////////////////////////////////////////////
@@ -29,8 +37,8 @@ impl ItemDB {
         Ok(Self { pool })
     }
 
-    pub async fn initialize(&self) -> Result<bool> {
-        let tables = self.tables();
+    pub async fn initialize<F: FileDownloader>(&self) -> Result<bool> {
+        let tables = self.tables::<F>();
         if cfg!(not(test)) {
             // We're going to swallow errors with github, wrt: rate limiting
             let _ = tables.check_updated_github().await;
@@ -38,26 +46,30 @@ impl ItemDB {
         tables.create().await
     }
 
-    fn tables(&self) -> Tables<'_> {
+    fn tables<F: FileDownloader>(&self) -> Tables<'_, F> {
         Tables {
             items: ItemInfoTable::new(self),
+            items_builder: ItemInfoTableBuilder::new(self),
             recipes: RecipeTable::new(self),
+            recipes_builder: RecipeTableBuilder::new(self),
             ingredients: IngredientTable::new(self),
             input_ids: InputIdsTable::new(self),
             ui_categories: UiCategoryTable::new(self),
+            ui_categories_builder: UiCategoryTableBuilder::new(self),
             update_table: UpdateTable::new(self),
+            marker_f: PhantomData,
         }
     }
 }
 
 ////////////////////////////////////////////////////////////
 
-impl Tables<'_> {
+impl<F: FileDownloader> Tables<'_, F> {
     async fn check_updated_github(&self) -> Result<()> {
         let last_updated_github = try_join!(
-            ItemInfoTable::<'_>::last_updated_github(),
-            RecipeTable::<'_>::last_updated_github(),
-            UiCategoryTable::<'_>::last_updated_github(),
+            self.items_builder.last_updated_github(),
+            self.recipes_builder.last_updated_github(),
+            self.ui_categories_builder.last_updated_github(),
         )?
         .to_vec()
         .into_iter()
@@ -103,7 +115,7 @@ impl Tables<'_> {
         self.items.create().await?;
         let is_empty = self.items.is_empty().await?;
         if is_empty {
-            self.items.initialize().await?;
+            self.items_builder.initialize().await?;
         }
         Ok(is_empty)
     }
@@ -112,7 +124,7 @@ impl Tables<'_> {
         self.ui_categories.create().await?;
         let is_empty = self.ui_categories.is_empty().await?;
         if is_empty {
-            self.ui_categories.initialize().await?;
+            self.ui_categories_builder.initialize().await?;
         }
         Ok(is_empty)
     }
@@ -141,7 +153,7 @@ impl Tables<'_> {
         }
 
         let (recipes, _, _, _) = try_join!(
-            RecipeTable::download_recipe_info(),
+            RecipeTableBuilder::<'_, F>::download_recipe_info(),
             {
                 self.recipes.drop().await?;
                 self.recipes.create()
@@ -157,7 +169,7 @@ impl Tables<'_> {
         )?;
 
         try_join!(
-            self.recipes.initialize(&recipes),
+            self.recipes_builder.initialize(&recipes),
             self.ingredients.initialize(&recipes),
             self.input_ids.initialize(&recipes),
         )?;

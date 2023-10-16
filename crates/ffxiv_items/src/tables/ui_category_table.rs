@@ -4,11 +4,12 @@ use anyhow::Result;
 use chrono::{DateTime, FixedOffset};
 use const_format::formatcp;
 use itertools::Itertools;
+use mock_traits::FileDownloader;
 use sqlx::QueryBuilder;
 
 use crate::{last_updated_from_github, ItemDB};
 
-use super::{download_file, strip_whitespace, BIND_MAX};
+use super::{download_csv, strip_whitespace, BIND_MAX};
 
 ////////////////////////////////////////////////////////////
 
@@ -22,8 +23,9 @@ struct CsvUiCategory {
 const CSV_FILE: &str = "ItemUICategory.csv";
 
 impl_table!(UiCategoryTable);
+impl_table_builder!(UiCategoryTableBuilder, FileDownloader);
 
-impl UiCategoryTable<'_> {
+impl<F: FileDownloader> UiCategoryTableBuilder<'_, F> {
     pub async fn initialize(&self) -> Result<()> {
         let categories = Self::download().await?;
 
@@ -42,14 +44,14 @@ impl UiCategoryTable<'_> {
         Ok(())
     }
 
-    pub async fn last_updated_github() -> Result<DateTime<FixedOffset>> {
-        last_updated_from_github(CSV_FILE).await
+    pub async fn last_updated_github(&self) -> Result<DateTime<FixedOffset>> {
+        last_updated_from_github::<F>(CSV_FILE).await
     }
 
     async fn download() -> Result<Vec<CsvUiCategory>> {
         println!("Downloading UI Categories from Github");
 
-        let reader = Cursor::new(download_file(CSV_FILE).await?);
+        let reader = Cursor::new(download_csv::<F>(CSV_FILE).await?);
         let mut categories = Vec::new();
         csv_parse!(reader => {
             id = U[0];

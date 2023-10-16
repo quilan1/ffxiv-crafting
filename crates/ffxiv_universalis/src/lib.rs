@@ -17,7 +17,7 @@ use status::UniversalisStatusState;
 pub use handle::{UniversalisHandle, UniversalisHandleOutput};
 pub use json::ItemMarketInfoMap;
 pub use processor::UniversalisProcessor;
-pub use request::{FileDownloader, ReqwestDownloader, Signal};
+pub use request::Signal;
 pub use request_type::{UniversalisHistory, UniversalisListing, UniversalisRequestType};
 pub use status::{UniversalisProcessorState, UniversalisStatus, UniversalisStatusValues};
 

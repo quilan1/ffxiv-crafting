@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    FileDownloader, ItemListing, ItemMarketInfoMap, UniversalisHandle, UniversalisProcessorData,
+    ItemListing, ItemMarketInfoMap, UniversalisHandle, UniversalisProcessorData,
     UniversalisRequest, UniversalisRequestType, UniversalisStatusState,
 };
 
@@ -11,6 +11,7 @@ use futures::{
     future::join_all,
 };
 use itertools::Itertools;
+use mock_traits::FileDownloader;
 use tokio::task::spawn_blocking;
 
 #[derive(Clone)]
@@ -33,7 +34,7 @@ impl UniversalisProcessor {
         self.async_processor.clone()
     }
 
-    pub fn make_request<T: UniversalisRequestType, D: FileDownloader>(
+    pub fn make_request<T: UniversalisRequestType, F: FileDownloader>(
         &self,
         worlds: &[String],
         ids: &[u32],
@@ -52,7 +53,7 @@ impl UniversalisProcessor {
 
             log::info!(target: "ffxiv_universalis", "{uuid} Queueing {} futures", T::fetch_type());
             let all_listings =
-                Self::fetch_and_process_market_info::<T, D>(data, ready_signal_tx).await;
+                Self::fetch_and_process_market_info::<T, F>(data, ready_signal_tx).await;
             status.set_value(UniversalisStatusState::Cleanup);
 
             let (listing_map, failure_ids) =
@@ -90,7 +91,7 @@ impl UniversalisProcessor {
         (listing_map, failure_ids)
     }
 
-    async fn fetch_and_process_market_info<T: UniversalisRequestType, D: FileDownloader>(
+    async fn fetch_and_process_market_info<T: UniversalisRequestType, F: FileDownloader>(
         data: UniversalisProcessorData,
         ready_signal: Sender<()>,
     ) -> Vec<Option<ItemMarketInfoMap>> {
@@ -101,7 +102,7 @@ impl UniversalisProcessor {
         for ids in &id_chunks {
             for world in &data.worlds {
                 let ids_string = ids.iter().map(|id| id.to_string()).join(",");
-                let request = UniversalisRequest::<T, D>::new(
+                let request = UniversalisRequest::<T, F>::new(
                     data.clone(),
                     world.clone(),
                     ids_string,

@@ -3,10 +3,11 @@ use std::time::{Duration, Instant};
 use anyhow::Result;
 use axum::extract::ws::{Message, WebSocket};
 use ffxiv_universalis::{
-    ReqwestDownloader, Signal, UniversalisHandle, UniversalisHistory, UniversalisListing,
-    UniversalisProcessor, UniversalisStatusValues,
+    Signal, UniversalisHandle, UniversalisHistory, UniversalisListing, UniversalisProcessor,
+    UniversalisStatusValues,
 };
 use futures::{Future, FutureExt};
+use mock_traits::FileDownloader;
 use tokio::time::sleep;
 
 use super::{DetailedStatus, Input, Output};
@@ -16,7 +17,7 @@ use super::{DetailedStatus, Input, Output};
 const DUR_MIN_WAIT: Duration = Duration::from_millis(10);
 const DUR_TIMEOUT: Duration = Duration::from_millis(10000);
 
-pub async fn wait_for_universalis(
+pub async fn wait_for_universalis<F: FileDownloader>(
     socket: &mut WebSocket,
     universalis_processor: &UniversalisProcessor,
     payload: Input,
@@ -24,7 +25,7 @@ pub async fn wait_for_universalis(
     server_uuid: &str,
 ) -> Result<()> {
     let mut market_request_info =
-        make_market_request_info(universalis_processor, payload, all_ids, server_uuid).await;
+        make_market_request_info::<F>(universalis_processor, payload, all_ids, server_uuid).await;
 
     // Send over initial messages
     market_request_info
@@ -48,7 +49,7 @@ pub async fn wait_for_universalis(
     Ok(())
 }
 
-async fn make_market_request_info(
+async fn make_market_request_info<F: FileDownloader>(
     universalis_processor: &UniversalisProcessor,
     payload: Input,
     all_ids: &[u32],
@@ -65,11 +66,17 @@ async fn make_market_request_info(
 
     let retain_num_days = payload.retain_num_days.unwrap_or(7.0);
 
-    let history_handle = universalis_processor
-        .make_request::<UniversalisHistory, ReqwestDownloader>(&worlds, all_ids, retain_num_days);
+    let history_handle = universalis_processor.make_request::<UniversalisHistory, F>(
+        &worlds,
+        all_ids,
+        retain_num_days,
+    );
 
-    let listing_handle = universalis_processor
-        .make_request::<UniversalisListing, ReqwestDownloader>(&worlds, all_ids, retain_num_days);
+    let listing_handle = universalis_processor.make_request::<UniversalisListing, F>(
+        &worlds,
+        all_ids,
+        retain_num_days,
+    );
 
     log::info!(target: "ffxiv_server",
         "Server uuid {server_uuid} maps to history universalis uuid {}",

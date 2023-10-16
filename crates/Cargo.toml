@@ -1,9 +1,15 @@
 [workspace]
-members = ["ffxiv_items", "ffxiv_server", "ffxiv_universalis", "async_processor"]
+members = [
+    "ffxiv_items",
+    "ffxiv_server",
+    "ffxiv_universalis",
+    "async_processor",
+    "mock_traits",
+]
 resolver = "2"
 
 [profile.release-debug]
-inherits="release"
+inherits = "release"
 debug = true
 
 [profile.docker]

@@ -1,15 +1,14 @@
-use ffxiv_universalis::{
-    json_types::{
-        HistoryView, ItemListingView, ListingView, MultipleHistoryView, MultipleListingView,
-    },
-    FileDownloader,
+use anyhow::Result;
+use ffxiv_universalis::json_types::{
+    HistoryView, ItemListingView, ListingView, MultipleHistoryView, MultipleListingView,
 };
 use futures::FutureExt;
+use mock_traits::FileDownloader;
 
 pub struct MockDownloader {}
 
 impl MockDownloader {
-    async fn get_listings(ids: &str) -> Option<String> {
+    async fn get_listings(ids: &str) -> Result<String> {
         let ids = ids.split(',').map(ToString::to_string).collect::<Vec<_>>();
         let view = MultipleListingView {
             items: ids
@@ -35,10 +34,10 @@ impl MockDownloader {
                 .collect(),
         };
 
-        Some(serde_json::to_string(&view).unwrap())
+        Ok(serde_json::to_string(&view)?)
     }
 
-    async fn get_histories(world: &str, ids: &str) -> Option<String> {
+    async fn get_histories(world: &str, ids: &str) -> Result<String> {
         let ids = ids.split(',').map(ToString::to_string).collect::<Vec<_>>();
         let view = MultipleHistoryView {
             items: ids
@@ -64,12 +63,12 @@ impl MockDownloader {
                 .collect(),
         };
 
-        Some(serde_json::to_string(&view).unwrap())
+        Ok(serde_json::to_string(&view)?)
     }
 }
 
 impl FileDownloader for MockDownloader {
-    fn download_file(url: &str) -> futures::future::BoxFuture<'_, Option<String>> {
+    fn download(url: &str) -> futures::future::BoxFuture<'_, Result<String>> {
         match url {
             "https://universalis.app/api/v2/Dynamis/31980,2?entries=0" => {
                 Self::get_listings("31980,2").boxed()

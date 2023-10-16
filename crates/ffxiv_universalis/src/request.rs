@@ -3,9 +3,10 @@ use std::{marker::PhantomData, time::Duration};
 use async_processor::AsyncProcessorHandle;
 use futures::{
     channel::oneshot::{self, Receiver},
-    future::{BoxFuture, Shared},
+    future::Shared,
     FutureExt,
 };
+use mock_traits::FileDownloader;
 use tokio::{task::spawn_blocking, time::sleep};
 
 use crate::{ItemMarketInfoMap, UniversalisProcessorData, UniversalisRequestType};
@@ -14,12 +15,12 @@ use crate::{ItemMarketInfoMap, UniversalisProcessorData, UniversalisRequestType}
 
 pub type Signal<T> = Shared<Receiver<T>>;
 
-pub struct UniversalisRequest<T: UniversalisRequestType, D: FileDownloader> {
+pub struct UniversalisRequest<T: UniversalisRequestType, F: FileDownloader> {
     data: UniversalisProcessorData,
     url: String,
     signature: String,
-    _marker: PhantomData<fn() -> T>, // Allowing T to be Send & Sync
-    _marker_d: PhantomData<fn() -> D>,
+    _marker_t: PhantomData<fn() -> T>, // Allowing T to be Send & Sync
+    _marker_f: PhantomData<fn() -> F>,
 }
 
 pub struct UniversalisRequestHandle {
@@ -30,7 +31,7 @@ pub struct UniversalisRequestHandle {
 
 ////////////////////////////////////////////////////////////
 
-impl<T: UniversalisRequestType, D: FileDownloader> UniversalisRequest<T, D> {
+impl<T: UniversalisRequestType, F: FileDownloader> UniversalisRequest<T, F> {
     pub fn new(
         data: UniversalisProcessorData,
         world: String,
@@ -41,8 +42,8 @@ impl<T: UniversalisRequestType, D: FileDownloader> UniversalisRequest<T, D> {
             url: T::url(&world, &ids),
             signature: format!("{}/{}", request_id, data.num_requests),
             data,
-            _marker: PhantomData,
-            _marker_d: PhantomData,
+            _marker_t: PhantomData,
+            _marker_f: PhantomData,
         }
     }
 
@@ -93,7 +94,7 @@ impl<T: UniversalisRequestType, D: FileDownloader> UniversalisRequest<T, D> {
         log::info!(target: "ffxiv_universalis", "{uuid} Fetch {signature} {url}");
 
         for attempt in 0..num_attempts {
-            let listing = D::download_file(&url).await?;
+            let listing = F::download(&url).await.ok()?;
 
             // Invalid response from the server. This typically is from load, so let's fall back a bit & retry in a second
             if !is_valid_json(&listing) {
@@ -118,19 +119,4 @@ impl<T: UniversalisRequestType, D: FileDownloader> UniversalisRequest<T, D> {
 fn is_valid_json<S: AsRef<str>>(value: S) -> bool {
     let value = value.as_ref();
     value.starts_with('{') && value.ends_with('}') && value.len() > 100
-}
-
-pub trait FileDownloader {
-    fn download_file(url: &str) -> BoxFuture<'_, Option<String>>;
-}
-
-pub struct ReqwestDownloader;
-
-impl FileDownloader for ReqwestDownloader {
-    fn download_file(url: &str) -> BoxFuture<'_, Option<String>> {
-        async fn inner(url: &str) -> Option<String> {
-            reqwest::get(url).await.ok()?.text().await.ok()
-        }
-        inner(url).boxed()
-    }
 }

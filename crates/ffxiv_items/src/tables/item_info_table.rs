@@ -5,15 +5,17 @@ use chrono::{DateTime, FixedOffset};
 use const_format::formatcp;
 use futures::TryStreamExt;
 use itertools::Itertools;
+use mock_traits::FileDownloader;
 use sqlx::{QueryBuilder, Row};
 
 use crate::{csv_parse, last_updated_from_github, ItemDB, ItemId, ItemInfo};
 
-use super::{download_file, strip_whitespace, RecipeTable, BIND_MAX};
+use super::{download_csv, strip_whitespace, RecipeTable, BIND_MAX};
 
 ////////////////////////////////////////////////////////////
 
 impl_table!(ItemInfoTable);
+impl_table_builder!(ItemInfoTableBuilder, FileDownloader);
 
 impl ItemInfoTable<'_> {
     pub async fn by_item_ids<I: ItemId>(&self, ids: &[I]) -> Result<Vec<ItemInfo>> {
@@ -66,7 +68,7 @@ struct CsvItem {
 
 const CSV_FILE: &str = "Item.csv";
 
-impl ItemInfoTable<'_> {
+impl<F: FileDownloader> ItemInfoTableBuilder<'_, F> {
     pub async fn initialize(&self) -> Result<()> {
         let items = Self::download().await?;
 
@@ -89,14 +91,14 @@ impl ItemInfoTable<'_> {
         Ok(())
     }
 
-    pub async fn last_updated_github() -> Result<DateTime<FixedOffset>> {
-        last_updated_from_github(CSV_FILE).await
+    pub async fn last_updated_github(&self) -> Result<DateTime<FixedOffset>> {
+        last_updated_from_github::<F>(CSV_FILE).await
     }
 
     async fn download() -> Result<Vec<CsvItem>> {
         println!("Downloading Items from Github");
 
-        let reader = Cursor::new(download_file(CSV_FILE).await?);
+        let reader = Cursor::new(download_csv::<F>(CSV_FILE).await?);
         let mut items = Vec::new();
         csv_parse!(reader => {
             id = U[0];
