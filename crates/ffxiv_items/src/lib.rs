@@ -4,6 +4,7 @@
 mod csv_parse;
 
 mod filter;
+mod github_metadata;
 mod item_db;
 mod item_db_filter;
 mod item_db_items;
@@ -14,6 +15,7 @@ mod recipe;
 mod tables;
 
 use filter::{Filter, FilterBindingInfo};
+use github_metadata::last_updated_from_github;
 use item_id::ItemId;
 
 pub use item_db::ItemDB;

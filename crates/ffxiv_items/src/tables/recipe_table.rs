@@ -1,12 +1,13 @@
 use std::{collections::BTreeMap, io::Cursor, time::Instant};
 
 use anyhow::Result;
+use chrono::{DateTime, FixedOffset};
 use const_format::formatcp;
 use futures::{try_join, TryStreamExt};
 use itertools::Itertools;
 use sqlx::{QueryBuilder, Row};
 
-use crate::{Ingredient, ItemDB, ItemId, Recipe};
+use crate::{last_updated_from_github, Ingredient, ItemDB, ItemId, Recipe};
 
 use super::{download_file, strip_whitespace, IngredientTable, BIND_MAX};
 
@@ -90,6 +91,12 @@ impl RecipeTable<'_> {
         }
 
         Ok(())
+    }
+
+    pub async fn last_updated_github() -> Result<DateTime<FixedOffset>> {
+        let recipe_updated = last_updated_from_github(CSV_FILE_RECIPE).await?;
+        let recipe_level_updated = last_updated_from_github(CSV_FILE_RECIPE_LEVEL).await?;
+        Ok(recipe_updated.max(recipe_level_updated))
     }
 
     pub async fn download_recipe_info() -> Result<Vec<Recipe>> {

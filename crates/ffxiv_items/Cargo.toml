@@ -19,6 +19,8 @@ tuple-conv = "1.0.1"
 env_logger = "0.10.0"
 chrono = "0.4.31"
 regex = "1.9.5"
+serde = "1.0.189"
+serde_json = "1.0.107"
 
 [features]
 docker = []

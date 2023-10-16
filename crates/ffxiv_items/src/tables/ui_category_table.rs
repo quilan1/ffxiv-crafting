@@ -1,11 +1,12 @@
 use std::io::Cursor;
 
 use anyhow::Result;
+use chrono::{DateTime, FixedOffset};
 use const_format::formatcp;
 use itertools::Itertools;
 use sqlx::QueryBuilder;
 
-use crate::ItemDB;
+use crate::{last_updated_from_github, ItemDB};
 
 use super::{download_file, strip_whitespace, BIND_MAX};
 
@@ -39,6 +40,10 @@ impl UiCategoryTable<'_> {
         }
 
         Ok(())
+    }
+
+    pub async fn last_updated_github() -> Result<DateTime<FixedOffset>> {
+        last_updated_from_github(CSV_FILE).await
     }
 
     async fn download() -> Result<Vec<CsvUiCategory>> {

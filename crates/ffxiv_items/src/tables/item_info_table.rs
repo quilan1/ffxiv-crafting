@@ -1,12 +1,13 @@
 use std::{collections::BTreeMap, io::Cursor, time::Instant};
 
 use anyhow::Result;
+use chrono::{DateTime, FixedOffset};
 use const_format::formatcp;
 use futures::TryStreamExt;
 use itertools::Itertools;
 use sqlx::{QueryBuilder, Row};
 
-use crate::{csv_parse, ItemDB, ItemId, ItemInfo};
+use crate::{csv_parse, last_updated_from_github, ItemDB, ItemId, ItemInfo};
 
 use super::{download_file, strip_whitespace, RecipeTable, BIND_MAX};
 
@@ -86,6 +87,10 @@ impl ItemInfoTable<'_> {
         }
 
         Ok(())
+    }
+
+    pub async fn last_updated_github() -> Result<DateTime<FixedOffset>> {
+        last_updated_from_github(CSV_FILE).await
     }
 
     async fn download() -> Result<Vec<CsvItem>> {

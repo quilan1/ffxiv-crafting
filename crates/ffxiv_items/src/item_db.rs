@@ -3,7 +3,9 @@ use futures::try_join;
 use sqlx::MySqlPool;
 use tuple_conv::RepeatedTuple;
 
-use crate::tables::{IngredientTable, InputIdsTable, ItemInfoTable, RecipeTable, UiCategoryTable};
+use crate::tables::{
+    IngredientTable, InputIdsTable, ItemInfoTable, RecipeTable, UiCategoryTable, UpdateTable,
+};
 
 #[derive(Debug)]
 pub struct ItemDB {
@@ -16,6 +18,7 @@ struct Tables<'a> {
     ingredients: IngredientTable<'a>,
     input_ids: InputIdsTable<'a>,
     ui_categories: UiCategoryTable<'a>,
+    update_table: UpdateTable<'a>,
 }
 
 ////////////////////////////////////////////////////////////
@@ -27,7 +30,12 @@ impl ItemDB {
     }
 
     pub async fn initialize(&self) -> Result<bool> {
-        self.tables().create().await
+        let tables = self.tables();
+        if cfg!(not(test)) {
+            // We're going to swallow errors with github, wrt: rate limiting
+            let _ = tables.check_updated_github().await;
+        }
+        tables.create().await
     }
 
     fn tables(&self) -> Tables<'_> {
@@ -37,6 +45,7 @@ impl ItemDB {
             ingredients: IngredientTable::new(self),
             input_ids: InputIdsTable::new(self),
             ui_categories: UiCategoryTable::new(self),
+            update_table: UpdateTable::new(self),
         }
     }
 }
@@ -44,6 +53,40 @@ impl ItemDB {
 ////////////////////////////////////////////////////////////
 
 impl Tables<'_> {
+    async fn check_updated_github(&self) -> Result<()> {
+        let last_updated_github = try_join!(
+            ItemInfoTable::<'_>::last_updated_github(),
+            RecipeTable::<'_>::last_updated_github(),
+            UiCategoryTable::<'_>::last_updated_github(),
+        )?
+        .to_vec()
+        .into_iter()
+        .max()
+        .unwrap();
+
+        let mut is_new_update = false;
+        self.update_table.create().await?;
+        if self.update_table.is_empty().await? {
+            self.update_table.insert(&last_updated_github).await?;
+            is_new_update = true;
+        }
+
+        let last_updated_db = self.update_table.last_updated().await?;
+        is_new_update |= last_updated_github > last_updated_db;
+        if is_new_update {
+            try_join!(
+                self.update_table.update(&last_updated_github),
+                self.items.drop(),
+                self.recipes.drop(),
+                self.ui_categories.drop(),
+                self.ingredients.drop(),
+                self.input_ids.drop(),
+            )?;
+        }
+
+        Ok(())
+    }
+
     async fn create(&self) -> Result<bool> {
         let is_empty = try_join!(
             self.create_items(),

@@ -38,6 +38,24 @@
                 "FFXIV_DATA_CENTERS": "Dynamis"
             },
             "cwd": "${workspaceFolder}/crates"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug Items",
+            "cargo": {
+                "args": [
+                    "build",
+                    "-p",
+                    "ffxiv_items"
+                ],
+            },
+            "args": [],
+            "env": {
+                "FFXIV_DATA_CENTERS": "Dynamis",
+                "RUST_BACKTRACE": "1",
+            },
+            "cwd": "${workspaceFolder}/crates"
         }
     ]
 }
