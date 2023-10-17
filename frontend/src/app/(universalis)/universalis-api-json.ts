@@ -12,14 +12,15 @@ export interface MessageListing { listingType: 'listing' | 'history' };
 export interface MessageRecipe { recipe: RecipeJson };
 export interface MessageDetailedStatus { detailedStatus: MessageDetailedStatusInfo };
 export interface MessageDetailedStatusInfo extends MessageListing { status: DetailedStatus[] };
-export type DetailedStatus = DetailedStatusActive | DetailedStatusFinished | DetailedStatusQueued;
+export type DetailedStatus = DetailedStatusActive | DetailedStatusWarn | DetailedStatusFinished | DetailedStatusQueued;
 export type DetailedStatusActive = 'active';
+export type DetailedStatusWarn = 'warn';
 export interface DetailedStatusFinished { finished: boolean };
 export interface DetailedStatusQueued { queued: number };
 export interface MessageTextStatus { textStatus: MessageTextStatusInfo };
 export interface MessageTextStatusInfo extends MessageListing { status: string };
 export interface MessageResult { result: MessageResultInfo };
-export interface MessageResultInfo extends MessageListing, ListingResults {};
+export interface MessageResultInfo extends MessageListing, ListingResults { };
 export interface ListingResults { failures: number[], listings: Record<number, Listing[] | undefined> };
 
 export type Message = MessageRecipe | MessageDetailedStatus | MessageTextStatus | MessageResult;
@@ -49,6 +50,10 @@ export class Validate {
         return obj === 'active';
     }
 
+    static isDetailedStatusWarn(obj: unknown): obj is DetailedStatusWarn {
+        return obj === 'warn';
+    }
+
     static isDetailedStatusFinished(obj: unknown): obj is DetailedStatusFinished {
         return this.isObject(obj) && ("finished" in obj)
     }
@@ -74,7 +79,8 @@ export class Validate {
     }
 
     static assertIsDetailedStatus(obj: unknown): asserts obj is DetailedStatus {
-        if (this.isDetailedStatusActive(obj) || this.isDetailedStatusFinished(obj) || this.isDetailedStatusQueued(obj))
+        if (this.isDetailedStatusActive(obj) || this.isDetailedStatusWarn(obj)
+            || this.isDetailedStatusFinished(obj) || this.isDetailedStatusQueued(obj))
             return;
 
         throw new Error(`Invalid Server Websocket Message: invalid DetailedStatus: ${obj as never}`);

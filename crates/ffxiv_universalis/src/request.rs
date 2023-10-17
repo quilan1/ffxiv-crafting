@@ -2,7 +2,7 @@ use std::{marker::PhantomData, time::Duration};
 
 use async_processor::AsyncProcessorHandle;
 use futures::{
-    channel::oneshot::{self, Receiver},
+    channel::oneshot::{self, Receiver, Sender},
     future::Shared,
     FutureExt,
 };
@@ -25,6 +25,7 @@ pub struct UniversalisRequest<T: UniversalisRequestType, F: FileDownloader> {
 
 pub struct UniversalisRequestHandle {
     pub signal_active: Signal<()>,
+    pub signal_warn: Signal<()>,
     pub signal_finished: Signal<bool>,
     pub id: usize,
 }
@@ -57,6 +58,7 @@ impl<T: UniversalisRequestType, F: FileDownloader> UniversalisRequest<T, F> {
     ) {
         let async_processor = self.data.async_processor.clone();
         let (signal_active_tx, signal_active_rx) = oneshot::channel();
+        let (signal_warn_tx, signal_warn_rx) = oneshot::channel();
         let (signal_finished_tx, signal_finished_rx) = oneshot::channel::<bool>();
 
         let future = async move {
@@ -66,6 +68,7 @@ impl<T: UniversalisRequestType, F: FileDownloader> UniversalisRequest<T, F> {
                 self.url,
                 self.signature,
                 self.data.retain_num_days,
+                signal_warn_tx,
             )
             .await;
             let _ = signal_finished_tx.send(results.is_some());
@@ -75,6 +78,7 @@ impl<T: UniversalisRequestType, F: FileDownloader> UniversalisRequest<T, F> {
         let async_processor_handle = async_processor.process_future(future);
         let request_handle = UniversalisRequestHandle {
             signal_active: signal_active_rx.shared(),
+            signal_warn: signal_warn_rx.shared(),
             signal_finished: signal_finished_rx.shared(),
             id: async_processor_handle.id(),
         };
@@ -88,17 +92,22 @@ impl<T: UniversalisRequestType, F: FileDownloader> UniversalisRequest<T, F> {
         url: String,
         signature: String,
         retain_num_days: f32,
+        signal_warn_tx: Sender<()>,
     ) -> Option<ItemMarketInfoMap> {
         let fetch_type = T::fetch_type();
         let num_attempts = 10;
         log::info!(target: "ffxiv_universalis", "{uuid} Fetch {signature} {url}");
 
+        let mut signal_warn_tx = Some(signal_warn_tx);
         for attempt in 0..num_attempts {
             let listing = F::download(&url).await.ok()?;
 
             // Invalid response from the server. This typically is from load, so let's fall back a bit & retry in a second
             if !is_valid_json(&listing) {
                 log::warn!(target: "ffxiv_universalis", "{uuid} Fetch {signature} [{attempt}] Invalid {fetch_type} json: {url}");
+                if let Some(signal_warn) = signal_warn_tx.take() {
+                    let _ = signal_warn.send(());
+                }
                 sleep(Duration::from_millis(1000)).await;
                 continue;
             }

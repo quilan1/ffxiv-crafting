@@ -33,3 +33,19 @@ impl FileDownloader for ReqwestDownloader {
         inner(url).boxed()
     }
 }
+
+pub struct FaultyDownloader<const CHANCE: u32>;
+
+impl<const CHANCE: u32> FileDownloader for FaultyDownloader<CHANCE> {
+    fn download(url: &str) -> BoxFuture<'_, Result<String>> {
+        async fn inner(url: &str, chance: u32) -> Result<String> {
+            use rand::Rng;
+            if rand::thread_rng().gen::<u32>() % 100 < chance {
+                Ok("".into())
+            } else {
+                Ok(reqwest::get(url).await?.text().await?)
+            }
+        }
+        inner(url, CHANCE).boxed()
+    }
+}

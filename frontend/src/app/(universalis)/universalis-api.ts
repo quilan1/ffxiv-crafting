@@ -9,7 +9,7 @@ export class CancelError extends Error {
     }
 }
 
-export type ListingRequestStatus = { active: boolean } | { finished: boolean } | { queued: number };
+export type ListingRequestStatus = { active: boolean } | { warn: boolean } | { finished: boolean } | { queued: number };
 export type ListingStatus = { status: string } | { listings: ListingRequestStatus[] };
 export type ListingStatusInfo = { status: string } | { listingStatus: ListingStatus, historyStatus: ListingStatus };
 
@@ -147,6 +147,8 @@ export default class UniversalisRequest {
             Validate.assertIsDetailedStatus(status);
             if (Validate.isDetailedStatusActive(status)) {
                 listings.push({ active: true });
+            } else if (Validate.isDetailedStatusWarn(status)) {
+                listings.push({ warn: true });
             } else if (Validate.isDetailedStatusFinished(status)) {
                 listings.push({ finished: status.finished });
             } else if (Validate.isDetailedStatusQueued(status)) {

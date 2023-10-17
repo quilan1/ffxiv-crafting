@@ -1,3 +1,3 @@
 mod file_downloader;
 
-pub use file_downloader::{FileDownloader, GithubDownloader, ReqwestDownloader};
+pub use file_downloader::{FaultyDownloader, FileDownloader, GithubDownloader, ReqwestDownloader};

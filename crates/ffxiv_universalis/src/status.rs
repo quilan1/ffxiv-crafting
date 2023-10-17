@@ -28,6 +28,7 @@ pub enum UniversalisStatusValues {
 
 pub enum UniversalisProcessorState {
     Active,
+    Warn,
     Finished(bool),
     Queued(i32),
 }
@@ -89,8 +90,10 @@ impl UniversalisStatus {
             handles
                 .iter()
                 .map(|handle| {
-                    if handle.signal_finished.clone().now_or_never().is_some() {
-                        P::Finished(true)
+                    if let Some(Ok(status)) = handle.signal_finished.clone().now_or_never() {
+                        P::Finished(status)
+                    } else if handle.signal_warn.clone().now_or_never().is_some() {
+                        P::Warn
                     } else if handle.signal_active.clone().now_or_never().is_some() {
                         P::Active
                     } else {

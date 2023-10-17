@@ -45,6 +45,7 @@ pub enum Output {
 #[serde(rename_all = "camelCase")]
 pub enum DetailedStatus {
     Active,
+    Warn,
     Finished(bool),
     Queued(i32),
 }
@@ -53,6 +54,7 @@ impl From<UniversalisProcessorState> for DetailedStatus {
     fn from(value: UniversalisProcessorState) -> Self {
         match value {
             UniversalisProcessorState::Active => Self::Active,
+            UniversalisProcessorState::Warn => Self::Warn,
             UniversalisProcessorState::Finished(successful) => Self::Finished(successful),
             UniversalisProcessorState::Queued(position) => Self::Queued(position),
         }
