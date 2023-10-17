@@ -4,7 +4,7 @@ import UniversalisRequest, { ListingRequestStatus } from '../(universalis)/unive
 import { useQueryContext } from './context';
 import { MarketInformation } from './table';
 import { KeysMatching } from '../(util)/util';
-import { signal } from '../(util)/signal';
+import { useSignal } from '../(util)/signal';
 import { WorldInformation } from './purchase';
 
 export function QueryContainer() {
@@ -33,9 +33,11 @@ function FetchStatus() {
     const fetchClass = (status: ListingRequestStatus) => {
         return ("active" in status)
             ? styles.active
-            : ("finished" in status)
-                ? (status.finished ? styles.finishedGood : styles.finishedBad)
-                : styles.queued;
+            : ("warn" in status)
+                ? styles.warn
+                : ("finished" in status)
+                    ? (status.finished ? styles.finishedGood : styles.finishedBad)
+                    : styles.queued;
     };
     const statusDiv = (key: number, status: ListingRequestStatus) => {
         return <div key={key} className={`${styles.fetchRequest} ${fetchClass(status)}`} />;
@@ -68,7 +70,7 @@ export function QueryOptions() {
     const onChangeQuerySelect = (e: ChangeEvent<HTMLSelectElement>) => {
         const { queryString: _queryString, count, limit, minVelocity } = processQuery(e.target.value);
         queryString.value = _queryString;
-        queryData.state = { ...queryData.state, count, limit, minVelocity };
+        queryData.ui.state = { ...queryData.ui.state, count, limit, minVelocity };
     };
     const onChangeDataCenter = (e: ChangeEvent<HTMLSelectElement>) => { dataCenter.value = e.target.value; };
     const onChangeCount = (e: ChangeEvent<HTMLInputElement>) => queryData.count = e.target.value;
@@ -122,7 +124,7 @@ export function QueryOptions() {
 }
 
 export function FetchButton() {
-    const isFetching = signal(useState(false));
+    const isFetching = useSignal(useState(false));
     const { listingStatusInfo, queryString, dataCenter, queryData } = useQueryContext();
     const isCancelled = useRef(false);
 

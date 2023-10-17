@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ListingStatusInfo } from "../(universalis)/universalis-api";
-import { Signal, signal } from "../(util)/signal";
+import { Signal, useSignal } from "../(util)/signal";
 import { defaultDataCenter, defaultQueryString } from "./query";
 import { QueryDataState, useQueryDataState } from "./query-data";
 
@@ -13,9 +13,9 @@ export interface QueryState {
 
 export const useQueryStateDefault = () => {
     return {
-        listingStatusInfo: signal(useState<ListingStatusInfo | undefined>(undefined)),
-        queryString: signal(useState(defaultQueryString)),
-        dataCenter: signal(useState(defaultDataCenter)),
+        listingStatusInfo: useSignal(useState<ListingStatusInfo | undefined>(undefined)),
+        queryString: useSignal(useState(defaultQueryString)),
+        dataCenter: useSignal(useState(defaultDataCenter)),
         queryData: useQueryDataState(),
     }
 }

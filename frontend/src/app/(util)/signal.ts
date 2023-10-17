@@ -15,6 +15,6 @@ export class Signal<T> {
     set value(value: T) { this.setState(value); }
 }
 
-export function signal<T>(val: SimpleStateUse<T>): Signal<T> {
+export function useSignal<T>(val: SimpleStateUse<T>): Signal<T> {
     return new Signal(val);
 }

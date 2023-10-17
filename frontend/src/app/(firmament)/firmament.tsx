@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { RecursiveStats } from '../(universalis)/analysis';
 import { allRecursiveStatsOfAsync } from '../(universalis)/analysis-async';
 import { None, OptionType, Some, optMax, optMin, optSub } from '../(util)/option';
-import { Signal, signal } from '../(util)/signal';
+import { Signal, useSignal } from '../(util)/signal';
 import { HOMEWORLD } from '../(universalis)/statistics';
 import UniversalisRequest, { UniversalisInfo } from '../(universalis)/universalis-api';
 import { useFirmamentContext } from './context';
@@ -237,8 +237,8 @@ const calculateProfits = (type: ValidExchangeType, pricePer: number, universalis
 
 export const useFirmamentStateDefault = (): FirmamentState => {
     return {
-        isFetching: signal(useState(false)),
-        statuses: [signal(useState("")), signal(useState("")), signal(useState(""))],
-        info: signal(useState<FirmamentInfo[] | undefined>(undefined)),
+        isFetching: useSignal(useState(false)),
+        statuses: [useSignal(useState("")), useSignal(useState("")), useSignal(useState(""))],
+        info: useSignal(useState<FirmamentInfo[] | undefined>(undefined)),
     };
 }
