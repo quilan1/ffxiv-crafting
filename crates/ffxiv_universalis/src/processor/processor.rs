@@ -9,7 +9,10 @@ use tokio::task::spawn_blocking;
 
 use crate::universalis::{ListingsMap, Request, RequestResult, RequestType};
 
-use super::{ProcessorData, ProcessorHandle, ProcessorHandleOutput, ProcessorInternalState};
+use super::{
+    AsyncPacket, ProcessorData, ProcessorHandle, ProcessorHandleOutput, ProcessorInternalState,
+    RequestPacket,
+};
 
 ////////////////////////////////////////////////////////////
 
@@ -134,16 +137,18 @@ impl Processor {
         let mut async_handles = Vec::new();
         let mut request_handles = Vec::new();
         for ((listings_async, listings_req), (history_async, history_req)) in handles {
-            async_handles.push(listings_async);
-            async_handles.push(history_async);
-            request_handles.push(listings_req);
-            request_handles.push(history_req);
+            async_handles.push(AsyncPacket::new(listings_async, history_async));
+            request_handles.push(RequestPacket(listings_req, history_req));
         }
 
         data.status
             .set_value(ProcessorInternalState::Processing(request_handles));
 
-        join_all(async_handles).await
+        join_all(async_handles)
+            .await
+            .into_iter()
+            .flat_map(|packet| [packet.0, packet.1])
+            .collect_vec()
     }
 }
 

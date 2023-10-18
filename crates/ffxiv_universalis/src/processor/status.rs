@@ -4,9 +4,9 @@ use async_processor::{AmValue, AsyncProcessor};
 use futures::FutureExt;
 use tokio::time::sleep;
 
-use crate::{universalis::RequestHandle, Signal};
+use crate::Signal;
 
-use super::MAX_UNIVERSALIS_CONCURRENT_FUTURES;
+use super::{RequestPacket, MAX_UNIVERSALIS_CONCURRENT_FUTURES};
 
 ////////////////////////////////////////////////////////////
 
@@ -20,7 +20,7 @@ struct StatusControllerData {
 
 pub enum ProcessorInternalState {
     Queued,
-    Processing(Vec<RequestHandle>),
+    Processing(Vec<RequestPacket>),
     Cleanup,
     Finished,
 }
@@ -56,11 +56,20 @@ impl StatusController {
             {
                 let state = &self.0.lock().state;
                 match state {
-                    ProcessorInternalState::Processing(handles) => {
-                        return handles
+                    ProcessorInternalState::Processing(packets) => {
+                        return packets
                             .iter()
-                            .map(|handle| {
-                                (handle.signal_active.clone(), handle.signal_finished.clone())
+                            .flat_map(|packet| {
+                                [
+                                    (
+                                        packet.0.signal_active.clone(),
+                                        packet.0.signal_finished.clone(),
+                                    ),
+                                    (
+                                        packet.1.signal_active.clone(),
+                                        packet.1.signal_finished.clone(),
+                                    ),
+                                ]
                             })
                             .unzip();
                     }
@@ -83,18 +92,19 @@ impl StatusController {
         let state = &data.state;
         let async_processor = &data.async_processor;
 
-        let handles = match state {
+        let packets = match state {
             ProcessorInternalState::Queued => return V::Text("Queued...".into()),
             ProcessorInternalState::Cleanup => return V::Text("Cleaning up...".into()),
             ProcessorInternalState::Finished => return V::Text("Done".into()),
-            ProcessorInternalState::Processing(handles) => handles,
+            ProcessorInternalState::Processing(packets) => packets,
         };
 
         let queue_offset = async_processor.num_finished() + MAX_UNIVERSALIS_CONCURRENT_FUTURES;
 
         V::Processing(
-            handles
+            packets
                 .iter()
+                .flat_map(|packet| [&packet.0, &packet.1])
                 .map(|handle| {
                     if let Some(Ok(status)) = handle.signal_finished.clone().now_or_never() {
                         P::Finished(status)

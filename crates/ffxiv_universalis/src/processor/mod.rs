@@ -1,8 +1,10 @@
 mod handle;
+mod packet;
 mod processor;
 mod processor_data;
 mod status;
 
+use packet::{AsyncPacket, RequestPacket};
 use processor::MAX_UNIVERSALIS_CONCURRENT_FUTURES;
 use status::ProcessorInternalState;
 
