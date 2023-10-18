@@ -9,7 +9,7 @@ use axum::{
     response::IntoResponse,
 };
 use ffxiv_items::ItemDB;
-use ffxiv_universalis::UniversalisProcessor;
+use ffxiv_universalis::Processor;
 use mock_traits::FileDownloader;
 use uuid::Uuid;
 
@@ -20,7 +20,7 @@ use super::{send_recipes, wait_for_universalis, Input};
 #[allow(clippy::unused_async)]
 pub async fn universalis_websocket<F: FileDownloader + 'static>(
     ws: WebSocketUpgrade,
-    State((universalis_processor, db)): State<(UniversalisProcessor, Arc<ItemDB>)>,
+    State((universalis_processor, db)): State<(Processor, Arc<ItemDB>)>,
 ) -> impl IntoResponse {
     ws.on_upgrade(move |socket| handle_socket::<F>(socket, universalis_processor, db.clone()))
 }
@@ -29,12 +29,12 @@ pub async fn universalis_websocket<F: FileDownloader + 'static>(
 
 async fn handle_socket<F: FileDownloader>(
     mut socket: WebSocket,
-    universalis_processor: UniversalisProcessor,
+    universalis_processor: Processor,
     db: Arc<ItemDB>,
 ) {
     async fn inner<F: FileDownloader>(
         socket: &mut WebSocket,
-        universalis_processor: UniversalisProcessor,
+        universalis_processor: Processor,
         db: Arc<ItemDB>,
     ) -> Result<()> {
         let server_uuid = Uuid::new_v4().to_string();

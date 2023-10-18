@@ -1,5 +1,5 @@
 use anyhow::Result;
-use ffxiv_universalis::json_types::{
+use ffxiv_universalis::json::{
     HistoryView, ItemListingView, ListingView, MultipleHistoryView, MultipleListingView,
 };
 use futures::FutureExt;

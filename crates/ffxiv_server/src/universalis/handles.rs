@@ -2,10 +2,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::Result;
 use axum::extract::ws::{Message, WebSocket};
-use ffxiv_universalis::{
-    Signal, UniversalisHandle, UniversalisHistory, UniversalisListing, UniversalisProcessor,
-    UniversalisStatusValues,
-};
+use ffxiv_universalis::{Processor, ProcessorHandle, ProcessorHandleOutput, Signal, Status};
 use futures::{Future, FutureExt};
 use mock_traits::FileDownloader;
 use tokio::time::sleep;
@@ -19,7 +16,7 @@ const DUR_TIMEOUT: Duration = Duration::from_millis(10000);
 
 pub async fn wait_for_universalis<F: FileDownloader>(
     socket: &mut WebSocket,
-    universalis_processor: &UniversalisProcessor,
+    universalis_processor: &Processor,
     payload: Input,
     all_ids: &[u32],
     server_uuid: &str,
@@ -28,9 +25,7 @@ pub async fn wait_for_universalis<F: FileDownloader>(
         make_market_request_info::<F>(universalis_processor, payload, all_ids, server_uuid).await;
 
     // Send over initial messages
-    market_request_info
-        .process_handles(socket, (true, true))
-        .await?;
+    market_request_info.process_handle(socket).await?;
     market_request_info.retain_fresh_signals();
 
     // Wait until we've finished all history and listings
@@ -42,19 +37,20 @@ pub async fn wait_for_universalis<F: FileDownloader>(
         }
 
         let timeout = timeouts[usize::from(market_request_info.is_waiting_for_cleanup())];
-        let update = market_request_info.wait_for_update(timeout).await;
-        market_request_info.process_handles(socket, update).await?;
+        if market_request_info.wait_for_update(timeout).await {
+            market_request_info.process_handle(socket).await?;
+        }
         market_request_info.retain_fresh_signals();
     }
     Ok(())
 }
 
 async fn make_market_request_info<F: FileDownloader>(
-    universalis_processor: &UniversalisProcessor,
+    universalis_processor: &Processor,
     payload: Input,
     all_ids: &[u32],
     server_uuid: &str,
-) -> MarketRequestInfo {
+) -> MarketRequestState {
     let worlds: Vec<_> = payload
         .data_center
         .or(std::env::var("FFXIV_DATA_CENTERS").ok())
@@ -66,42 +62,22 @@ async fn make_market_request_info<F: FileDownloader>(
 
     let retain_num_days = payload.retain_num_days.unwrap_or(7.0);
 
-    let history_handle = universalis_processor.make_request::<UniversalisHistory, F>(
-        &worlds,
-        all_ids,
-        retain_num_days,
-    );
-
-    let listing_handle = universalis_processor.make_request::<UniversalisListing, F>(
-        &worlds,
-        all_ids,
-        retain_num_days,
-    );
+    let handle = universalis_processor.make_request::<F>(&worlds, all_ids, retain_num_days);
 
     log::info!(target: "ffxiv_server",
-        "Server uuid {server_uuid} maps to history universalis uuid {}",
-        history_handle.uuid()
-    );
-    log::info!(target: "ffxiv_server",
-        "Server uuid {server_uuid} maps to listing universalis uuid {}",
-        listing_handle.uuid()
+        "Server uuid {server_uuid} maps to universalis uuid {}",
+        handle.uuid()
     );
 
-    let history_signals = history_handle.status().signals().await;
-    let listing_signals = listing_handle.status().signals().await;
-    MarketRequestInfo::new(
-        history_handle,
-        listing_handle,
-        history_signals,
-        listing_signals,
-    )
+    let signals = handle.status().signals().await;
+    MarketRequestState::new(handle, signals)
 }
 
 ////////////////////////////////////////////////////////////
 
 enum MarketRequestState {
     Processing {
-        handle: UniversalisHandle,
+        handle: ProcessorHandle,
         signals_active: Vec<Signal<()>>,
         signals_finished: Vec<Signal<bool>>,
         last_update: Instant,
@@ -120,7 +96,7 @@ where
 
 impl MarketRequestState {
     fn new(
-        handle: UniversalisHandle,
+        handle: ProcessorHandle,
         (signals_active, signals_finished): (Vec<Signal<()>>, Vec<Signal<bool>>),
     ) -> Self {
         Self::Processing {
@@ -189,7 +165,23 @@ impl MarketRequestState {
         }
     }
 
-    async fn process_handle(&mut self, socket: &mut WebSocket, listing_type: &str) -> Result<()> {
+    async fn wait_for_update(&self, max_timeout: Duration) -> bool {
+        let stale = self.time_to_stale(max_timeout);
+        let timeout = stale.max(DUR_MIN_WAIT);
+
+        let start = Instant::now();
+        while start.elapsed() < timeout {
+            let needs_update = self.are_any_signals_done();
+            if needs_update {
+                return true;
+            }
+            sleep(DUR_MIN_WAIT).await;
+        }
+
+        self.is_stale(max_timeout)
+    }
+
+    async fn process_handle(&mut self, socket: &mut WebSocket) -> Result<()> {
         let MarketRequestState::Processing {
             handle,
             last_update,
@@ -202,21 +194,21 @@ impl MarketRequestState {
         *last_update = Instant::now();
 
         let output = if let Some(result) = handle.now_or_never() {
-            let (listings, failures) = result?;
+            let ProcessorHandleOutput {
+                listings,
+                history,
+                failure_ids,
+            } = result?;
             *self = MarketRequestState::Done;
             Output::Result {
-                listing_type: listing_type.into(),
                 listings,
-                failures,
+                history,
+                failures: failure_ids,
             }
         } else {
             match handle.status().values() {
-                UniversalisStatusValues::Text(status) => Output::TextStatus {
-                    listing_type: listing_type.into(),
-                    status,
-                },
-                UniversalisStatusValues::Processing(values) => Output::DetailedStatus {
-                    listing_type: listing_type.into(),
+                Status::Text(status) => Output::TextStatus { status },
+                Status::Processing(values) => Output::DetailedStatus {
                     status: values.into_iter().map(DetailedStatus::from).collect(),
                 },
             }
@@ -224,78 +216,6 @@ impl MarketRequestState {
         let message_text = serde_json::to_string(&output)?;
         socket.send(Message::Text(message_text)).await?;
 
-        Ok(())
-    }
-}
-
-////////////////////////////////////////////////////////////
-
-struct MarketRequestInfo {
-    history: MarketRequestState,
-    listing: MarketRequestState,
-}
-
-impl MarketRequestInfo {
-    fn new(
-        history_handle: UniversalisHandle,
-        listing_handle: UniversalisHandle,
-        history_signals: (Vec<Signal<()>>, Vec<Signal<bool>>),
-        listing_signals: (Vec<Signal<()>>, Vec<Signal<bool>>),
-    ) -> Self {
-        Self {
-            history: MarketRequestState::new(history_handle, history_signals),
-            listing: MarketRequestState::new(listing_handle, listing_signals),
-        }
-    }
-
-    fn are_any_signals_done(&self) -> bool {
-        self.history.are_any_signals_done() || self.listing.are_any_signals_done()
-    }
-
-    fn is_done(&self) -> bool {
-        self.history.is_done() && self.listing.is_done()
-    }
-
-    fn is_waiting_for_cleanup(&self) -> bool {
-        self.history.is_waiting_for_cleanup() && self.listing.is_waiting_for_cleanup()
-    }
-
-    fn retain_fresh_signals(&mut self) {
-        self.history.retain_fresh_signals();
-        self.listing.retain_fresh_signals();
-    }
-
-    async fn wait_for_update(&self, max_timeout: Duration) -> (bool, bool) {
-        let stale_history = self.history.time_to_stale(max_timeout);
-        let stale_listing = self.listing.time_to_stale(max_timeout);
-        let timeout = stale_history.min(stale_listing).max(DUR_MIN_WAIT);
-
-        let start = Instant::now();
-        while start.elapsed() < timeout {
-            let needs_update = self.are_any_signals_done();
-            if needs_update {
-                return (true, true);
-            }
-            sleep(DUR_MIN_WAIT).await;
-        }
-
-        (
-            self.history.is_stale(max_timeout),
-            self.listing.is_stale(max_timeout),
-        )
-    }
-
-    async fn process_handles(
-        &mut self,
-        socket: &mut WebSocket,
-        (history_update, listing_update): (bool, bool),
-    ) -> Result<()> {
-        if history_update {
-            self.history.process_handle(socket, "history").await?;
-        }
-        if listing_update {
-            self.listing.process_handle(socket, "listing").await?;
-        }
         Ok(())
     }
 }

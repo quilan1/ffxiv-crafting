@@ -5,9 +5,11 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use crate::json_types::{
+use super::json_types::{
     HistoryView, ItemListingView, ListingView, MultipleHistoryView, MultipleListingView,
 };
+
+////////////////////////////////////////////////////////////
 
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -22,18 +24,18 @@ pub struct ItemListing {
     pub days_since: f32,
 }
 
-pub type ItemMarketInfoMap = BTreeMap<u32, Vec<ItemListing>>;
+pub type ListingsMap = BTreeMap<u32, Vec<ItemListing>>;
 
 ////////////////////////////////////////////////////////////
 
 pub struct UniversalisJson;
 
 impl UniversalisJson {
-    pub fn parse_listing(json: String, retain_num_days: f32) -> Result<ItemMarketInfoMap> {
+    pub fn parse_listing(json: String, retain_num_days: f32) -> Result<ListingsMap> {
         Self::parse_general_listing::<MultipleListingView, ListingView>(&json, retain_num_days)
     }
 
-    pub fn parse_history(json: String, retain_num_days: f32) -> Result<ItemMarketInfoMap> {
+    pub fn parse_history(json: String, retain_num_days: f32) -> Result<ListingsMap> {
         Self::parse_general_listing::<MultipleHistoryView, HistoryView>(&json, retain_num_days)
     }
 
@@ -44,10 +46,10 @@ impl UniversalisJson {
     >(
         json: &'a str,
         retain_num_days: f32,
-    ) -> Result<ItemMarketInfoMap> {
+    ) -> Result<ListingsMap> {
         let json_map = serde_json::from_str::<MultipleView>(json)?.items();
 
-        let mut map = ItemMarketInfoMap::new();
+        let mut map = ListingsMap::new();
         for (id, mut info) in json_map {
             info.retain_recent_listings(retain_num_days);
             let mut listings = info.into_item_listings();

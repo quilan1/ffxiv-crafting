@@ -6,22 +6,32 @@ use std::{
 use futures::{channel::oneshot::Receiver, Future, FutureExt};
 use tokio::task::{JoinError, JoinHandle};
 
-use crate::{ItemMarketInfoMap, UniversalisStatus};
+use crate::universalis::ListingsMap;
 
-pub type UniversalisHandleOutput = (ItemMarketInfoMap, Vec<u32>);
+use super::StatusController;
 
-pub struct UniversalisHandle {
+////////////////////////////////////////////////////////////
+
+pub struct ProcessorHandleOutput {
+    pub listings: ListingsMap,
+    pub history: ListingsMap,
+    pub failure_ids: Vec<u32>,
+}
+
+pub struct ProcessorHandle {
     uuid: String,
-    join_handle: JoinHandle<UniversalisHandleOutput>,
-    status: UniversalisStatus,
+    join_handle: JoinHandle<ProcessorHandleOutput>,
+    status: StatusController,
     ready_signal: Option<Receiver<()>>,
 }
 
-impl UniversalisHandle {
+////////////////////////////////////////////////////////////
+
+impl ProcessorHandle {
     pub(crate) fn new(
         uuid: String,
-        join_handle: JoinHandle<UniversalisHandleOutput>,
-        status: UniversalisStatus,
+        join_handle: JoinHandle<ProcessorHandleOutput>,
+        status: StatusController,
         spawn_signal: Receiver<()>,
     ) -> Self {
         Self {
@@ -32,7 +42,7 @@ impl UniversalisHandle {
         }
     }
 
-    pub fn status(&self) -> UniversalisStatus {
+    pub fn status(&self) -> StatusController {
         self.status.clone()
     }
 
@@ -47,15 +57,15 @@ impl UniversalisHandle {
     }
 }
 
-impl Drop for UniversalisHandle {
+impl Drop for ProcessorHandle {
     fn drop(&mut self) {
         log::info!(target: "ffxiv_universalis", "{} Handle dropped", self.uuid);
         self.join_handle.abort();
     }
 }
 
-impl Future for UniversalisHandle {
-    type Output = Result<UniversalisHandleOutput, JoinError>;
+impl Future for ProcessorHandle {
+    type Output = Result<ProcessorHandleOutput, JoinError>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         self.join_handle.poll_unpin(cx)

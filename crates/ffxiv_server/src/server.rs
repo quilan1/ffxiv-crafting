@@ -1,20 +1,20 @@
 use anyhow::Result;
 use axum::{http::Method, routing::get, Router};
 use ffxiv_items::ItemDB;
-use ffxiv_universalis::UniversalisProcessor;
+use ffxiv_universalis::Processor;
 use futures::join;
 use mock_traits::FileDownloader;
 use std::{net::SocketAddr, sync::Arc};
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::universalis::universalis_websocket;
+use crate::universalis_websocket;
 
 pub struct Server;
 
 #[allow(unused_must_use)]
 impl Server {
     pub async fn run<F: FileDownloader + 'static>(db: ItemDB) -> Result<()> {
-        let universalis_processor = UniversalisProcessor::new();
+        let universalis_processor = Processor::new();
         let async_processor = universalis_processor.async_processor();
         let db = Arc::new(db);
 

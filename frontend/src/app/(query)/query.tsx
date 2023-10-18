@@ -27,7 +27,7 @@ export function QueryPanel() {
 }
 
 function FetchStatus() {
-    const { listingStatusInfo } = useQueryContext();
+    const { listingStatus: listingStatusInfo } = useQueryContext();
     const status = listingStatusInfo.value;
 
     const fetchClass = (status: ListingRequestStatus) => {
@@ -42,8 +42,8 @@ function FetchStatus() {
     const statusDiv = (key: number, status: ListingRequestStatus) => {
         return <div key={key} className={`${styles.fetchRequest} ${fetchClass(status)}`} />;
     };
-    const statusChild = (statusType: string, text: string, statuses: ListingRequestStatus[]) => {
-        return (text.length) ? <label>{statusType}: {text}</label> : <>{statuses.map((status, i) => statusDiv(i, status))}</>;
+    const statusChildren = (statuses: ListingRequestStatus[]) => {
+        return statuses.map((status, i) => statusDiv(i, status));
     };
 
     let children = <></>;
@@ -51,14 +51,15 @@ function FetchStatus() {
     } else if ("status" in status) {
         children = <div><label>{status.status}</label></div>;
     } else {
-        const listingStatusText = ("status" in status.listingStatus) ? status.listingStatus.status : '';
-        const historyStatusText = ("status" in status.historyStatus) ? status.historyStatus.status : '';
-        const listingStatuses = ("listings" in status.listingStatus) ? status.listingStatus.listings : [];
-        const historyStatuses = ("listings" in status.historyStatus) ? status.historyStatus.listings : [];
-        children = <>
-            <div>{statusChild("Listings", listingStatusText, listingStatuses)}</div>
-            <div>{statusChild("History", historyStatusText, historyStatuses)}</div>
-        </>;
+        const childElements = statusChildren(status.listings);
+
+        const numDiv = 4;
+        const len = Math.max(10, Math.floor(childElements.length + numDiv - 1) / numDiv);
+        const childDivs = [];
+        for (let i = 0; i < numDiv; ++i) {
+            childDivs.push(childElements.slice(i * len, (i + 1) * len));
+        }
+        children = <>{childDivs.map((children, i) => <div key={i}>{children}</div>)}</>;
     }
 
     return <div className={styles.fetchStatus}>{children}</div>
@@ -125,7 +126,7 @@ export function QueryOptions() {
 
 export function FetchButton() {
     const isFetching = useSignal(useState(false));
-    const { listingStatusInfo, queryString, dataCenter, queryData } = useQueryContext();
+    const { listingStatus: listingStatusInfo, queryString, dataCenter, queryData } = useQueryContext();
     const isCancelled = useRef(false);
 
     const onClick = () => {

@@ -4,44 +4,50 @@ use async_processor::{AmValue, AsyncProcessor};
 use futures::FutureExt;
 use tokio::time::sleep;
 
-use crate::{Signal, UniversalisRequestHandle, MAX_UNIVERSALIS_CONCURRENT_FUTURES};
+use crate::{universalis::RequestHandle, Signal};
+
+use super::MAX_UNIVERSALIS_CONCURRENT_FUTURES;
+
+////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
-pub struct UniversalisStatus(AmValue<UniversalisStatusData>);
+pub struct StatusController(AmValue<StatusControllerData>);
 
-pub struct UniversalisStatusData {
+struct StatusControllerData {
     async_processor: AsyncProcessor,
-    state: UniversalisStatusState,
+    state: ProcessorInternalState,
 }
 
-pub enum UniversalisStatusState {
+pub enum ProcessorInternalState {
     Queued,
-    Processing(Vec<UniversalisRequestHandle>),
+    Processing(Vec<RequestHandle>),
     Cleanup,
     Finished,
 }
 
-pub enum UniversalisStatusValues {
+pub enum Status {
     Text(String),
-    Processing(Vec<UniversalisProcessorState>),
+    Processing(Vec<FetchState>),
 }
 
-pub enum UniversalisProcessorState {
+pub enum FetchState {
     Active,
     Warn,
     Finished(bool),
     Queued(i32),
 }
 
-impl UniversalisStatus {
+////////////////////////////////////////////////////////////
+
+impl StatusController {
     pub fn new(async_processor: AsyncProcessor) -> Self {
-        Self(AmValue::new(UniversalisStatusData {
+        Self(AmValue::new(StatusControllerData {
             async_processor,
-            state: UniversalisStatusState::Queued,
+            state: ProcessorInternalState::Queued,
         }))
     }
 
-    pub(crate) fn set_value(&self, value: UniversalisStatusState) {
+    pub(crate) fn set_value(&self, value: ProcessorInternalState) {
         self.0.lock().state = value;
     }
 
@@ -50,7 +56,7 @@ impl UniversalisStatus {
             {
                 let state = &self.0.lock().state;
                 match state {
-                    UniversalisStatusState::Processing(handles) => {
+                    ProcessorInternalState::Processing(handles) => {
                         return handles
                             .iter()
                             .map(|handle| {
@@ -58,10 +64,10 @@ impl UniversalisStatus {
                             })
                             .unzip();
                     }
-                    UniversalisStatusState::Cleanup | UniversalisStatusState::Finished => {
+                    ProcessorInternalState::Cleanup | ProcessorInternalState::Finished => {
                         return (Vec::new(), Vec::new())
                     }
-                    UniversalisStatusState::Queued => {}
+                    ProcessorInternalState::Queued => {}
                 }
             }
 
@@ -69,19 +75,19 @@ impl UniversalisStatus {
         }
     }
 
-    pub fn values(&self) -> UniversalisStatusValues {
-        use UniversalisProcessorState as P;
-        use UniversalisStatusValues as V;
+    pub fn values(&self) -> Status {
+        use FetchState as P;
+        use Status as V;
 
         let data = self.0.lock();
         let state = &data.state;
         let async_processor = &data.async_processor;
 
         let handles = match state {
-            UniversalisStatusState::Queued => return V::Text("Queued...".into()),
-            UniversalisStatusState::Cleanup => return V::Text("Cleaning up...".into()),
-            UniversalisStatusState::Finished => return V::Text("Done".into()),
-            UniversalisStatusState::Processing(handles) => handles,
+            ProcessorInternalState::Queued => return V::Text("Queued...".into()),
+            ProcessorInternalState::Cleanup => return V::Text("Cleaning up...".into()),
+            ProcessorInternalState::Finished => return V::Text("Done".into()),
+            ProcessorInternalState::Processing(handles) => handles,
         };
 
         let queue_offset = async_processor.num_finished() + MAX_UNIVERSALIS_CONCURRENT_FUTURES;

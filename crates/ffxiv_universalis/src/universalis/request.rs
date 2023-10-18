@@ -2,60 +2,65 @@ use std::{marker::PhantomData, time::Duration};
 
 use async_processor::AsyncProcessorHandle;
 use futures::{
-    channel::oneshot::{self, Receiver, Sender},
-    future::Shared,
+    channel::oneshot::{self, Sender},
     FutureExt,
 };
+use itertools::Itertools;
 use mock_traits::FileDownloader;
 use tokio::{task::spawn_blocking, time::sleep};
 
-use crate::{ItemMarketInfoMap, UniversalisProcessorData, UniversalisRequestType};
+use crate::{processor::ProcessorData, Signal};
+
+use super::{ListingsMap, RequestType};
 
 ////////////////////////////////////////////////////////////
 
-pub type Signal<T> = Shared<Receiver<T>>;
-
-pub struct UniversalisRequest<T: UniversalisRequestType, F: FileDownloader> {
-    data: UniversalisProcessorData,
+pub struct Request<F: FileDownloader> {
+    data: ProcessorData,
     url: String,
     signature: String,
-    _marker_t: PhantomData<fn() -> T>, // Allowing T to be Send & Sync
-    _marker_f: PhantomData<fn() -> F>,
+    ids: Vec<u32>,
+    request_type: RequestType,
+    _marker_f: PhantomData<fn() -> F>, // Allows F to be Send & Sync
 }
 
-pub struct UniversalisRequestHandle {
+pub struct RequestHandle {
     pub signal_active: Signal<()>,
     pub signal_warn: Signal<()>,
     pub signal_finished: Signal<bool>,
     pub id: usize,
 }
 
+pub enum RequestResult {
+    Listing(ListingsMap),
+    History(ListingsMap),
+    Failure(Vec<u32>),
+}
+
 ////////////////////////////////////////////////////////////
 
-impl<T: UniversalisRequestType, F: FileDownloader> UniversalisRequest<T, F> {
+impl<F: FileDownloader> Request<F> {
     pub fn new(
-        data: UniversalisProcessorData,
+        data: ProcessorData,
         world: String,
-        ids: String,
+        ids: Vec<u32>,
+        request_type: RequestType,
         request_id: usize,
     ) -> Self {
+        let ids_string = ids.iter().map(|id| id.to_string()).join(",");
         Self {
-            url: T::url(&world, &ids),
+            url: request_type.url(&world, &ids_string),
             signature: format!("{}/{}", request_id, data.num_requests),
             data,
-            _marker_t: PhantomData,
+            ids,
+            request_type,
             _marker_f: PhantomData,
         }
     }
 
     // Uses the AsyncProcessor to queue the listing & history API calls to Universalis. Once
     // they return, it yields the full request back.
-    pub fn process_listing(
-        self,
-    ) -> (
-        AsyncProcessorHandle<Option<ItemMarketInfoMap>>,
-        UniversalisRequestHandle,
-    ) {
+    pub fn process_listing(self) -> (AsyncProcessorHandle<RequestResult>, RequestHandle) {
         let async_processor = self.data.async_processor.clone();
         let (signal_active_tx, signal_active_rx) = oneshot::channel();
         let (signal_warn_tx, signal_warn_rx) = oneshot::channel();
@@ -68,15 +73,20 @@ impl<T: UniversalisRequestType, F: FileDownloader> UniversalisRequest<T, F> {
                 self.url,
                 self.signature,
                 self.data.retain_num_days,
+                self.request_type.clone(),
                 signal_warn_tx,
             )
             .await;
             let _ = signal_finished_tx.send(results.is_some());
-            results
+
+            match results {
+                Some(listings) => self.request_type.result_listings(listings),
+                None => RequestResult::Failure(self.ids),
+            }
         };
 
         let async_processor_handle = async_processor.process_future(future);
-        let request_handle = UniversalisRequestHandle {
+        let request_handle = RequestHandle {
             signal_active: signal_active_rx.shared(),
             signal_warn: signal_warn_rx.shared(),
             signal_finished: signal_finished_rx.shared(),
@@ -92,9 +102,10 @@ impl<T: UniversalisRequestType, F: FileDownloader> UniversalisRequest<T, F> {
         url: String,
         signature: String,
         retain_num_days: f32,
+        request_type: RequestType,
         signal_warn_tx: Sender<()>,
-    ) -> Option<ItemMarketInfoMap> {
-        let fetch_type = T::fetch_type();
+    ) -> Option<ListingsMap> {
+        let fetch_type = request_type.fetch_type();
         let num_attempts = 10;
         log::info!(target: "ffxiv_universalis", "{uuid} Fetch {signature} {url}");
 
@@ -113,7 +124,7 @@ impl<T: UniversalisRequestType, F: FileDownloader> UniversalisRequest<T, F> {
             }
 
             log::info!(target: "ffxiv_universalis", "{uuid} Fetch {signature} {fetch_type} done");
-            return spawn_blocking(move || T::parse_json(listing, retain_num_days).ok())
+            return spawn_blocking(move || request_type.parse_json(listing, retain_num_days).ok())
                 .await
                 .unwrap();
         }

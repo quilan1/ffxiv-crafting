@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use ffxiv_universalis::{ItemMarketInfoMap, UniversalisProcessorState};
+use ffxiv_universalis::{FetchState, ListingsMap};
 use serde::{Deserialize, Serialize};
 
 ////////////////////////////////////////////////////////////
@@ -25,20 +25,14 @@ pub enum Output {
     },
     #[serde(rename_all = "camelCase")]
     Result {
-        listing_type: String,
-        listings: ItemMarketInfoMap,
+        listings: ListingsMap,
+        history: ListingsMap,
         failures: Vec<u32>,
     },
     #[serde(rename_all = "camelCase")]
-    TextStatus {
-        listing_type: String,
-        status: String,
-    },
+    TextStatus { status: String },
     #[serde(rename_all = "camelCase")]
-    DetailedStatus {
-        listing_type: String,
-        status: Vec<DetailedStatus>,
-    },
+    DetailedStatus { status: Vec<DetailedStatus> },
 }
 
 #[derive(Serialize)]
@@ -50,13 +44,13 @@ pub enum DetailedStatus {
     Queued(i32),
 }
 
-impl From<UniversalisProcessorState> for DetailedStatus {
-    fn from(value: UniversalisProcessorState) -> Self {
+impl From<FetchState> for DetailedStatus {
+    fn from(value: FetchState) -> Self {
         match value {
-            UniversalisProcessorState::Active => Self::Active,
-            UniversalisProcessorState::Warn => Self::Warn,
-            UniversalisProcessorState::Finished(successful) => Self::Finished(successful),
-            UniversalisProcessorState::Queued(position) => Self::Queued(position),
+            FetchState::Active => Self::Active,
+            FetchState::Warn => Self::Warn,
+            FetchState::Finished(successful) => Self::Finished(successful),
+            FetchState::Queued(position) => Self::Queued(position),
         }
     }
 }

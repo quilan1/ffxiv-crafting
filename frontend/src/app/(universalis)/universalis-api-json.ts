@@ -8,20 +8,22 @@ export interface RecipeJson {
     topIds: number[],
 }
 
-export interface MessageListing { listingType: 'listing' | 'history' };
 export interface MessageRecipe { recipe: RecipeJson };
 export interface MessageDetailedStatus { detailedStatus: MessageDetailedStatusInfo };
-export interface MessageDetailedStatusInfo extends MessageListing { status: DetailedStatus[] };
+export interface MessageDetailedStatusInfo { status: DetailedStatus[] };
 export type DetailedStatus = DetailedStatusActive | DetailedStatusWarn | DetailedStatusFinished | DetailedStatusQueued;
 export type DetailedStatusActive = 'active';
 export type DetailedStatusWarn = 'warn';
 export interface DetailedStatusFinished { finished: boolean };
 export interface DetailedStatusQueued { queued: number };
 export interface MessageTextStatus { textStatus: MessageTextStatusInfo };
-export interface MessageTextStatusInfo extends MessageListing { status: string };
+export interface MessageTextStatusInfo { status: string };
 export interface MessageResult { result: MessageResultInfo };
-export interface MessageResultInfo extends MessageListing, ListingResults { };
-export interface ListingResults { failures: number[], listings: Record<number, Listing[] | undefined> };
+export interface MessageResultInfo {
+    failures: number[],
+    listings: Record<number, Listing[] | undefined>,
+    history: Record<number, Listing[] | undefined>
+};
 
 export type Message = MessageRecipe | MessageDetailedStatus | MessageTextStatus | MessageResult;
 
@@ -68,14 +70,6 @@ export class Validate {
             return;
 
         throw new Error(`Invalid Server Websocket Message: not a Message: ${obj as never}`);
-    }
-
-    static assertIsMessageListing(obj: unknown): asserts obj is MessageListing {
-        if (this.isObject(obj) && ("listingType" in obj)
-            && (obj.listingType === "listing" || obj.listingType === "history"))
-            return;
-
-        throw new Error(`Invalid Server Websocket Message: invalid MessageListing: ${obj as never}`);
     }
 
     static assertIsDetailedStatus(obj: unknown): asserts obj is DetailedStatus {

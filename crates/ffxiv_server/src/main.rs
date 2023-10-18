@@ -9,6 +9,7 @@ mod universalis;
 use std::{error::Error, time::Instant};
 
 use server::Server;
+use universalis::universalis_websocket;
 
 ////////////////////////////////////////////////////////////
 
