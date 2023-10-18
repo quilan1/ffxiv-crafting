@@ -16,6 +16,9 @@
                     "--profile=release-debug"
                 ]
             },
+            "sourceLanguages": [
+                "rust"
+            ],
             "args": [],
             "env": {
                 "FFXIV_DATA_CENTERS": "Dynamis"
@@ -33,6 +36,9 @@
                     "ffxiv_server"
                 ],
             },
+            "sourceLanguages": [
+                "rust"
+            ],
             "args": [],
             "env": {
                 "FFXIV_DATA_CENTERS": "Dynamis"
@@ -50,6 +56,9 @@
                     "ffxiv_items"
                 ],
             },
+            "sourceLanguages": [
+                "rust"
+            ],
             "args": [],
             "env": {
                 "FFXIV_DATA_CENTERS": "Dynamis",

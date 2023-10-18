@@ -80,7 +80,7 @@ function WorldPurchaseInfo(
 ) {
     return (
         <div className={styles.worldPurchaseInfo}>
-            <div>{world}</div>
+            <div style={{ fontWeight: 'bold' }}>{world}</div>
             <div className={styles.purchasesInfo}>
                 {worldBuyInfo.map((worldBuyInfo, i) => {
                     return <PurchaseInfoNode key={i} worldBuyInfo={worldBuyInfo} />
