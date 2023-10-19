@@ -6,5 +6,5 @@ mod request_type;
 use json::UniversalisJson;
 
 pub use json::ListingsMap;
-pub use request::{Request, RequestHandle, RequestResult};
+pub use request::{Request, RequestHandle, RequestResult, RequestState};
 pub use request_type::RequestType;

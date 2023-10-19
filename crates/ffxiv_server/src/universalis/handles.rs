@@ -2,7 +2,9 @@ use std::time::{Duration, Instant};
 
 use anyhow::Result;
 use axum::extract::ws::{Message, WebSocket};
-use ffxiv_universalis::{Processor, ProcessorHandle, ProcessorHandleOutput, Signal, Status};
+use ffxiv_universalis::{
+    MReceiver, Processor, ProcessorHandle, ProcessorHandleOutput, RequestState, Signal, Status,
+};
 use futures::{Future, FutureExt};
 use mock_traits::FileDownloader;
 use tokio::time::sleep;
@@ -78,8 +80,7 @@ async fn make_market_request_info<F: FileDownloader>(
 enum MarketRequestState {
     Processing {
         handle: ProcessorHandle,
-        signals_active: Vec<Signal<()>>,
-        signals_finished: Vec<Signal<bool>>,
+        signals: Vec<MReceiver<RequestState>>,
         last_update: Instant,
     },
     Done,
@@ -87,7 +88,7 @@ enum MarketRequestState {
 
 ////////////////////////////////////////////////////////////
 
-fn is_signal_done<T>(signal: &Signal<T>) -> bool
+fn is_signal_done<T: Clone + Send + Sync + 'static>(signal: &MReceiver<T>) -> bool
 where
     Signal<T>: Future,
 {
@@ -95,14 +96,10 @@ where
 }
 
 impl MarketRequestState {
-    fn new(
-        handle: ProcessorHandle,
-        (signals_active, signals_finished): (Vec<Signal<()>>, Vec<Signal<bool>>),
-    ) -> Self {
+    fn new(handle: ProcessorHandle, signals: Vec<MReceiver<RequestState>>) -> Self {
         Self::Processing {
             handle,
-            signals_active,
-            signals_finished,
+            signals,
             last_update: Instant::now(),
         }
     }
@@ -110,14 +107,7 @@ impl MarketRequestState {
     fn are_any_signals_done(&self) -> bool {
         match self {
             MarketRequestState::Done => false,
-            MarketRequestState::Processing {
-                signals_active,
-                signals_finished,
-                ..
-            } => {
-                signals_active.iter().any(is_signal_done)
-                    || signals_finished.iter().any(is_signal_done)
-            }
+            MarketRequestState::Processing { signals, .. } => signals.iter().any(is_signal_done),
         }
     }
 
@@ -128,11 +118,7 @@ impl MarketRequestState {
     fn is_waiting_for_cleanup(&self) -> bool {
         match self {
             MarketRequestState::Done => true,
-            MarketRequestState::Processing {
-                signals_active,
-                signals_finished,
-                ..
-            } => signals_active.is_empty() && signals_finished.is_empty(),
+            MarketRequestState::Processing { signals, .. } => signals.is_empty(),
         }
     }
 
@@ -154,14 +140,8 @@ impl MarketRequestState {
     }
 
     fn retain_fresh_signals(&mut self) {
-        if let MarketRequestState::Processing {
-            signals_active,
-            signals_finished,
-            ..
-        } = self
-        {
-            signals_active.retain(|signal| !is_signal_done(signal));
-            signals_finished.retain(|signal| !is_signal_done(signal));
+        if let MarketRequestState::Processing { signals, .. } = self {
+            signals.retain(|signal| !is_signal_done(signal));
         }
     }
 

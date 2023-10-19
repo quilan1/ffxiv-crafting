@@ -1,10 +1,9 @@
 use std::time::Duration;
 
 use async_processor::{AmValue, AsyncProcessor};
-use futures::FutureExt;
 use tokio::time::sleep;
 
-use crate::Signal;
+use crate::{MReceiver, RequestState};
 
 use super::{RequestPacket, MAX_UNIVERSALIS_CONCURRENT_FUTURES};
 
@@ -51,33 +50,24 @@ impl StatusController {
         self.0.lock().state = value;
     }
 
-    pub async fn signals(&self) -> (Vec<Signal<()>>, Vec<Signal<bool>>) {
+    pub async fn signals(&self) -> Vec<MReceiver<RequestState>> {
         loop {
-            {
-                let state = &self.0.lock().state;
-                match state {
-                    ProcessorInternalState::Processing(packets) => {
-                        return packets
-                            .iter()
-                            .flat_map(|packet| {
-                                [
-                                    (
-                                        packet.0.signal_active.clone(),
-                                        packet.0.signal_finished.clone(),
-                                    ),
-                                    (
-                                        packet.1.signal_active.clone(),
-                                        packet.1.signal_finished.clone(),
-                                    ),
-                                ]
-                            })
-                            .unzip();
-                    }
-                    ProcessorInternalState::Cleanup | ProcessorInternalState::Finished => {
-                        return (Vec::new(), Vec::new())
-                    }
-                    ProcessorInternalState::Queued => {}
+            match &self.0.lock().state {
+                ProcessorInternalState::Processing(packets) => {
+                    return packets
+                        .iter()
+                        .flat_map(|packet| {
+                            [
+                                packet.0.state_receiver.clone(),
+                                packet.1.state_receiver.clone(),
+                            ]
+                        })
+                        .collect();
                 }
+                ProcessorInternalState::Cleanup | ProcessorInternalState::Finished => {
+                    return Vec::new();
+                }
+                ProcessorInternalState::Queued => {}
             }
 
             sleep(Duration::from_millis(10)).await;
@@ -105,14 +95,11 @@ impl StatusController {
             packets
                 .iter()
                 .flat_map(|packet| [&packet.0, &packet.1])
-                .map(|handle| {
-                    if let Some(Ok(status)) = handle.signal_finished.clone().now_or_never() {
-                        P::Finished(status)
-                    } else if handle.signal_warn.clone().now_or_never().is_some() {
-                        P::Warn
-                    } else if handle.signal_active.clone().now_or_never().is_some() {
-                        P::Active
-                    } else {
+                .map(|handle| match handle.state_receiver.get() {
+                    RequestState::Finished(status) => P::Finished(status),
+                    RequestState::Warn => P::Warn,
+                    RequestState::Active => P::Active,
+                    RequestState::Queued => {
                         P::Queued((handle.id as i32 - queue_offset as i32 + 1).max(0))
                     }
                 })
