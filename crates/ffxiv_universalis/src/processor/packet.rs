@@ -4,9 +4,12 @@ use std::{
 };
 
 use async_processor::AsyncProcessorHandle;
-use futures::{Future, FutureExt};
+use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
 
-use crate::universalis::{RequestHandle, RequestResult};
+use crate::{
+    universalis::{RequestHandle, RequestResult},
+    ListingsMap,
+};
 
 ////////////////////////////////////////////////////////////
 
@@ -16,10 +19,19 @@ pub struct PacketRequestResult(pub RequestResult, pub RequestResult);
 
 pub struct AsyncPacket(PacketData, PacketData);
 
+pub struct PacketGroup(FuturesUnordered<AsyncPacket>);
+
+pub struct ListingsResults(pub ListingsMap, pub ListingsMap, pub Vec<u32>);
+
 enum PacketData {
     Handle(AsyncProcessorHandle<RequestResult>),
     Result(RequestResult),
     Done,
+}
+
+pub enum PacketResult {
+    Success(ListingsMap, ListingsMap),
+    Failure(Vec<u32>),
 }
 
 ////////////////////////////////////////////////////////////
@@ -67,5 +79,69 @@ impl Future for AsyncPacket {
         let listings_result = extract_result(&mut self.0);
         let history_result = extract_result(&mut self.1);
         Poll::Ready(PacketRequestResult(listings_result, history_result))
+    }
+}
+
+impl PacketGroup {
+    pub fn new(async_packets: Vec<AsyncPacket>) -> Self {
+        Self(FuturesUnordered::from_iter(async_packets))
+    }
+
+    pub async fn collect(mut self) -> ListingsResults {
+        fn merge_map(dest: &mut ListingsMap, src: ListingsMap) {
+            for (id, listings) in src {
+                dest.entry(id).or_default().extend(listings);
+            }
+        }
+
+        let mut failures = Vec::new();
+        let mut listing_map = ListingsMap::new();
+        let mut history_map = ListingsMap::new();
+        while let Some(result) = self.next().await {
+            match result {
+                PacketResult::Failure(ids) => failures.extend(ids),
+                PacketResult::Success(listings, history) => {
+                    merge_map(&mut listing_map, listings);
+                    merge_map(&mut history_map, history);
+                }
+            }
+        }
+
+        ListingsResults(listing_map, history_map, failures)
+    }
+
+    fn combine_listings(results: Vec<RequestResult>) -> PacketResult {
+        let mut listing_map = ListingsMap::new();
+        let mut history_map = ListingsMap::new();
+        for result in results {
+            match result {
+                RequestResult::Listing(listings) => {
+                    listings.into_iter().for_each(|(key, mut listings)| {
+                        listing_map.entry(key).or_default().append(&mut listings);
+                    });
+                }
+                RequestResult::History(listings) => {
+                    listings.into_iter().for_each(|(key, mut listings)| {
+                        history_map.entry(key).or_default().append(&mut listings);
+                    });
+                }
+                RequestResult::Failure(ids) => return PacketResult::Failure(ids),
+            }
+        }
+        PacketResult::Success(listing_map, history_map)
+    }
+}
+
+impl Stream for PacketGroup {
+    type Item = PacketResult;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        match self.0.poll_next_unpin(cx) {
+            Poll::Ready(Some(result)) => {
+                Poll::Ready(Some(Self::combine_listings(vec![result.0, result.1])))
+            }
+            Poll::Ready(None) => Poll::Ready(None),
+            Poll::Pending => Poll::Pending,
+        }
     }
 }

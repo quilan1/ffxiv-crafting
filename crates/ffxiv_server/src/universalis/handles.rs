@@ -1,13 +1,16 @@
-use std::time::{Duration, Instant};
+use std::{
+    collections::BTreeMap,
+    time::{Duration, Instant},
+};
 
 use anyhow::Result;
 use axum::extract::ws::{Message, WebSocket};
 use ffxiv_universalis::{
-    MReceiver, Processor, ProcessorHandle, ProcessorHandleOutput, RequestState, Signal, Status,
+    MReceiver, PacketResult, Processor, ProcessorHandle, RequestState, Status,
 };
-use futures::{Future, FutureExt};
+use futures::{future::BoxFuture, stream::FuturesUnordered, FutureExt, StreamExt};
 use mock_traits::FileDownloader;
-use tokio::time::sleep;
+use tokio::{select, sync::broadcast::Receiver, time::sleep};
 
 use super::{DetailedStatus, Input, Output};
 
@@ -23,27 +26,30 @@ pub async fn wait_for_universalis<F: FileDownloader>(
     all_ids: &[u32],
     server_uuid: &str,
 ) -> Result<()> {
-    let mut market_request_info =
+    let mut request_stream =
         make_market_request_info::<F>(universalis_processor, payload, all_ids, server_uuid).await;
 
     // Send over initial messages
-    market_request_info.process_handle(socket).await?;
-    market_request_info.retain_fresh_signals();
+    request_stream.send_finished_packets(socket).await?;
+    request_stream.send_status_update(socket).await?;
+    request_stream.retain_fresh_signals();
 
     // Wait until we've finished all history and listings
-    let timeouts = [DUR_TIMEOUT, Duration::from_millis(50)];
-    while !market_request_info.is_done() {
+    while !request_stream.is_done() {
         if let Some(None) = socket.recv().now_or_never() {
             log::info!(target: "ffxiv_server", "{server_uuid} WebSocket closed unexpectedly");
             break;
         }
 
-        let timeout = timeouts[usize::from(market_request_info.is_waiting_for_cleanup())];
-        if market_request_info.wait_for_update(timeout).await {
-            market_request_info.process_handle(socket).await?;
-        }
-        market_request_info.retain_fresh_signals();
+        request_stream.wait_for_update(DUR_TIMEOUT).await;
+        request_stream.send_finished_packets(socket).await?;
+        request_stream.send_status_update(socket).await?;
+        request_stream.retain_fresh_signals();
     }
+
+    request_stream.send_finished_packets(socket).await?;
+    log::info!(target: "ffxiv_server", "{server_uuid} WebSocket done!");
+
     Ok(())
 }
 
@@ -52,7 +58,7 @@ async fn make_market_request_info<F: FileDownloader>(
     payload: Input,
     all_ids: &[u32],
     server_uuid: &str,
-) -> MarketRequestState {
+) -> RequestStream {
     let worlds: Vec<_> = payload
         .data_center
         .or(std::env::var("FFXIV_DATA_CENTERS").ok())
@@ -65,137 +71,141 @@ async fn make_market_request_info<F: FileDownloader>(
     let retain_num_days = payload.retain_num_days.unwrap_or(7.0);
 
     let handle = universalis_processor.make_request::<F>(&worlds, all_ids, retain_num_days);
-
     log::info!(target: "ffxiv_server",
         "Server uuid {server_uuid} maps to universalis uuid {}",
         handle.uuid()
     );
 
     let signals = handle.status().signals().await;
-    MarketRequestState::new(handle, signals)
+    RequestStream::new(handle, signals)
 }
 
 ////////////////////////////////////////////////////////////
 
-enum MarketRequestState {
-    Processing {
-        handle: ProcessorHandle,
-        signals: Vec<MReceiver<RequestState>>,
-        last_update: Instant,
-    },
-    Done,
+struct RequestStream {
+    handle: ProcessorHandle,
+    values: BTreeMap<usize, MReceiver<RequestState>>,
+    futures: FuturesUnordered<BoxFuture<'static, usize>>,
+    last_update: Instant,
 }
 
 ////////////////////////////////////////////////////////////
 
-fn is_signal_done<T: Clone + Send + Sync + 'static>(signal: &MReceiver<T>) -> bool
-where
-    Signal<T>: Future,
-{
-    signal.clone().now_or_never().is_some()
-}
-
-impl MarketRequestState {
+impl RequestStream {
     fn new(handle: ProcessorHandle, signals: Vec<MReceiver<RequestState>>) -> Self {
-        Self::Processing {
+        let mut values = BTreeMap::new();
+        let futures = FuturesUnordered::new();
+        for (index, signal) in signals.into_iter().enumerate() {
+            futures.push(Self::receiver_future(index, signal.receiver()).boxed());
+            values.insert(index, signal);
+        }
+
+        Self {
             handle,
-            signals,
+            values,
+            futures,
             last_update: Instant::now(),
         }
     }
 
-    fn are_any_signals_done(&self) -> bool {
-        match self {
-            MarketRequestState::Done => false,
-            MarketRequestState::Processing { signals, .. } => signals.iter().any(is_signal_done),
-        }
-    }
-
     fn is_done(&self) -> bool {
-        matches!(self, MarketRequestState::Done)
-    }
-
-    fn is_waiting_for_cleanup(&self) -> bool {
-        match self {
-            MarketRequestState::Done => true,
-            MarketRequestState::Processing { signals, .. } => signals.is_empty(),
-        }
+        self.values.is_empty() && self.futures.is_empty()
     }
 
     fn is_stale(&self, timeout: Duration) -> bool {
-        match self {
-            MarketRequestState::Done => false,
-            MarketRequestState::Processing { last_update, .. } => last_update.elapsed() >= timeout,
-        }
+        self.last_update.elapsed() >= timeout
     }
 
     fn time_to_stale(&self, timeout: Duration) -> Duration {
-        match self {
-            MarketRequestState::Done => timeout,
-            MarketRequestState::Processing { last_update, .. } => {
-                // Don't want negative values
-                timeout - last_update.elapsed().min(timeout)
-            }
-        }
+        // Don't want negative values
+        timeout - self.last_update.elapsed().min(timeout)
     }
 
     fn retain_fresh_signals(&mut self) {
-        if let MarketRequestState::Processing { signals, .. } = self {
-            signals.retain(|signal| !is_signal_done(signal));
-        }
+        self.values
+            .retain(|_, value| !matches!(value.get(), RequestState::Finished(_)));
     }
 
-    async fn wait_for_update(&self, max_timeout: Duration) -> bool {
-        let stale = self.time_to_stale(max_timeout);
-        let timeout = stale.max(DUR_MIN_WAIT);
-
-        let start = Instant::now();
-        while start.elapsed() < timeout {
-            let needs_update = self.are_any_signals_done();
-            if needs_update {
-                return true;
+    async fn wait_for_signal(&mut self) -> bool {
+        if let Some(index) = self.futures.next().await {
+            if let Some(value) = self.values.get(&index) {
+                return if matches!(value.get(), RequestState::Finished(_)) {
+                    true
+                } else {
+                    self.futures
+                        .push(Self::receiver_future(index, value.receiver()).boxed());
+                    false
+                };
             }
-            sleep(DUR_MIN_WAIT).await;
+        }
+
+        false
+    }
+
+    async fn receiver_future(index: usize, mut receiver: Receiver<RequestState>) -> usize {
+        let _ = receiver.recv().await;
+        index
+    }
+
+    async fn wait_for_update(&mut self, max_timeout: Duration) -> bool {
+        let timeout = self.time_to_stale(max_timeout).max(DUR_MIN_WAIT);
+
+        select! {
+            needs_update = self.wait_for_signal() => {
+                if needs_update {
+                    return true;
+                }
+            }
+            _ = sleep(timeout) => {}
         }
 
         self.is_stale(max_timeout)
     }
 
-    async fn process_handle(&mut self, socket: &mut WebSocket) -> Result<()> {
-        let MarketRequestState::Processing {
-            handle,
-            last_update,
-            ..
-        } = self
-        else {
-            return Ok(());
+    async fn get_next_finished_packet(&mut self) -> Option<Output> {
+        self.handle
+            .next()
+            .await
+            .map(|packet_result| match packet_result {
+                PacketResult::Success(listings, history) => Output::Success { listings, history },
+                PacketResult::Failure(failures) => Output::Failure { failures },
+            })
+    }
+
+    async fn send_finished_packets(&mut self, socket: &mut WebSocket) -> Result<()> {
+        let wait = self.is_done();
+        loop {
+            let output = if wait {
+                self.get_next_finished_packet().await
+            } else {
+                match self.get_next_finished_packet().now_or_never() {
+                    Some(output) => output,
+                    None => break,
+                }
+            };
+
+            let output = output.unwrap_or(Output::Done {});
+            let message_text = serde_json::to_string(&output)?;
+            socket.send(Message::Text(message_text)).await?;
+
+            if matches!(output, Output::Done {}) {
+                break;
+            }
+        }
+        Ok(())
+    }
+
+    async fn send_status_update(&mut self, socket: &mut WebSocket) -> Result<()> {
+        self.last_update = Instant::now();
+        let output = match self.handle.status().values() {
+            Status::Text(status) => Output::TextStatus { status },
+            Status::Processing(values) => Output::DetailedStatus {
+                status: values.into_iter().map(DetailedStatus::from).collect(),
+            },
         };
 
-        *last_update = Instant::now();
-
-        let output = if let Some(result) = handle.now_or_never() {
-            let ProcessorHandleOutput {
-                listings,
-                history,
-                failure_ids,
-            } = result?;
-            *self = MarketRequestState::Done;
-            Output::Result {
-                listings,
-                history,
-                failures: failure_ids,
-            }
-        } else {
-            match handle.status().values() {
-                Status::Text(status) => Output::TextStatus { status },
-                Status::Processing(values) => Output::DetailedStatus {
-                    status: values.into_iter().map(DetailedStatus::from).collect(),
-                },
-            }
-        };
         let message_text = serde_json::to_string(&output)?;
         socket.send(Message::Text(message_text)).await?;
-
         Ok(())
     }
 }

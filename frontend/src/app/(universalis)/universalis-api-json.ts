@@ -18,14 +18,16 @@ export interface DetailedStatusFinished { finished: boolean };
 export interface DetailedStatusQueued { queued: number };
 export interface MessageTextStatus { textStatus: MessageTextStatusInfo };
 export interface MessageTextStatusInfo { status: string };
-export interface MessageResult { result: MessageResultInfo };
-export interface MessageResultInfo {
-    failures: number[],
+export interface MessageSuccess { success: MessageSuccessInfo };
+export interface MessageSuccessInfo {
     listings: Record<number, Listing[] | undefined>,
     history: Record<number, Listing[] | undefined>
 };
+export interface MessageFailure { failure: MessageFailureInfo };
+export interface MessageFailureInfo { failures: number[] };
+export interface MessageDone { done: object };
 
-export type Message = MessageRecipe | MessageDetailedStatus | MessageTextStatus | MessageResult;
+export type Message = MessageRecipe | MessageDetailedStatus | MessageTextStatus | MessageSuccess | MessageFailure | MessageDone;
 
 export class Validate {
     private static isObject(obj: unknown): obj is NonNullable<object> {
@@ -44,8 +46,16 @@ export class Validate {
         return this.isObject(obj) && ("textStatus" in obj);
     }
 
-    static isMessageResult(obj: unknown): obj is MessageResult {
-        return this.isObject(obj) && ("result" in obj);
+    static isMessageSuccess(obj: unknown): obj is MessageSuccess {
+        return this.isObject(obj) && ("success" in obj);
+    }
+
+    static isMessageFailure(obj: unknown): obj is MessageFailure {
+        return this.isObject(obj) && ("failure" in obj);
+    }
+
+    static isMessageDone(obj: unknown): obj is MessageDone {
+        return this.isObject(obj) && ("done" in obj);
     }
 
     static isDetailedStatusActive(obj: unknown): obj is DetailedStatusActive {
@@ -66,7 +76,9 @@ export class Validate {
 
     static assertIsMessage(obj: unknown): asserts obj is Message {
         if (this.isMessageRecipe(obj) || this.isMessageDetailedStatus(obj)
-            || this.isMessageTextStatus(obj) || this.isMessageResult(obj))
+            || this.isMessageTextStatus(obj) || this.isMessageSuccess(obj)
+            || this.isMessageFailure(obj) || this.isMessageDone(obj)
+        )
             return;
 
         throw new Error(`Invalid Server Websocket Message: not a Message: ${obj as never}`);

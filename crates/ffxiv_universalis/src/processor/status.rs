@@ -1,7 +1,4 @@
-use std::time::Duration;
-
 use async_processor::{AmValue, AsyncProcessor};
-use tokio::time::sleep;
 
 use crate::{MReceiver, RequestState};
 
@@ -14,14 +11,7 @@ pub struct StatusController(AmValue<StatusControllerData>);
 
 struct StatusControllerData {
     async_processor: AsyncProcessor,
-    state: ProcessorInternalState,
-}
-
-pub enum ProcessorInternalState {
-    Queued,
-    Processing(Vec<RequestPacket>),
-    Cleanup,
-    Finished,
+    packets: Vec<RequestPacket>,
 }
 
 pub enum Status {
@@ -42,36 +32,25 @@ impl StatusController {
     pub fn new(async_processor: AsyncProcessor) -> Self {
         Self(AmValue::new(StatusControllerData {
             async_processor,
-            state: ProcessorInternalState::Queued,
+            packets: Vec::new(),
         }))
     }
 
-    pub(crate) fn set_value(&self, value: ProcessorInternalState) {
-        self.0.lock().state = value;
+    pub(crate) fn set_packets(&self, packets: Vec<RequestPacket>) {
+        self.0.lock().packets = packets;
     }
 
     pub async fn signals(&self) -> Vec<MReceiver<RequestState>> {
-        loop {
-            match &self.0.lock().state {
-                ProcessorInternalState::Processing(packets) => {
-                    return packets
-                        .iter()
-                        .flat_map(|packet| {
-                            [
-                                packet.0.state_receiver.clone(),
-                                packet.1.state_receiver.clone(),
-                            ]
-                        })
-                        .collect();
-                }
-                ProcessorInternalState::Cleanup | ProcessorInternalState::Finished => {
-                    return Vec::new();
-                }
-                ProcessorInternalState::Queued => {}
-            }
-
-            sleep(Duration::from_millis(10)).await;
-        }
+        let packets = &self.0.lock().packets;
+        packets
+            .iter()
+            .flat_map(|packet| {
+                [
+                    packet.0.state_receiver.clone(),
+                    packet.1.state_receiver.clone(),
+                ]
+            })
+            .collect()
     }
 
     pub fn values(&self) -> Status {
@@ -79,16 +58,8 @@ impl StatusController {
         use Status as V;
 
         let data = self.0.lock();
-        let state = &data.state;
         let async_processor = &data.async_processor;
-
-        let packets = match state {
-            ProcessorInternalState::Queued => return V::Text("Queued...".into()),
-            ProcessorInternalState::Cleanup => return V::Text("Cleaning up...".into()),
-            ProcessorInternalState::Finished => return V::Text("Done".into()),
-            ProcessorInternalState::Processing(packets) => packets,
-        };
-
+        let packets = &data.packets;
         let queue_offset = async_processor.num_finished() + MAX_UNIVERSALIS_CONCURRENT_FUTURES;
 
         V::Processing(

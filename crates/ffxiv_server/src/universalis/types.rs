@@ -24,15 +24,18 @@ pub enum Output {
         item_info: BTreeMap<u32, ItemInfo>,
     },
     #[serde(rename_all = "camelCase")]
-    Result {
+    Success {
         listings: ListingsMap,
         history: ListingsMap,
-        failures: Vec<u32>,
     },
+    #[serde(rename_all = "camelCase")]
+    Failure { failures: Vec<u32> },
     #[serde(rename_all = "camelCase")]
     TextStatus { status: String },
     #[serde(rename_all = "camelCase")]
     DetailedStatus { status: Vec<DetailedStatus> },
+    #[serde(rename_all = "camelCase")]
+    Done {},
 }
 
 #[derive(Serialize)]

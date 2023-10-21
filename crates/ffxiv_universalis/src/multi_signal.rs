@@ -1,13 +1,10 @@
 use std::{
     fmt::Debug,
-    pin::{pin, Pin},
     sync::{Arc, Mutex},
-    task::{Context, Poll},
 };
 
 use anyhow::Result;
-use futures::{Future, FutureExt};
-use tokio::sync::broadcast::{channel, error::RecvError, Receiver, Sender};
+use tokio::sync::broadcast::{channel, Receiver, Sender};
 
 ////////////////////////////////////////////////////////////
 
@@ -52,14 +49,9 @@ impl<T: Clone + Send + Sync + 'static> MReceiver<T> {
     pub fn get(&self) -> T {
         (*self.value.lock().unwrap()).clone()
     }
-}
 
-impl<T: Clone + Send + Sync + 'static> Future for MReceiver<T> {
-    type Output = Result<T, RecvError>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let mut fut = pin!(self.rx.recv());
-        fut.poll_unpin(cx)
+    pub fn receiver(&self) -> Receiver<T> {
+        self.rx.resubscribe()
     }
 }
 

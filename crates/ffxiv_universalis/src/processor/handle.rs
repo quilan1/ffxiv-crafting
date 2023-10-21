@@ -3,42 +3,31 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures::{channel::oneshot::Receiver, Future, FutureExt};
-use tokio::task::{JoinError, JoinHandle};
+use futures::{Stream, StreamExt};
 
-use crate::universalis::ListingsMap;
+use crate::ListingsResults;
 
-use super::StatusController;
+use super::{
+    packet::{PacketGroup, PacketResult},
+    StatusController,
+};
 
 ////////////////////////////////////////////////////////////
 
-pub struct ProcessorHandleOutput {
-    pub listings: ListingsMap,
-    pub history: ListingsMap,
-    pub failure_ids: Vec<u32>,
-}
-
 pub struct ProcessorHandle {
     uuid: String,
-    join_handle: JoinHandle<ProcessorHandleOutput>,
+    packet_group: PacketGroup,
     status: StatusController,
-    ready_signal: Option<Receiver<()>>,
 }
 
 ////////////////////////////////////////////////////////////
 
 impl ProcessorHandle {
-    pub(crate) fn new(
-        uuid: String,
-        join_handle: JoinHandle<ProcessorHandleOutput>,
-        status: StatusController,
-        spawn_signal: Receiver<()>,
-    ) -> Self {
+    pub(crate) fn new(uuid: String, packet_group: PacketGroup, status: StatusController) -> Self {
         Self {
             uuid,
-            join_handle,
+            packet_group,
             status,
-            ready_signal: Some(spawn_signal),
         }
     }
 
@@ -50,24 +39,22 @@ impl ProcessorHandle {
         &self.uuid
     }
 
-    pub async fn wait_for_ready(&mut self) {
-        if let Some(signal) = self.ready_signal.take() {
-            signal.await.unwrap();
-        }
+    pub async fn collect(&mut self) -> ListingsResults {
+        let packet_group = std::mem::replace(&mut self.packet_group, PacketGroup::new(Vec::new()));
+        packet_group.collect().await
     }
 }
 
 impl Drop for ProcessorHandle {
     fn drop(&mut self) {
         log::info!(target: "ffxiv_universalis", "{} Handle dropped", self.uuid);
-        self.join_handle.abort();
     }
 }
 
-impl Future for ProcessorHandle {
-    type Output = Result<ProcessorHandleOutput, JoinError>;
+impl Stream for ProcessorHandle {
+    type Item = PacketResult;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.join_handle.poll_unpin(cx)
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.packet_group.poll_next_unpin(cx)
     }
 }

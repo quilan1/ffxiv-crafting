@@ -64,20 +64,18 @@ impl<F: FileDownloader> Request<F> {
     // they return, it yields the full request back.
     pub fn process_listing(self) -> (AsyncProcessorHandle<RequestResult>, RequestHandle) {
         let async_processor = self.data.async_processor.clone();
-        let (mut state_sender, state_receiver) = multi_signal(RequestState::Queued, 4);
+        let (state_sender, state_receiver) = multi_signal(RequestState::Queued, 4);
 
         let future = async move {
-            let _ = state_sender.set(RequestState::Active);
             let results = Self::fetch_listing_url(
                 self.data.uuid,
                 self.url,
                 self.signature,
                 self.data.retain_num_days,
                 self.request_type.clone(),
-                &mut state_sender,
+                state_sender,
             )
             .await;
-            let _ = state_sender.set(RequestState::Finished(results.is_some()));
 
             match results {
                 Some(listings) => self.request_type.result_listings(listings),
@@ -101,11 +99,12 @@ impl<F: FileDownloader> Request<F> {
         signature: String,
         retain_num_days: f32,
         request_type: RequestType,
-        state_sender: &mut MSender<RequestState>,
+        mut state_sender: MSender<RequestState>,
     ) -> Option<ListingsMap> {
         let fetch_type = request_type.fetch_type();
         let num_attempts = 10;
         log::info!(target: "ffxiv_universalis", "{uuid} Fetch {signature} {url}");
+        let _ = state_sender.set(RequestState::Active);
 
         for attempt in 0..num_attempts {
             let listing = F::download(&url).await.ok()?;
@@ -121,12 +120,14 @@ impl<F: FileDownloader> Request<F> {
             }
 
             log::info!(target: "ffxiv_universalis", "{uuid} Fetch {signature} {fetch_type} done");
+            let _ = state_sender.set(RequestState::Finished(true));
             return spawn_blocking(move || request_type.parse_json(listing, retain_num_days).ok())
                 .await
                 .unwrap();
         }
 
         log::error!(target: "ffxiv_universalis", "{uuid} Fetch {signature} failed: {url}");
+        let _ = state_sender.set(RequestState::Finished(false));
         None
     }
 }

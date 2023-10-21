@@ -1,6 +1,6 @@
 import { sleep } from "../(util)/util";
 import { Id, ItemInfo } from "./items";
-import { Validate, MessageResultInfo, RecipeJson, MessageTextStatusInfo, MessageDetailedStatusInfo } from "./universalis-api-json";
+import { Validate, RecipeJson, MessageTextStatusInfo, MessageDetailedStatusInfo, MessageSuccessInfo, MessageFailureInfo } from "./universalis-api-json";
 
 export class CancelError extends Error {
     constructor(message?: string, options?: ErrorOptions) {
@@ -23,8 +23,8 @@ interface UniversalisRequestState {
     isProcessing: boolean;
     status?: ListingStatus;
     recipeJson?: RecipeJson;
-    resultInfo?: MessageResultInfo;
     serverError?: string;
+    failures: number;
 }
 
 type ListingStatusFn = (_: ListingStatus) => void;
@@ -55,7 +55,7 @@ export default class UniversalisRequest {
     async fetch(): Promise<UniversalisInfo | null> {
         this.statusFn({ status: 'Fetching Item IDs' });
         const socket = this.openWebSocket();
-        const state: UniversalisRequestState = { socket, isProcessing: true };
+        const state: UniversalisRequestState = { socket, isProcessing: true, failures: 0 };
 
         const recipePayload = JSON.stringify({ filters: this.searchFilter, dataCenter: this.dataCenter, retainNumDays: 14.0 });
         socket.addEventListener("open", () => { socket.send(recipePayload); });
@@ -68,7 +68,7 @@ export default class UniversalisRequest {
         }
 
         this.statusFn({ status: '' });
-        if (state.resultInfo == null || state.recipeJson == null) {
+        if (state.recipeJson == null) {
             if (state.serverError != null) {
                 throw new Error(`Server error: ${state.serverError}`);
             }
@@ -76,10 +76,12 @@ export default class UniversalisRequest {
         }
 
         const universalisInfo = state.recipeJson as UniversalisInfo;
-        for (const [id, item] of Object.entries(universalisInfo.itemInfo)) {
-            item.listings = state.resultInfo.listings[parseInt(id)] ?? [];
-            item.history = state.resultInfo.history[parseInt(id)] ?? [];
+        /* eslint-disable @typescript-eslint/no-unnecessary-condition */
+        for (const item of Object.values(universalisInfo.itemInfo)) {
+            item.listings ??= [];
+            item.history ??= [];
         }
+        /* eslint-enable @typescript-eslint/no-unnecessary-condition */
 
         return universalisInfo;
     }
@@ -115,8 +117,12 @@ export default class UniversalisRequest {
             this.onMessageTextStatus(state, message.textStatus);
         } else if (Validate.isMessageDetailedStatus(message)) {
             this.onMessageDetailedStatus(state, message.detailedStatus);
-        } else if (Validate.isMessageResult(message)) {
-            this.onMessageResult(state, message.result);
+        } else if (Validate.isMessageSuccess(message)) {
+            this.onMessageSuccess(state, message.success);
+        } else if (Validate.isMessageFailure(message)) {
+            this.onMessageFailure(state, message.failure);
+        } else if (Validate.isMessageDone(message)) {
+            this.onMessageDone(state, message.done);
         } else { const _: never = message; }
     }
 
@@ -148,8 +154,22 @@ export default class UniversalisRequest {
         this.updateStatus(state)
     }
 
-    private onMessageResult(state: UniversalisRequestState, listingInfo: MessageResultInfo) {
-        state.resultInfo = listingInfo;
+    private onMessageSuccess(state: UniversalisRequestState, listingInfo: MessageSuccessInfo) {
+        const universalisInfo = state.recipeJson as UniversalisInfo;
+
+        for (const [id, listings] of Object.entries(listingInfo.listings)) {
+            universalisInfo.itemInfo[parseInt(id)].listings = listings ?? [];
+        }
+        for (const [id, listings] of Object.entries(listingInfo.history)) {
+            universalisInfo.itemInfo[parseInt(id)].history = listings ?? [];
+        }
+    }
+
+    private onMessageFailure(state: UniversalisRequestState, _failureInfo: MessageFailureInfo) {
+        state.failures += 1;
+    }
+
+    private onMessageDone(state: UniversalisRequestState, _doneInfo: object) {
         state.status = { status: 'Done' };
     }
 }
