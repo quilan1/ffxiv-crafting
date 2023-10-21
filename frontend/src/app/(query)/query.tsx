@@ -1,4 +1,4 @@
-import { ChangeEvent, useRef, useState } from 'react';
+import { ChangeEvent, useRef } from 'react';
 import styles from './query.module.css';
 import UniversalisRequest, { ListingRequestStatus } from '../(universalis)/universalis-api';
 import { useQueryContext } from './context';
@@ -125,7 +125,7 @@ export function QueryOptions() {
 }
 
 export function FetchButton() {
-    const isFetching = useSignal(useState(false));
+    const isFetching = useSignal(false);
     const { listingStatus: listingStatusInfo, queryString, dataCenter, queryData } = useQueryContext();
     const isCancelled = useRef(false);
 

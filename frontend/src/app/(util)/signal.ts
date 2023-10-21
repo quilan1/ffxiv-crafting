@@ -1,4 +1,4 @@
-import { Dispatch, SetStateAction } from "react";
+import { Dispatch, SetStateAction, useState } from "react";
 
 export type SimpleStateUse<T> = [T, Dispatch<SetStateAction<T>>];
 
@@ -15,6 +15,6 @@ export class Signal<T> {
     set value(value: T) { this.setState(value); }
 }
 
-export function useSignal<T>(val: SimpleStateUse<T>): Signal<T> {
-    return new Signal(val);
+export function useSignal<T>(val: T): Signal<T> {
+    return new Signal(useState(val));
 }
