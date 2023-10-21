@@ -34,11 +34,11 @@ export default class UniversalisRequest {
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     private statusFn: ListingStatusFn = () => { };
     private isCancelledFn: IsCancelledFn = () => false;
-    private searchFilter: string;
+    private searchQuery: string;
     private dataCenter: string;
 
     constructor(searchFilter: string, dataCenter: string) {
-        this.searchFilter = searchFilter;
+        this.searchQuery = searchFilter;
         this.dataCenter = dataCenter;
     }
 
@@ -57,7 +57,7 @@ export default class UniversalisRequest {
         const socket = this.openWebSocket();
         const state: UniversalisRequestState = { socket, isProcessing: true, failures: 0 };
 
-        const recipePayload = JSON.stringify({ filters: this.searchFilter, dataCenter: this.dataCenter, retainNumDays: 14.0 });
+        const recipePayload = JSON.stringify({ query: this.searchQuery, dataCenter: this.dataCenter, retainNumDays: 14.0 });
         socket.addEventListener("open", () => { socket.send(recipePayload); });
         socket.addEventListener("close", e => { this.onClose(state, e); });
         socket.addEventListener("message", e => { this.onMessage(state, e); });

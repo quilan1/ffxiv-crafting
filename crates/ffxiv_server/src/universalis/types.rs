@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Input {
-    pub filters: String,
+    pub query: String,
     pub data_center: Option<String>,
     pub retain_num_days: Option<f32>,
 }

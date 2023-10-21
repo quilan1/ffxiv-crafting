@@ -1,12 +1,12 @@
-#[macro_use]
-mod table;
-
 mod ingredient_table;
 mod input_ids_table;
 mod item_info_table;
 mod recipe_table;
+mod table;
 mod ui_category_table;
 mod update_table;
+
+use table::{impl_table, impl_table_builder};
 
 pub use ingredient_table::IngredientTable;
 pub use input_ids_table::InputIdsTable;

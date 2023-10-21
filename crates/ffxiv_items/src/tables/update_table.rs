@@ -8,7 +8,7 @@ use sqlx::{QueryBuilder, Row};
 
 use crate::ItemDB;
 
-use super::strip_whitespace;
+use super::{impl_table, strip_whitespace};
 
 impl_table!(UpdateTable);
 

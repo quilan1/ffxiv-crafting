@@ -40,8 +40,8 @@ async fn handle_socket<F: FileDownloader>(
         let server_uuid = Uuid::new_v4().to_string();
 
         let payload: Input = fetch_payload(socket).await?;
-        log::info!(target: "ffxiv_server", "New request for '{}'", payload.filters);
-        let (top_ids, all_ids, items) = db.all_from_filters(&payload.filters).await?;
+        log::info!(target: "ffxiv_server", "New request for '{}'", payload.query);
+        let (top_ids, all_ids, items) = db.all_info_from_query(&payload.query).await?;
         send_recipes(socket, &top_ids, items).await?;
         wait_for_universalis::<F>(
             socket,

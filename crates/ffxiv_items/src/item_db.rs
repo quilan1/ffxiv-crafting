@@ -11,6 +11,22 @@ use crate::tables::{
     RecipeTableBuilder, UiCategoryTable, UiCategoryTableBuilder, UpdateTable,
 };
 
+/// The database used to look up information about items.
+///
+/// # Example
+///
+/// ```rust
+/// use ffxiv_items::ItemDB;
+/// use mock_traits::ReqwestDownloader;
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn Error>> {
+///     let db = ItemDB::connect(ITEM_DB_CONN).await?;
+///     db.initialize<ReqwestDownloader>().await?;
+///     let info = db.all_info_from_query(":name ^Rarefied, :rlevel 61|69").await?;
+///     let (top_level_ids, associated_ids, item_info) = info;
+/// }
+/// ```
 #[derive(Debug)]
 pub struct ItemDB {
     pub(super) pool: MySqlPool,
@@ -32,11 +48,23 @@ struct Tables<'a, F: FileDownloader> {
 ////////////////////////////////////////////////////////////
 
 impl ItemDB {
+    /// Connects to the database with a connection string.
+    /// The connection string should likely be in the format of:
+    ///
+    /// `mysql://<user>:<password>@<server>:<port>/<database>`
     pub async fn connect<S: AsRef<str>>(conn_string: S) -> Result<Self> {
         let pool = MySqlPool::connect(conn_string.as_ref()).await?;
         Ok(Self { pool })
     }
 
+    /// Ensures the item database is either created or updated.
+    ///
+    /// The files are pulled from <https://www.github.com/xivapi/ffxiv-datamining>.
+    /// Additionally, github commit metadata is checked, but is heavily rate
+    /// limited to 60 attempts per IP per some time period. If this fails due to
+    /// excessive rate limiting, it's assumed that the data is up-to-date.
+    /// If you'd like to ensure the database is updated, you can simply delete
+    /// the database or drop the tables.
     pub async fn initialize<F: FileDownloader>(&self) -> Result<bool> {
         let tables = self.tables::<F>();
         if cfg!(not(test)) {

@@ -61,17 +61,20 @@ macro_rules! make_table_builder_impl {
     };
 }
 
-#[macro_export]
 macro_rules! impl_table {
     ($table:tt) => {
-        make_struct!(@ $table);
-        make_table_impl!(@ $table);
+        super::table::make_struct!(@ $table);
+        super::table::make_table_impl!(@ $table);
     };
 }
 
 macro_rules! impl_table_builder {
     ($table:tt, $f:tt) => {
-        make_struct!(@ $table, $f);
-        make_table_builder_impl!(@ $table, $f);
+        super::table::make_struct!(@ $table, $f);
+        super::table::make_table_builder_impl!(@ $table, $f);
     }
 }
+
+pub(super) use {
+    impl_table, impl_table_builder, make_struct, make_table_builder_impl, make_table_impl,
+};

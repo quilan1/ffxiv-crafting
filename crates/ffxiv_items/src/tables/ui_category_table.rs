@@ -7,9 +7,9 @@ use itertools::Itertools;
 use mock_traits::FileDownloader;
 use sqlx::QueryBuilder;
 
-use crate::{last_updated_from_github, ItemDB};
+use crate::{csv_parse, last_updated_from_github, ItemDB};
 
-use super::{download_csv, strip_whitespace, BIND_MAX};
+use super::{download_csv, impl_table, impl_table_builder, strip_whitespace, BIND_MAX};
 
 ////////////////////////////////////////////////////////////
 

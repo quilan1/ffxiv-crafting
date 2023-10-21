@@ -8,9 +8,11 @@ use itertools::Itertools;
 use mock_traits::FileDownloader;
 use sqlx::{QueryBuilder, Row};
 
-use crate::{last_updated_from_github, Ingredient, ItemDB, ItemId, Recipe};
+use crate::{csv_parse, last_updated_from_github, Ingredient, ItemDB, ItemId, Recipe};
 
-use super::{download_csv, strip_whitespace, IngredientTable, BIND_MAX};
+use super::{
+    download_csv, impl_table, impl_table_builder, strip_whitespace, IngredientTable, BIND_MAX,
+};
 
 ////////////////////////////////////////////////////////////
 

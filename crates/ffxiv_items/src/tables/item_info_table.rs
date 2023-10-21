@@ -10,7 +10,9 @@ use sqlx::{QueryBuilder, Row};
 
 use crate::{csv_parse, last_updated_from_github, ItemDB, ItemId, ItemInfo};
 
-use super::{download_csv, strip_whitespace, RecipeTable, BIND_MAX};
+use super::{
+    download_csv, impl_table, impl_table_builder, strip_whitespace, RecipeTable, BIND_MAX,
+};
 
 ////////////////////////////////////////////////////////////
 

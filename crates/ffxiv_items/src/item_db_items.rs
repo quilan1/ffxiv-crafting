@@ -9,12 +9,7 @@ use super::{
 };
 
 impl ItemDB {
-    pub async fn ids_from_filters<S: AsRef<str>>(&self, filter_str: S) -> Result<Vec<u32>> {
-        let mut top_ids = self.ids_from_filter_str(filter_str.as_ref()).await?;
-        top_ids.sort();
-        Ok(top_ids)
-    }
-
+    /// Returns all descendant ids of any of the `ids` that are recipes.
     pub async fn associated_ids(&self, ids: &[u32]) -> Result<Vec<u32>> {
         let mut all_ids = InputIdsTable::new(self).by_item_ids(ids).await?;
         all_ids.extend(ids);
@@ -24,15 +19,18 @@ impl ItemDB {
         Ok(all_ids)
     }
 
+    /// Returns [ItemInfo] for each of the `ids` passed in.
     pub async fn items_from_ids<I: ItemId>(&self, ids: &[I]) -> Result<Vec<ItemInfo>> {
         ItemInfoTable::new(self).by_item_ids(ids).await
     }
 
-    pub async fn all_from_filters<S: AsRef<str>>(
+    /// Returns top-level ids, descendant ids and [ItemInfo] data for an input
+    /// query string.
+    pub async fn all_info_from_query<S: AsRef<str>>(
         &self,
-        filter_str: S,
+        query: S,
     ) -> Result<(Vec<u32>, Vec<u32>, Vec<ItemInfo>)> {
-        let top_ids = self.ids_from_filters(filter_str).await?;
+        let top_ids = self.ids_from_query(query).await?;
         let all_ids = self.associated_ids(&top_ids).await?;
         let items = self.items_from_ids(&all_ids).await?;
         Ok((top_ids, all_ids, items))

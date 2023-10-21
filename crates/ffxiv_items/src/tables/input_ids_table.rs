@@ -8,7 +8,7 @@ use sqlx::{QueryBuilder, Row};
 
 use crate::{ItemDB, ItemId, Recipe};
 
-use super::{strip_whitespace, BIND_MAX};
+use super::{impl_table, strip_whitespace, BIND_MAX};
 
 ////////////////////////////////////////////////////////////
 
