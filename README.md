@@ -32,7 +32,6 @@ The Rust crates are inside of the 'crates' directory, and the Typescript files a
 * [ffxiv_server](crates/ffxiv_server): The main entry point for the rust code. Consumes `ffxiv_items` to turn a query string (e.g. ":name Item Name") into a series of IDs.
 * [ffxiv_universalis](crates/ffxiv_universalis): Controls all of the interactions with the universalis website. Uses `async_processor` to ensure that all server requests are funneled through a pipe that executes no more than 8 requests concurrently.
 * [ffxiv_items](crates/ffxiv_items): Functions as an item info singleton repository.
-* [async_processor](crates/async_processor): Simple structure that executes futures concurrently, with at most `max_active` executed at a time.
 * [mock_traits](crates/mock_traits): Some simple traits & implementations for things that may be mocked, such as downloading a file from a website.
 
 ## Brief API overview
