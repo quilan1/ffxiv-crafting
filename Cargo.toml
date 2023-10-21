@@ -3,7 +3,6 @@ members = [
     "crates/ffxiv_items",
     "crates/ffxiv_server",
     "crates/ffxiv_universalis",
-    "crates/async_processor",
     "crates/mock_traits",
 ]
 resolver = "2"

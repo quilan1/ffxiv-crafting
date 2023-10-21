@@ -1,13 +1,15 @@
-use async_processor::{AmValue, AsyncProcessor};
+use std::sync::Arc;
 
-use crate::{MReceiver, RequestState};
+use parking_lot::Mutex;
+
+use crate::{universalis::AsyncProcessor, MReceiver, RequestState};
 
 use super::{RequestPacket, MAX_UNIVERSALIS_CONCURRENT_FUTURES};
 
 ////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
-pub struct StatusController(AmValue<StatusControllerData>);
+pub struct StatusController(Arc<Mutex<StatusControllerData>>);
 
 struct StatusControllerData {
     async_processor: AsyncProcessor,
@@ -30,10 +32,10 @@ pub enum FetchState {
 
 impl StatusController {
     pub fn new(async_processor: AsyncProcessor) -> Self {
-        Self(AmValue::new(StatusControllerData {
+        Self(Arc::new(Mutex::new(StatusControllerData {
             async_processor,
             packets: Vec::new(),
-        }))
+        })))
     }
 
     pub(crate) fn set_packets(&self, packets: Vec<RequestPacket>) {

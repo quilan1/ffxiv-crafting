@@ -13,7 +13,7 @@ pub use multi_signal::MReceiver;
 pub use processor::{
     FetchState, ListingsResults, PacketResult, Processor, ProcessorHandle, Status, StatusController,
 };
-pub use universalis::{ListingsMap, RequestState};
+pub use universalis::{AsyncProcessorHandle, ListingsMap, RequestState};
 pub mod json {
     pub use crate::universalis::json_types::*;
 }

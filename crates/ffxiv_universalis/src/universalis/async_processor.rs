@@ -120,10 +120,9 @@ impl<T: 'static> Future for AsyncProcessorHandle<T> {
 
 #[cfg(test)]
 mod tests {
+    use parking_lot::Mutex;
     use std::time::Duration;
     use tokio::{runtime::Builder, time::sleep};
-
-    use crate::AmValue;
 
     use super::*;
 
@@ -142,10 +141,10 @@ mod tests {
 
         block(async {
             let proc = AsyncProcessor::new(MAX_CONCURRENT);
-            let count = AmValue::new(0);
-            let ran_future = AmValue::new(false);
+            let count = Arc::new(Mutex::new(0));
+            let ran_future = Arc::new(Mutex::new(false));
 
-            async fn future(count: AmValue<usize>, ran_future: AmValue<bool>) {
+            async fn future(count: Arc<Mutex<usize>>, ran_future: Arc<Mutex<bool>>) {
                 *ran_future.lock() = true;
                 *count.lock() += 1;
                 assert!(*count.lock() <= MAX_CONCURRENT);

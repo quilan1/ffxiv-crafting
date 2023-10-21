@@ -1,11 +1,5 @@
 [workspace]
-members = [
-    "ffxiv_items",
-    "ffxiv_server",
-    "ffxiv_universalis",
-    "async_processor",
-    "mock_traits",
-]
+members = ["ffxiv_items", "ffxiv_server", "ffxiv_universalis", "mock_traits"]
 resolver = "2"
 
 [profile.release-debug]

@@ -1,9 +1,7 @@
-use std::{
-    fmt::Debug,
-    sync::{Arc, Mutex},
-};
+use std::{fmt::Debug, sync::Arc};
 
 use anyhow::Result;
+use parking_lot::Mutex;
 use tokio::sync::broadcast::{channel, Receiver, Sender};
 
 ////////////////////////////////////////////////////////////
@@ -39,7 +37,7 @@ impl<T: Clone + Send + Sync + 'static> MSender<T> {
     where
         T: Debug,
     {
-        *self.value.lock().unwrap() = value.clone();
+        *self.value.lock() = value.clone();
         self.tx.send(value)?;
         Ok(())
     }
@@ -47,7 +45,7 @@ impl<T: Clone + Send + Sync + 'static> MSender<T> {
 
 impl<T: Clone + Send + Sync + 'static> MReceiver<T> {
     pub fn get(&self) -> T {
-        (*self.value.lock().unwrap()).clone()
+        (*self.value.lock()).clone()
     }
 
     pub fn receiver(&self) -> Receiver<T> {

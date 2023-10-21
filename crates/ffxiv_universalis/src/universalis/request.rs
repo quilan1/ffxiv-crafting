@@ -1,13 +1,12 @@
 use std::{marker::PhantomData, time::Duration};
 
-use async_processor::AsyncProcessorHandle;
 use itertools::Itertools;
 use mock_traits::FileDownloader;
 use tokio::{task::spawn_blocking, time::sleep};
 
 use crate::{multi_signal, processor::ProcessorData, MReceiver, MSender};
 
-use super::{ListingsMap, RequestType};
+use super::{AsyncProcessorHandle, ListingsMap, RequestType};
 
 ////////////////////////////////////////////////////////////
 

@@ -1,5 +1,6 @@
-use async_processor::AsyncProcessor;
 use uuid::Uuid;
+
+use crate::universalis::AsyncProcessor;
 
 use super::StatusController;
 

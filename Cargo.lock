@@ -80,15 +80,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async_processor"
-version = "0.1.0"
-dependencies = [
- "futures",
- "parking_lot",
- "tokio",
-]
-
-[[package]]
 name = "atoi"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -544,11 +535,11 @@ name = "ffxiv_universalis"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async_processor",
  "futures",
  "itertools",
  "log",
  "mock_traits",
+ "parking_lot",
  "serde",
  "serde_json",
  "tokio",

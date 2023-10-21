@@ -1,7 +1,6 @@
-use async_processor::AsyncProcessor;
 use mock_traits::FileDownloader;
 
-use crate::universalis::{Request, RequestType};
+use crate::universalis::{AsyncProcessor, Request, RequestType};
 
 use super::{packet::PacketGroup, AsyncPacket, ProcessorData, ProcessorHandle, RequestPacket};
 

@@ -3,12 +3,11 @@ use std::{
     task::{Context, Poll},
 };
 
-use async_processor::AsyncProcessorHandle;
 use futures::{stream::FuturesUnordered, Future, FutureExt, Stream, StreamExt};
 
 use crate::{
     universalis::{RequestHandle, RequestResult},
-    ListingsMap,
+    AsyncProcessorHandle, ListingsMap,
 };
 
 ////////////////////////////////////////////////////////////
