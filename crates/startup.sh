@@ -8,8 +8,9 @@ PROFILE="docker-no-lto"
 # Setup the database
 cargo run --profile $PROFILE -p ffxiv_items
 
-# Run integration tests
+# Run unit, integration & documentation tests
 cargo test --profile $PROFILE --features "docker" --tests
+cargo test --profile $PROFILE --features "docker" --doc
 
 # Run the actual app
 cargo build --profile $PROFILE

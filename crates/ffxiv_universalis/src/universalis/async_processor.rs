@@ -23,7 +23,7 @@ type FutureReceiver = BufferUnordered<UnboundedReceiver<BoxFuture<'static, ()>>>
 /// request is funneled through this processor, none of them should fail due to
 /// IP limiting.
 ///
-/// That said, the website is occasionally under heavy load, so request should be
+/// That said, the website is occasionally under heavy load, so requests should be
 /// gracefully backed off & retried upon failure.
 #[derive(Clone)]
 pub struct AsyncProcessor(Arc<AsyncProcessorInnerData>);
@@ -89,8 +89,8 @@ impl AsyncProcessor {
         AsyncProcessorHandle { id, handle: remote }
     }
 
-    /// Disconnects the processor, so that no further requests will be processed after this
-    /// When the queue is finally finished, if the processor is polled, it will return Poll::Ready(()).
+    /// Disconnects the processor, so that no further requests will be processed after this.
+    /// When the queue is finally finished, if the processor is polled, it will return `Poll::Ready(())`.
     pub fn disconnect(&self) {
         self.0.tx.lock().disconnect();
     }
@@ -117,9 +117,7 @@ impl Future for AsyncProcessor {
 }
 
 impl<T> AsyncProcessorHandle<T> {
-    /// Returns a numeric ID for use in tracking where an item is in the internal processing
-    /// queue.
-    pub fn id(&self) -> usize {
+    pub(crate) fn id(&self) -> usize {
         self.id
     }
 }
