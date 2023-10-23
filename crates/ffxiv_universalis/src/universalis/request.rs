@@ -66,7 +66,7 @@ impl<F: FileDownloader> Request<F> {
 
     // Uses the AsyncProcessor to queue the listing & history API calls to Universalis. Once
     // they return, it yields the full request back.
-    pub fn process_listing(self) -> (AsyncProcessorHandle<RequestResult>, RequestHandle) {
+    pub(crate) fn process_listing(self) -> (AsyncProcessorHandle<RequestResult>, RequestHandle) {
         let async_processor = self.data.async_processor.clone();
         let (state_sender, state_receiver) = multi_signal(RequestState::Queued, 4);
 

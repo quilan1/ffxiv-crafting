@@ -76,9 +76,8 @@ pub use multi_signal::MReceiver;
 pub use processor::{
     FetchState, ListingsResults, PacketResult, Processor, ProcessorHandle, Status,
 };
-pub use universalis::{
-    AsyncProcessor, AsyncProcessorHandle, ItemListing, ListingsMap, RequestState,
-};
+use universalis::AsyncProcessorHandle;
+pub use universalis::{AsyncProcessor, ItemListing, ListingsMap, RequestState};
 
 #[doc(hidden)]
 pub mod json {

@@ -38,7 +38,7 @@ struct AsyncProcessorInnerData {
 
 /// An opaque handle to an `AsyncProcessor` result for `T`. `T` is the output of the
 /// future that is currently being processed.
-pub struct AsyncProcessorHandle<T> {
+pub(crate) struct AsyncProcessorHandle<T> {
     id: usize,
     handle: RemoteHandle<T>,
 }

@@ -47,7 +47,7 @@ pub enum PacketResult {
 ////////////////////////////////////////////////////////////
 
 impl AsyncPacket {
-    pub fn new(
+    pub(crate) fn new(
         listings_async: AsyncProcessorHandle<RequestResult>,
         history_async: AsyncProcessorHandle<RequestResult>,
     ) -> Self {
