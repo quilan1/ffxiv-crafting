@@ -31,8 +31,6 @@ pub enum Output {
     #[serde(rename_all = "camelCase")]
     Failure { failures: Vec<u32> },
     #[serde(rename_all = "camelCase")]
-    TextStatus { status: String },
-    #[serde(rename_all = "camelCase")]
     DetailedStatus { status: Vec<DetailedStatus> },
     #[serde(rename_all = "camelCase")]
     Done {},

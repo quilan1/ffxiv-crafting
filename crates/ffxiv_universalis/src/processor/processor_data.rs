@@ -2,7 +2,7 @@ use uuid::Uuid;
 
 use crate::universalis::AsyncProcessor;
 
-use super::StatusController;
+use super::Status;
 
 ////////////////////////////////////////////////////////////
 
@@ -14,7 +14,7 @@ pub struct ProcessorData {
     pub ids: Vec<u32>,
     pub retain_num_days: f32,
     pub num_requests: usize,
-    pub status: StatusController,
+    pub status: Status,
 }
 
 ////////////////////////////////////////////////////////////
@@ -36,7 +36,7 @@ impl ProcessorData {
             ids: ids.to_vec(),
             retain_num_days,
             num_requests,
-            status: StatusController::new(async_processor),
+            status: Status::new(async_processor),
         }
     }
 

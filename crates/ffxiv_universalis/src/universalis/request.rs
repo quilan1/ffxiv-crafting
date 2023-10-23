@@ -19,11 +19,16 @@ pub struct Request<F: FileDownloader> {
     _marker_f: PhantomData<fn() -> F>, // Allows F to be Send & Sync
 }
 
+/// The current state of a request made to the universalis server.
 #[derive(Clone, Debug)]
 pub enum RequestState {
+    /// The request is queued for processing and will begin as soon as there is capacity for it.
     Queued,
+    /// The request is currently fetching data from the universalis server.
     Active,
+    /// The request has failed at least once, to fetch results from universalis.
     Warn,
+    /// The request has finished either successfully (true) or unsuccessfully (false).
     Finished(bool),
 }
 

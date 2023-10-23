@@ -22,20 +22,23 @@ mod mocks {
         async_processor.disconnect();
         async_processor.await;
 
-        Ok(universalis_handle.collect().await)
+        Ok(universalis_handle.collect_all().await)
     }
 
     #[tokio::test]
     async fn test_listings() -> Result<()> {
         let processor = Processor::new();
-        let ListingsResults(listings, history, failure_ids) =
-            send_universalis_request(processor, &ALL_IDS_ONE, vec!["Dynamis".to_owned()]).await?;
+        let ListingsResults {
+            listings,
+            history,
+            failures,
+        } = send_universalis_request(processor, &ALL_IDS_ONE, vec!["Dynamis".to_owned()]).await?;
 
         for id in &ALL_IDS_ONE {
             assert!(listings.contains_key(id));
             assert!(history.contains_key(id));
         }
-        assert!(failure_ids.is_empty());
+        assert!(failures.is_empty());
 
         Ok(())
     }

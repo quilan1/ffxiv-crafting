@@ -5,9 +5,7 @@ use std::{
 
 use anyhow::Result;
 use axum::extract::ws::{Message, WebSocket};
-use ffxiv_universalis::{
-    MReceiver, PacketResult, Processor, ProcessorHandle, RequestState, Status,
-};
+use ffxiv_universalis::{MReceiver, PacketResult, Processor, ProcessorHandle, RequestState};
 use futures::{future::BoxFuture, stream::FuturesUnordered, FutureExt, StreamExt};
 use mock_traits::FileDownloader;
 use tokio::{select, sync::broadcast::Receiver, time::sleep};
@@ -197,11 +195,9 @@ impl RequestStream {
 
     async fn send_status_update(&mut self, socket: &mut WebSocket) -> Result<()> {
         self.last_update = Instant::now();
-        let output = match self.handle.status().values() {
-            Status::Text(status) => Output::TextStatus { status },
-            Status::Processing(values) => Output::DetailedStatus {
-                status: values.into_iter().map(DetailedStatus::from).collect(),
-            },
+        let values = self.handle.status().values();
+        let output = Output::DetailedStatus {
+            status: values.into_iter().map(DetailedStatus::from).collect(),
         };
 
         let message_text = serde_json::to_string(&output)?;

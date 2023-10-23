@@ -16,3 +16,6 @@ itertools = "0.11.0"
 log = "0.4.20"
 serde_json = "1.0.107"
 mock_traits = { version = "0.1.0", path = "../mock_traits" }
+
+[dev-dependencies]
+ffxiv_items = { version = "0.1.0", path = "../ffxiv_items" }

@@ -5,17 +5,28 @@
 //! functions and features involve returning item ids and recipe information
 //! for items associated with a particular search query.
 //!
-//! To use the library, one would start with initializing an [ItemDB] object like such:
-//! ```rust
+//! To use the library, one would start with initializing an [ItemDB] object:
+//!
+//! # Example
+//!
+//! ```rust,no_run
 //! use ffxiv_items::ItemDB;
-//! use mock_traits::ReqwestDownloader;
+//! use mock_traits::GithubDownloader;
+//!
+//! const ITEM_DB_CONN: &str = "mysql://<user>:<password>@<server>:<port>/<database>";
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn Error>> {
-//!     // ITEM_DB_CONN will look like, e.g:
-//!     // "mysql://<user>:<password>@<server>:<port>/<database>"
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     // Connect to & initialize the database
 //!     let db = ItemDB::connect(ITEM_DB_CONN).await?;
-//!     db.initialize<ReqwestDownloader>().await?;
+//!     db.initialize::<GithubDownloader>().await?;
+//!
+//!     // Get top-level IDs (items that match the query), associated IDs
+//!     // (ingredients of top-level IDs) and item info (id, name & recipe info).
+//!     let info = db.all_info_from_query(":name ^Rarefied, :rlevel 61|69").await?;
+//!     let (top_level_ids, associated_ids, item_info) = info;
+//!
+//!     Ok(())
 //! }
 //! ```
 

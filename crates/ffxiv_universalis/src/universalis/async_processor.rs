@@ -15,6 +15,16 @@ use parking_lot::Mutex;
 type FutureSender = UnboundedSender<BoxFuture<'static, ()>>;
 type FutureReceiver = BufferUnordered<UnboundedReceiver<BoxFuture<'static, ()>>>;
 
+/// A struct that controls access to the Universalis website. When created
+/// it is given a set limit for the maximum number of futures it is allowed to
+/// process concurrently.
+///
+/// Because the Universalis API only allows 8 connections per IP, if every
+/// request is funneled through this processor, none of them should fail due to
+/// IP limiting.
+///
+/// That said, the website is occasionally under heavy load, so request should be
+/// gracefully backed off & retried upon failure.
 #[derive(Clone)]
 pub struct AsyncProcessor(Arc<AsyncProcessorInnerData>);
 
@@ -26,6 +36,8 @@ struct AsyncProcessorInnerData {
     num_finished: Mutex<usize>,
 }
 
+/// An opaque handle to an `AsyncProcessor` result for `T`. `T` is the output of the
+/// future that is currently being processed.
 pub struct AsyncProcessorHandle<T> {
     id: usize,
     handle: RemoteHandle<T>,
@@ -35,7 +47,7 @@ pub struct AsyncProcessorHandle<T> {
 
 // Consumer side of the API
 impl AsyncProcessor {
-    pub fn new(max_active: usize) -> Self {
+    pub(crate) fn new(max_active: usize) -> Self {
         let (tx, rx) = unbounded();
         let rx = rx.buffer_unordered(max_active);
         Self(Arc::new(AsyncProcessorInnerData {
@@ -47,8 +59,8 @@ impl AsyncProcessor {
         }))
     }
 
-    // Takes in future, queues it, and returns a future that you can poll for the result
-    pub fn process_future<Fut>(&self, future: Fut) -> AsyncProcessorHandle<Fut::Output>
+    /// Takes in future, queues it, and returns a future that you can poll for the result
+    pub(crate) fn process_future<Fut>(&self, future: Fut) -> AsyncProcessorHandle<Fut::Output>
     where
         Fut: Future + Send + 'static,
         Fut::Output: Send,
@@ -77,11 +89,13 @@ impl AsyncProcessor {
         AsyncProcessorHandle { id, handle: remote }
     }
 
+    /// Disconnects the processor, so that no further requests will be processed after this
+    /// When the queue is finally finished, if the processor is polled, it will return Poll::Ready(()).
     pub fn disconnect(&self) {
         self.0.tx.lock().disconnect();
     }
 
-    pub fn num_finished(&self) -> usize {
+    pub(crate) fn num_finished(&self) -> usize {
         *self.0.num_finished.lock()
     }
 }
@@ -103,6 +117,8 @@ impl Future for AsyncProcessor {
 }
 
 impl<T> AsyncProcessorHandle<T> {
+    /// Returns a numeric ID for use in tracking where an item is in the internal processing
+    /// queue.
     pub fn id(&self) -> usize {
         self.id
     }

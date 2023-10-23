@@ -535,6 +535,7 @@ name = "ffxiv_universalis"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ffxiv_items",
  "futures",
  "itertools",
  "log",

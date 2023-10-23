@@ -11,19 +11,29 @@ use super::json_types::{
 
 ////////////////////////////////////////////////////////////
 
+/// The listing information returned from the server. Each listing represents either someone
+/// selling an item, or previously having bought an item.
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ItemListing {
+    /// The gil price of the item listed or sold. This includes the tax!
     pub price: u32,
+    /// The number of items listed or sold.
     pub count: u32,
+    /// If the item in the listing is high quality.
     pub is_hq: bool,
+    /// The world this is sold from. If the world given to the request is not a data center,
+    /// this value will not be serialized.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub world: String,
+    /// The name of the retainer selling this (listing) or character buying this (history).
     #[serde(skip_serializing_if = "String::is_empty")]
     pub name: String,
+    /// Time in days since this was either updated (listing) or purchased (history).
     pub days_since: f32,
 }
 
+/// Associative map from item_ids to listings (either buying or selling) from universalis.
 pub type ListingsMap = BTreeMap<u32, Vec<ItemListing>>;
 
 ////////////////////////////////////////////////////////////

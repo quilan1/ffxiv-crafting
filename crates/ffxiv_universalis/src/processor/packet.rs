@@ -20,7 +20,15 @@ pub struct AsyncPacket(PacketData, PacketData);
 
 pub struct PacketGroup(FuturesUnordered<AsyncPacket>);
 
-pub struct ListingsResults(pub ListingsMap, pub ListingsMap, pub Vec<u32>);
+/// Marketplace data for the requested items.
+pub struct ListingsResults {
+    /// Current marketboard listings for the associated item IDs
+    pub listings: ListingsMap,
+    /// Past sell data for the associated item IDs
+    pub history: ListingsMap,
+    /// Any ids that were unable to be fetched from Universalis
+    pub failures: Vec<u32>,
+}
 
 enum PacketData {
     Handle(AsyncProcessorHandle<RequestResult>),
@@ -28,8 +36,11 @@ enum PacketData {
     Done,
 }
 
+/// The state of the packet request, sent to the Universalis server.
 pub enum PacketResult {
+    /// The packet succeeded with first-argument current listings, second-argument history.
     Success(ListingsMap, ListingsMap),
+    /// The packet failed to fetch either the current listings or the history.
     Failure(Vec<u32>),
 }
 
@@ -106,7 +117,11 @@ impl PacketGroup {
             }
         }
 
-        ListingsResults(listing_map, history_map, failures)
+        ListingsResults {
+            listings: listing_map,
+            history: history_map,
+            failures,
+        }
     }
 
     fn combine_listings(results: Vec<RequestResult>) -> PacketResult {

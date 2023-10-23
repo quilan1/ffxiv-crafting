@@ -6,6 +6,8 @@ use super::{packet::PacketGroup, AsyncPacket, ProcessorData, ProcessorHandle, Re
 
 ////////////////////////////////////////////////////////////
 
+/// Allows for communicating with the Universalis server in a manner that does not overload
+/// their IP connection limiting.
 #[derive(Clone)]
 pub struct Processor {
     async_processor: AsyncProcessor,
@@ -16,16 +18,58 @@ pub struct Processor {
 pub const MAX_UNIVERSALIS_CONCURRENT_FUTURES: usize = 8;
 
 impl Processor {
+    /// Creates a new [Processor] such that at most 8 maximum concurrent requests will be
+    /// sent to Universalis at the same time. Call [makeRequest](#method.makeRequest) to fetch the market information.
     pub fn new() -> Self {
         Self {
             async_processor: AsyncProcessor::new(MAX_UNIVERSALIS_CONCURRENT_FUTURES),
         }
     }
 
+    /// Returns the [AsyncProcessor] that will be running the requests for this [Processor].
     pub fn async_processor(&self) -> AsyncProcessor {
         self.async_processor.clone()
     }
 
+    /// Makes (potentially many) requests to the Universalis server to begin fetching data for all of the
+    /// item ids passed in, according the options presented.
+    ///
+    /// # Note
+    ///
+    /// If the returned [ProcessorHandle] is dropped, all of the current associated requests will terminate.
+    ///
+    /// # Important
+    ///
+    /// For these requests to be fulfilled, the internal [AsyncProcessor] **must** be awaited. This may be done as
+    /// follows:
+    ///
+    /// ```rust,no_run
+    /// use mock_traits::ReqwestDownloader;
+    /// use ffxiv_universalis::Processor;
+    ///
+    /// let processor = Processor::new();
+    /// tokio::spawn(processor.async_processor());
+    ///
+    /// // Grab all of the Dynamis data center market board data
+    /// // for the item 'Water Shard' from within the past 7 days.
+    /// let worlds = [String::from("Dynamis")];
+    /// let ids = [7];  // ID=7 is "Water Shard"
+    /// let handle = processor.make_request::<ReqwestDownloader>(&worlds, &ids, 7.0);
+    /// ```
+    ///
+    /// When finished with the processor, one may disconnect it. This will allow it to finish its current
+    /// requests, then terminate gracefully.
+    /// ```rust,no_run
+    /// # use ffxiv_universalis::Processor;
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// # let processor = Processor::new();
+    /// processor.async_processor().disconnect();
+    ///
+    /// // Will yield when everything is terminated
+    /// processor.async_processor().await;
+    /// # }
+    /// ```
     pub fn make_request<F: FileDownloader>(
         &self,
         worlds: &[String],

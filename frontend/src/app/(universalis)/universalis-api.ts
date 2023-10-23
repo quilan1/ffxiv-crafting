@@ -1,6 +1,6 @@
 import { sleep } from "../(util)/util";
 import { Id, ItemInfo } from "./items";
-import { Validate, RecipeJson, MessageTextStatusInfo, MessageDetailedStatusInfo, MessageSuccessInfo, MessageFailureInfo } from "./universalis-api-json";
+import { Validate, RecipeJson, MessageDetailedStatusInfo, MessageSuccessInfo, MessageFailureInfo } from "./universalis-api-json";
 
 export class CancelError extends Error {
     constructor(message?: string, options?: ErrorOptions) {
@@ -113,8 +113,6 @@ export default class UniversalisRequest {
         Validate.assertIsMessage(message);
         if (Validate.isMessageRecipe(message)) {
             this.onMessageRecipe(state, message.recipe);
-        } else if (Validate.isMessageTextStatus(message)) {
-            this.onMessageTextStatus(state, message.textStatus);
         } else if (Validate.isMessageDetailedStatus(message)) {
             this.onMessageDetailedStatus(state, message.detailedStatus);
         } else if (Validate.isMessageSuccess(message)) {
@@ -128,11 +126,6 @@ export default class UniversalisRequest {
 
     private onMessageRecipe(state: UniversalisRequestState, recipeJson: RecipeJson) {
         state.recipeJson = recipeJson;
-    }
-
-    private onMessageTextStatus(state: UniversalisRequestState, statusInfo: MessageTextStatusInfo) {
-        state.status = { status: statusInfo.status };
-        this.updateStatus(state)
     }
 
     private onMessageDetailedStatus(state: UniversalisRequestState, statusInfo: MessageDetailedStatusInfo) {

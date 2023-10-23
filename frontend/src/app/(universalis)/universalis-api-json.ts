@@ -16,8 +16,6 @@ export type DetailedStatusActive = 'active';
 export type DetailedStatusWarn = 'warn';
 export interface DetailedStatusFinished { finished: boolean };
 export interface DetailedStatusQueued { queued: number };
-export interface MessageTextStatus { textStatus: MessageTextStatusInfo };
-export interface MessageTextStatusInfo { status: string };
 export interface MessageSuccess { success: MessageSuccessInfo };
 export interface MessageSuccessInfo {
     listings: Record<number, Listing[] | undefined>,
@@ -27,7 +25,7 @@ export interface MessageFailure { failure: MessageFailureInfo };
 export interface MessageFailureInfo { failures: number[] };
 export interface MessageDone { done: object };
 
-export type Message = MessageRecipe | MessageDetailedStatus | MessageTextStatus | MessageSuccess | MessageFailure | MessageDone;
+export type Message = MessageRecipe | MessageDetailedStatus | MessageSuccess | MessageFailure | MessageDone;
 
 export class Validate {
     private static isObject(obj: unknown): obj is NonNullable<object> {
@@ -40,10 +38,6 @@ export class Validate {
 
     static isMessageDetailedStatus(obj: unknown): obj is MessageDetailedStatus {
         return this.isObject(obj) && ("detailedStatus" in obj);
-    }
-
-    static isMessageTextStatus(obj: unknown): obj is MessageTextStatus {
-        return this.isObject(obj) && ("textStatus" in obj);
     }
 
     static isMessageSuccess(obj: unknown): obj is MessageSuccess {
@@ -76,8 +70,8 @@ export class Validate {
 
     static assertIsMessage(obj: unknown): asserts obj is Message {
         if (this.isMessageRecipe(obj) || this.isMessageDetailedStatus(obj)
-            || this.isMessageTextStatus(obj) || this.isMessageSuccess(obj)
-            || this.isMessageFailure(obj) || this.isMessageDone(obj)
+            || this.isMessageSuccess(obj) || this.isMessageFailure(obj)
+            || this.isMessageDone(obj)
         )
             return;
 

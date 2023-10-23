@@ -6,6 +6,9 @@ use tokio::sync::broadcast::{channel, Receiver, Sender};
 
 ////////////////////////////////////////////////////////////
 
+/// A struct that will contain a shared value and a reciever
+/// for signals sent from a broadcast channel. This structure
+/// maybe cloned, to access the recievers & values elsewhere.
 pub struct MReceiver<T: Clone + Send + Sync + 'static> {
     value: Arc<Mutex<T>>,
     rx: Receiver<T>,
@@ -44,10 +47,12 @@ impl<T: Clone + Send + Sync + 'static> MSender<T> {
 }
 
 impl<T: Clone + Send + Sync + 'static> MReceiver<T> {
+    /// Retrieves a cloned copy of the value inside the MReceiver.
     pub fn get(&self) -> T {
         (*self.value.lock()).clone()
     }
 
+    /// Retrieves a copy of the inner Receiver.
     pub fn receiver(&self) -> Receiver<T> {
         self.rx.resubscribe()
     }
