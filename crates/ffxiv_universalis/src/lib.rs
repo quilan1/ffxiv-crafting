@@ -12,7 +12,7 @@
 //! use ffxiv_items::ItemDB;
 //! use ffxiv_universalis::{ListingsResults, PacketResult, Processor};
 //! use futures::StreamExt;
-//! use mock_traits::{GithubDownloader, ReqwestDownloader};
+//! use mock_traits::{ReqwestDownloader};
 //!
 //! const ITEM_DB_CONN: &str = "mysql://<user>:<password>@<server>:<port>/<database>";
 //!
@@ -20,7 +20,7 @@
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Initialize the item database
 //!     let db = ItemDB::connect(ITEM_DB_CONN).await?;
-//!     db.initialize::<GithubDownloader>().await?;
+//!     db.initialize::<ReqwestDownloader>().await?;
 //!
 //!     // Prepare the values to request from universalis
 //!     let retain_num_days = 7.0;

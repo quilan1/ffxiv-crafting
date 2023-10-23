@@ -17,7 +17,7 @@ use crate::tables::{
 ///
 /// ```rust,no_run
 /// use ffxiv_items::ItemDB;
-/// use mock_traits::GithubDownloader;
+/// use mock_traits::ReqwestDownloader;
 ///
 /// const ITEM_DB_CONN: &str = "mysql://<user>:<password>@<server>:<port>/<database>";
 ///
@@ -25,7 +25,7 @@ use crate::tables::{
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     // Connect to & initialize the database
 ///     let db = ItemDB::connect(ITEM_DB_CONN).await?;
-///     db.initialize::<GithubDownloader>().await?;
+///     db.initialize::<ReqwestDownloader>().await?;
 ///
 ///     // Get top-level IDs (items), associated IDs (ingredients of top-level IDs)
 ///     // and item info (id, name & recipe info).

@@ -13,9 +13,9 @@ pub trait FileDownloader {
 
 ////////////////////////////////////////////////////////////
 
-pub struct GithubDownloader;
+pub struct ReqwestDownloader;
 
-impl FileDownloader for GithubDownloader {
+impl FileDownloader for ReqwestDownloader {
     fn download(url: &str) -> BoxFuture<'_, Result<String>> {
         async fn inner(url: &str) -> Result<String> {
             let mut headers = HeaderMap::new();
@@ -25,19 +25,6 @@ impl FileDownloader for GithubDownloader {
                 .build()?;
             let request = client.get(url).build()?;
             Ok(client.execute(request).await?.text().await?)
-        }
-        inner(url).boxed()
-    }
-}
-
-////////////////////////////////////////////////////////////
-
-pub struct ReqwestDownloader;
-
-impl FileDownloader for ReqwestDownloader {
-    fn download(url: &str) -> BoxFuture<'_, Result<String>> {
-        async fn inner(url: &str) -> Result<String> {
-            Ok(reqwest::get(url).await?.text().await?)
         }
         inner(url).boxed()
     }

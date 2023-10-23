@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let start = Instant::now();
     let item_db_conn = std::env::var("FFXIV_ITEM_DB_CONN").unwrap();
     let db = ItemDB::connect(item_db_conn).await?;
-    db.initialize::<mock_traits::GithubDownloader>().await?;
+    db.initialize::<mock_traits::ReqwestDownloader>().await?;
     println!("Initialized in {} ms", start.elapsed().as_millis());
 
     Server::run::<mock_traits::ReqwestDownloader>(db).await?;
