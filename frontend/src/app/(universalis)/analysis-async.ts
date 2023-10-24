@@ -1,8 +1,6 @@
 import { RecursiveStats } from "./analysis";
 import { OptionType, Some } from "../(util)/option";
-import { Quality } from "./statistics";
 import { UniversalisInfo } from "./universalis-api";
-import { keysOf } from "../(util)/util";
 
 export const allRecursiveStatsOfAsync = (count: number, isHq: boolean, info: UniversalisInfo): Promise<RecursiveStats> => {
     return new Promise((resolve, _reject) => {
@@ -23,28 +21,28 @@ const reattachOptions = (stats: RecursiveStats) => {
         Object.setPrototypeOf(opt, optProto);
     }
 
-    const reattachQuality = (quality: Quality<number>) => {
-        reattach(quality.hq);
-        reattach(quality.nq);
-        reattach(quality.aq);
-    }
+    const attachRecursive = (obj: object) => {
+        for (const value of Object.values(obj)) {
+            if (typeof value === "string" || typeof value === "number")
+                continue;
 
-    for (const key of keysOf(stats.itemStats)) {
-        const val = stats.itemStats[key];
-        reattachQuality(val.buyPrice);
-        reattachQuality(val.sellCount);
-        reattachQuality(val.sellPrice);
-        reattachQuality(val.velocityDay);
-        reattachQuality(val.velocityWeek);
-        reattachQuality(val.velocityWeeks);
-    }
+            if (Array.isArray(value)) {
+                value.filter(obj => typeof obj === "object").forEach(attachRecursive);
+                continue;
+            }
 
-    for (const { top, children } of stats.topProfitStats) {
-        for (const profit of [top, ...children]) {
-            reattach(profit.buy);
-            reattach(profit.sell);
-            reattach(profit.craft);
-            reattach(profit.profit);
+            if (typeof value !== "object")
+                continue;
+
+            /* eslint-disable @typescript-eslint/no-unsafe-argument */
+            if ("_is_none" in value) {
+                reattach(value as OptionType<number>);
+            } else {
+                attachRecursive(value as object);
+            }
+            /* eslint-enable @typescript-eslint/no-unsafe-argument */
         }
     }
+
+    attachRecursive(stats);
 }

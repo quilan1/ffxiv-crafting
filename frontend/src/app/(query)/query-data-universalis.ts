@@ -1,6 +1,6 @@
 import { RecursiveStats } from "../(universalis)/analysis";
 import { allRecursiveStatsOfAsync } from "../(universalis)/analysis-async";
-import { maxVelocityOf } from "../(universalis)/statistics";
+import { maxVelocityOf, selectQuality } from "../(universalis)/statistics";
 import { optSub } from "../(util)/option";
 import { tryParse } from "../(util)/util";
 import { ChangedState } from "./query-data";
@@ -52,17 +52,17 @@ const recalculateTableRows = (ui: QueryDataUi, calculated: QueryDataCalc): Query
     if (calculated.universalisInfo === undefined || calculated.recursiveStats === undefined) return calculated;
     const _limit = tryParse(ui.limit).unwrap_or(100);
     const _minVelocity = tryParse(ui.minVelocity).unwrap_or(0);
-    const tableRows = generateTableData(_limit, _minVelocity, calculated.recursiveStats);
+    const tableRows = generateTableData(_limit, _minVelocity, ui.isHq, calculated.recursiveStats);
     return { ...calculated, tableRows };
 }
 
-function generateTableData(limit: number, minVelocity: number, recursiveStats: RecursiveStats): KeyedTableRow[] {
+function generateTableData(limit: number, minVelocity: number, isHq: boolean, recursiveStats: RecursiveStats): KeyedTableRow[] {
     const { itemStats, topProfitStats } = recursiveStats;
 
     let items = topProfitStats;
     items.sort(({ top: a }, { top: b }) => optSub(a.profit, b.profit).unwrap_or(Number.MIN_SAFE_INTEGER));
     items.reverse();
-    items = items.filter(({ top }) => maxVelocityOf(itemStats[top.itemId]) >= minVelocity);
+    items = items.filter(({ top }) => maxVelocityOf(itemStats[top.itemId], isHq) >= minVelocity);
     items = items.slice(0, limit);
 
     let index = 0;
@@ -80,10 +80,12 @@ function generateTableData(limit: number, minVelocity: number, recursiveStats: R
                     index,
                     item: { itemId: info.itemId, count: info.count },
                     hasChildren: info.hasChildren,
-                    perDay: stats.velocityDay.aq,
-                    perWeek: stats.velocityWeek.aq,
-                    perBiWeek: stats.velocityWeeks.aq,
-                    count: stats.sellCount.aq,
+                    numListings: selectQuality(stats.numListings, isHq),
+                    totalNumListings: selectQuality(stats.totalNumListings, isHq),
+                    perDay: selectQuality(stats.velocityDay, isHq),
+                    perWeek: selectQuality(stats.velocityWeek, isHq),
+                    perBiWeek: selectQuality(stats.velocityWeeks, isHq),
+                    count: selectQuality(stats.sellCount, isHq),
                     sell: info.sell,
                     buy: info.buy,
                     craft: info.craft,

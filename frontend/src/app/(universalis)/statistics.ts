@@ -11,6 +11,8 @@ export interface Quality<T> {
 
 export interface Statistics {
     buyPrice: Quality<number>,
+    numListings: Quality<number>,
+    totalNumListings: Quality<number>,
     sellPrice: Quality<number>,
     sellCount: Quality<number>,
     velocityDay: Quality<number>,
@@ -23,6 +25,7 @@ export const statisticsOf = (itemInfo: ItemInfo, count: number): Statistics => {
     const toPrice = (listing: Listing) => listing.price;
     const toCount = (listing: Listing) => listing.count;
 
+    const length = (values: number[]) => (!values.length) ? None() : Some(values.length);
     const isWithinDay = isWithinDaysFn(1.0);
     const isWithinWeek = isWithinDaysFn(7.0);
     const isWithinWeeks = isWithinDaysFn(14.0);
@@ -31,6 +34,8 @@ export const statisticsOf = (itemInfo: ItemInfo, count: number): Statistics => {
     const minForCountOf = minForCountOfFn(count);
 
     const buyPrice = quality(itemInfo.listings, _ => _.apply(minForCountOf));
+    const numListings = quality(itemInfo.listings, _ => _.filter(isHomeworld).map(toPrice).apply(stripOutliersOf).apply(length));
+    const totalNumListings = quality(itemInfo.listings, _ => _.filter(isHomeworld).map(toPrice).apply(length));
 
     const sellCount = quality(itemInfo.history, _ => _.filter(isHomeworld).filter(isWithinWeek).map(toCount).apply(meanOf));
     const sellPrice = quality(itemInfo.history, _ => _.filter(isHomeworld).map(toPrice).apply(stripOutliersOf).apply(meanOf));
@@ -38,7 +43,7 @@ export const statisticsOf = (itemInfo: ItemInfo, count: number): Statistics => {
     const velocityWeek = quality(itemInfo.history, _ => _.filter(isHomeworld).filter(isWithinWeek).apply(velocity));
     const velocityWeeks = quality(itemInfo.history, _ => _.filter(isHomeworld).filter(isWithinWeeks).apply(velocity));
 
-    return { buyPrice, sellCount, sellPrice, velocityDay, velocityWeek, velocityWeeks };
+    return { buyPrice, numListings, totalNumListings, sellCount, sellPrice, velocityDay, velocityWeek, velocityWeeks };
 }
 
 function quality<T>(listings: Listing[], fn: (listings: SimpleArray<Listing>) => OptionType<T>) {
@@ -51,15 +56,19 @@ function quality<T>(listings: Listing[], fn: (listings: SimpleArray<Listing>) =>
     }
 }
 
-export const maxVelocityOf = (stats: Statistics) => {
+export const maxVelocityOf = (stats: Statistics, isHq: boolean) => {
+
     const arr = [
-        stats.velocityDay.aq.unwrap_or(0),
-        stats.velocityWeek.aq.unwrap_or(0),
-        stats.velocityWeeks.aq.unwrap_or(0)
+        selectQuality(stats.velocityWeek, isHq).unwrap_or(0),
+        selectQuality(stats.velocityWeeks, isHq).unwrap_or(0)
     ].filter(v => v > 0);
 
     if (arr.length == 0) return 0;
     return arr.reduce((a, b) => Math.max(a, b));
+}
+
+export function selectQuality<T>(q: Quality<T>, isHq: boolean) {
+    return isHq ? q.hq : q.aq;
 }
 
 export function preferHq<T>(quality: Quality<T>, isHq: boolean, reqHq: boolean) {

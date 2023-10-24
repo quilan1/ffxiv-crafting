@@ -65,6 +65,13 @@
                 "RUST_BACKTRACE": "1",
             },
             "cwd": "${workspaceFolder}/crates"
+        },
+        {
+            "type": "node-terminal",
+            "name": "Frontend Dev",
+            "command": "pnpm dev",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/frontend"
         }
     ]
 }

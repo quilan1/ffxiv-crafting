@@ -9,6 +9,8 @@ export interface TableRow {
     item: Ingredient,
     index: number,
     hasChildren: boolean,
+    numListings: OptionType<number>,
+    totalNumListings: OptionType<number>,
     perDay: OptionType<number>,
     perWeek: OptionType<number>,
     perBiWeek: OptionType<number>,
@@ -56,6 +58,7 @@ function TableHeader() {
         <tr className={`${styles.tableRow} ${styles.heading}`}>
             <th className={classNames(columnHeaders.checked)}>☑</th>
             <th className={classNames(columnHeaders.name)}>Name</th>
+            <th className={classNames(columnHeaders.numListings)}>#</th>
             <th className={classNames(columnHeaders.perDay)}>#/day</th>
             <th className={classNames(columnHeaders.perWeek)}>#/wk</th>
             <th className={classNames(columnHeaders.perBiWeek)}>#/2wk</th>
@@ -75,7 +78,7 @@ function TableRow(props: TableRow) {
     const _fixed = (o: OptionType<number>) => o.map(_toFixed).unwrap_or('-');
     const _string = (o: OptionType<number>) => o.map(_toString).unwrap_or('-');
 
-    const { _key, index, item, hasChildren, perDay, perWeek, perBiWeek, count, sell, buy, craft, profit } = props;
+    const { _key, index, item, hasChildren, numListings, totalNumListings, perDay, perWeek, perBiWeek, count, sell, buy, craft, profit } = props;
     const { queryData } = useQueryContext();
 
     const quantity = item.count > 1 ? `${item.count}x ` : '';
@@ -100,6 +103,7 @@ function TableRow(props: TableRow) {
         <tr className={rowStyle}>
             <td className={classNames(columnHeaders.checked)}>{checkedNode}</td>
             <td className={classNames(columnHeaders.name)} style={{ paddingLeft: `${namePadding}em` }}>{nameNode}</td>
+            <td className={classNames(columnHeaders.numListings)}>{_string(numListings)}/{_string(totalNumListings)}</td>
             <td className={classNames(columnHeaders.perDay)}>{_fixed(perDay)}</td>
             <td className={classNames(columnHeaders.perWeek)}>{_fixed(perWeek)}</td>
             <td className={classNames(columnHeaders.perBiWeek)}>{_fixed(perBiWeek)}</td>
@@ -115,6 +119,7 @@ function TableRow(props: TableRow) {
 const columnHeaders = {
     checked: [styles.checkInclude],
     name: [styles.name],
+    numListings: [],
     perDay: [styles.velocity, styles.leftBorder],
     perWeek: [styles.velocity],
     perBiWeek: [styles.velocity, styles.rightBorder],
