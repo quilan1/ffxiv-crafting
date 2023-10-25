@@ -17,18 +17,6 @@ struct StatusData {
     packets: Vec<RequestPacket>,
 }
 
-/// The current state of a request being sent to the Universalis server.
-pub enum FetchState {
-    /// The request is currently waiting to be processed. Its value is the current position in queue.
-    Queued(i32),
-    /// The request is currently being fetched from the server.
-    Active,
-    /// The request has failed at least once while attempting to talk to the server.
-    Warn,
-    /// The request has either succeeded (true) or failed (false).
-    Finished(bool),
-}
-
 ////////////////////////////////////////////////////////////
 
 impl Status {
@@ -58,8 +46,8 @@ impl Status {
     }
 
     /// Returns the current state of all of the fetch requests sent to the async processor.
-    pub fn values(&self) -> Vec<FetchState> {
-        use FetchState as P;
+    pub fn values(&self) -> Vec<RequestState> {
+        use RequestState as R;
 
         let data = self.0.lock();
         let async_processor = &data.async_processor;
@@ -70,12 +58,10 @@ impl Status {
             .iter()
             .flat_map(|packet| [&packet.0, &packet.1])
             .map(|handle| match handle.state_receiver.get() {
-                RequestState::Finished(status) => P::Finished(status),
-                RequestState::Warn => P::Warn,
-                RequestState::Active => P::Active,
-                RequestState::Queued => {
-                    P::Queued((handle.id as i32 - queue_offset as i32 + 1).max(0))
+                RequestState::Queued(_) => {
+                    R::Queued((handle.id as i32 - queue_offset as i32 + 1).max(0))
                 }
+                v => v,
             })
             .collect()
     }

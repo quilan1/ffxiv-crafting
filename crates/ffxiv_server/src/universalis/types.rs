@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use ffxiv_universalis::{FetchState, ListingsMap};
+use ffxiv_universalis::{ListingsMap, RequestState};
 use serde::{Deserialize, Serialize};
 
 ////////////////////////////////////////////////////////////
@@ -45,13 +45,13 @@ pub enum DetailedStatus {
     Queued(i32),
 }
 
-impl From<FetchState> for DetailedStatus {
-    fn from(value: FetchState) -> Self {
+impl From<RequestState> for DetailedStatus {
+    fn from(value: RequestState) -> Self {
         match value {
-            FetchState::Active => Self::Active,
-            FetchState::Warn => Self::Warn,
-            FetchState::Finished(successful) => Self::Finished(successful),
-            FetchState::Queued(position) => Self::Queued(position),
+            RequestState::Active => Self::Active,
+            RequestState::Warn => Self::Warn,
+            RequestState::Finished(successful) => Self::Finished(successful),
+            RequestState::Queued(position) => Self::Queued(position),
         }
     }
 }

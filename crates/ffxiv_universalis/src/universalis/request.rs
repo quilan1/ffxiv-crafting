@@ -19,16 +19,16 @@ pub struct Request<F: FileDownloader> {
     _marker_f: PhantomData<fn() -> F>, // Allows F to be Send & Sync
 }
 
-/// The current state of a request made to the universalis server.
+/// The current state of a request being sent to the Universalis server.
 #[derive(Clone, Debug)]
 pub enum RequestState {
-    /// The request is queued for processing and will begin as soon as there is capacity for it.
-    Queued,
-    /// The request is currently fetching data from the universalis server.
+    /// The request is currently waiting to be processed. Its value is the current position in queue.
+    Queued(i32),
+    /// The request is currently being fetched from the server.
     Active,
-    /// The request has failed at least once, to fetch results from universalis.
+    /// The request has failed at least once while attempting to talk to the server.
     Warn,
-    /// The request has finished either successfully (true) or unsuccessfully (false).
+    /// The request has either succeeded (true) or failed (false).
     Finished(bool),
 }
 
@@ -68,7 +68,7 @@ impl<F: FileDownloader> Request<F> {
     // they return, it yields the full request back.
     pub(crate) fn process_listing(self) -> (AsyncProcessorHandle<RequestResult>, RequestHandle) {
         let async_processor = self.data.async_processor.clone();
-        let (state_sender, state_receiver) = multi_signal(RequestState::Queued, 4);
+        let (state_sender, state_receiver) = multi_signal(RequestState::Queued(0), 4);
 
         let future = async move {
             let results = Self::fetch_listing_url(

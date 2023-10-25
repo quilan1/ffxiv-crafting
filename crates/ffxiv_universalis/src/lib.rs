@@ -73,9 +73,7 @@ mod universalis;
 use multi_signal::{multi_signal, MSender};
 
 pub use multi_signal::MReceiver;
-pub use processor::{
-    FetchState, ListingsResults, PacketResult, Processor, ProcessorHandle, Status,
-};
+pub use processor::{ListingsResults, PacketResult, Processor, ProcessorHandle, Status};
 use universalis::AsyncProcessorHandle;
 pub use universalis::{AsyncProcessor, ItemListing, ListingsMap, RequestState};
 
