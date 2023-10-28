@@ -28,7 +28,6 @@ services:
     image: mysql:8.0
     ports: ["3306:3306"]
     restart: always
-    command: ["--general_log=1", "--general_log_file=/opt/mysql_logs/mysql.log"]
     environment:
       MYSQL_ROOT_PASSWORD: "password"
       MYSQL_USER: "user"
@@ -38,6 +37,7 @@ services:
       test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
       timeout: 20s
       retries: 10
+    # command: ["--general_log=1", "--general_log_file=/opt/mysql_logs/mysql.log"]
     # volumes:
     #   - ./crates/_artifacts:/opt/mysql_logs
 
@@ -46,9 +46,13 @@ services:
     working_dir: /nextjs
     command: [ "./startup.sh" ]
     ports: [ "3000:3000" ]
+    environment:
+      - NEXT_PUBLIC_RUST_SERVER=localhost:3001
     # depends_on:
     #   ffxiv-server:
     #     condition: service_healthy
     volumes:
       - ./frontend:/nextjs
       - /nextjs/node_modules/
+      - /nextjs/.next/
+      - /nextjs/.pnpm-store/

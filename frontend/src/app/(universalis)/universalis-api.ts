@@ -87,7 +87,8 @@ export default class UniversalisRequest {
     }
 
     private openWebSocket() {
-        return new WebSocket('ws://localhost:3001/v1/universalis');
+        const rustServer = process.env.NEXT_PUBLIC_RUST_SERVER ?? 'localhost:3001';
+        return new WebSocket(`ws://${rustServer}/v1/universalis`);
     }
 
     private checkCancel(state: UniversalisRequestState) {

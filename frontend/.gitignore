@@ -37,3 +37,6 @@ next-env.d.ts
 
 # CSS files (we're using less)
 *.css
+
+# Artifacts
+*.gz
