@@ -71,6 +71,7 @@ pub struct ItemInfo {
 pub struct Recipe {
     pub inputs: Vec<Ingredient>,
     pub outputs: u32,
+    pub level: u32,
 }
 
 #[derive(Serialize)]

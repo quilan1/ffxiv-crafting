@@ -59,8 +59,8 @@ function quality<T>(listings: Listing[], fn: (listings: SimpleArray<Listing>) =>
 export const maxVelocityOf = (stats: Statistics, isHq: boolean) => {
 
     const arr = [
-        selectQuality(stats.velocityWeek, isHq).unwrap_or(0),
-        selectQuality(stats.velocityWeeks, isHq).unwrap_or(0)
+        selectQuality(stats.velocityWeek, isHq).unwrapOr(0),
+        selectQuality(stats.velocityWeeks, isHq).unwrapOr(0)
     ].filter(v => v > 0);
 
     if (arr.length == 0) return 0;
@@ -98,7 +98,7 @@ class SimpleArray<T> {
 const stripOutliersOfFn = (numStdDev: number) => {
     return (values: number[]) => {
         const _mean = meanOf(values);
-        if (!_mean.is_some()) return new SimpleArray([]);
+        if (!_mean.isSome()) return new SimpleArray([]);
 
         const mean = _mean.unwrap();
         const totalVariance = values

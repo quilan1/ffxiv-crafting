@@ -156,7 +156,6 @@ export function FetchButton() {
 }
 
 export const preparedQueries = [
-    { label: 'Basic', value: ':count 100, :name Grade 4 Skybuilders\' Spinning Wheel' },
     { label: 'Level 90 Crafting Mats', value: ':count 20, :limit 10, :rlevel 90, :cat !Metal|Lumber|Leather|Stone|Cloth|Reagent' },
     { label: 'Quick Mats', value: ':limit 16, :min_velocity 50.0, :count 20, :rlevel 1|90, :cat !Metal|Lumber|Leather|Stone|Cloth|Reagent' },
     { label: 'Popular Housing', value: ':count 5, :limit 16, :min_velocity 10.0, :cat !Ceiling Light|Door|Flooring|Furnishing|Interior Wall|Placard|Rug|Table|Tabletop|Window|Exterior Wall|Exterior Wall Decoration|Fence|Outdoor Furnishing|Roof|Roof Decoration|Wall-mounted' },
@@ -178,7 +177,7 @@ export const dataCenters = [
 export const defaultQueryString = processQuery(preparedQueries[0].value).queryString;
 export const defaultDataCenter = dataCenters[1];
 
-function processQuery(queryString: string) {
+export function processQuery(queryString: string) {
     interface ProcessQueryResultType {
         queryString: string,
         count: string,

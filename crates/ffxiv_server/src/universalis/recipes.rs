@@ -52,6 +52,7 @@ impl From<ffxiv_items::Recipe> for Recipe {
         Self {
             inputs: recipe.inputs.into_iter().map(Into::into).collect(),
             outputs: recipe.output.count,
+            level: recipe.level,
         }
     }
 }

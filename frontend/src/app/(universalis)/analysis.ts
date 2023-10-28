@@ -81,8 +81,8 @@ const recursiveStatsOf = (itemId: number, count: number, isHq: boolean, isTop: b
     }
 
     const _stats = itemStats[itemId];
-    const sellPrice = preferHq(_stats.sellPrice, isHq, isTop && craft.is_some());
-    const buyPrice = preferHq(_stats.buyPrice, isHq, isTop && craft.is_some());
+    const sellPrice = preferHq(_stats.sellPrice, isHq, isTop && craft.isSome());
+    const buyPrice = preferHq(_stats.buyPrice, isHq, isTop && craft.isSome());
     const sell = sellPrice.map(v => v * _count);
     const buy = buyPrice.map(v => v * _count);
     const profitBuy = buy.and(optSub(sell, buy));

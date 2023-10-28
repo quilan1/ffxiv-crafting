@@ -150,12 +150,18 @@ export default class UniversalisRequest {
 
     private onMessageSuccess(state: UniversalisRequestState, listingInfo: MessageSuccessInfo) {
         const universalisInfo = state.recipeJson as UniversalisInfo;
+        const itemInfo = universalisInfo.itemInfo;
 
-        for (const [id, listings] of Object.entries(listingInfo.listings)) {
-            universalisInfo.itemInfo[parseInt(id)].listings = listings ?? [];
+        for (const [_id, listings] of Object.entries(listingInfo.listings)) {
+            const id = parseInt(_id);
+            if (!(id in itemInfo)) continue;
+            itemInfo[id].listings = listings ?? [];
         }
-        for (const [id, listings] of Object.entries(listingInfo.history)) {
-            universalisInfo.itemInfo[parseInt(id)].history = listings ?? [];
+
+        for (const [_id, listings] of Object.entries(listingInfo.history)) {
+            const id = parseInt(_id);
+            if (!(id in itemInfo)) continue;
+            itemInfo[id].history = listings ?? [];
         }
     }
 

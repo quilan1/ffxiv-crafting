@@ -6,7 +6,7 @@ import { HOMEWORLD } from '../(universalis)/statistics';
 import UniversalisRequest, { UniversalisInfo } from '../(universalis)/universalis-api';
 import { useFirmamentContext } from './context';
 import styles from './firmament.module.css';
-import { ExchangeCost, ValidExchangeType, exchangeCosts, exchangeProfits } from './rewards';
+import { ExchangeCost, ValidExchangeType, exchangeCosts, exchangeProfits, scripsPerCraft } from './rewards';
 import { dataCenterOf } from '../(universalis)/data-center';
 
 export interface FirmamentState {
@@ -22,6 +22,7 @@ interface UniversalisInfoStats {
 
 interface FirmamentInfo {
     name: string,
+    exchangeName: string,
     profitInfo: ProfitInfo[] | null,
 }
 
@@ -31,6 +32,16 @@ interface ProfitInfo {
     ratio: OptionType<number>,
     perWeek: OptionType<number>,
     name: string,
+}
+
+interface ProfitResult {
+    exchangeName: string,
+    profitInfo: ProfitInfo[],
+}
+
+interface PriceInfo {
+    name: string,
+    pricePerScrip: number,
 }
 
 export function FirmamentContainer() {
@@ -77,7 +88,26 @@ function FirmamentAllScrips() {
     if (!info.value) {
         return (
             <div className={styles.nothingLoaded}>
-                Press &apos;Fetch&apos; to retrieve Firmament exchange rates
+                <div>
+                    <h2>Press &apos;Fetch&apos; to retrieve crafting exchange rates.</h2>
+                    <h3>Explanation:</h3>
+                    <div>
+                        A number of crafts may be made to generate scrips:
+                        <ul>
+                            <li>Level 90 Rarefied crafts may be exchanged for Purple Crafting Scrips</li>
+                            <li>Level 50-89 Rarefied crafts may be exchanged for White Crafting Scrips</li>
+                            <li>Level 4 Skybuilders&apos; crafts may be exchanged for Skybuilders&apos; Scrips</li>
+                        </ul>
+                    </div>
+                    <p>
+                        This page considers the process of buying the materials to craft one of these items, then trading in the scrips for
+                        a reward that may be sold on the market board. If the traded item may be sold for more than it costs to craft, it will
+                        have a ratio greater than 1. If it costs more to craft, than it is to sell, it will have a red ratio.
+                    </p>
+                    <p>
+                        Tl;dr: Higher ratios better.
+                    </p>
+                </div>
             </div>
         );
     }
@@ -99,21 +129,26 @@ function FirmamentAllScrips() {
 }
 
 function FirmamentInfo({ info }: { info: FirmamentInfo }) {
-    const _toFixedFn = (d: number) => (n: OptionType<number>) => n.map(v => v.toFixed(d)).unwrap_or('-');
+    const _toFixedFn = (d: number) => (n: OptionType<number>) => n.map(v => v.toFixed(d)).unwrapOr('-');
     const _toFixed0 = _toFixedFn(0);
     const _toFixed2 = _toFixedFn(2);
-    const color = (info: ProfitInfo) => info.ratio.map_or('black', v => v < 1 ? 'red' : 'black').unwrap_unchecked();
+    const color = (info: ProfitInfo) => info.ratio.mapOr('black', v => v < 1 ? 'red' : 'black').unwrapUnchecked();
     return <>
-        <div className={styles.scripHeading}>{info.name}</div>
+        <div className={styles.scripHeading}>
+            <div className={styles.scripType}>{info.name}</div>
+            <div>{info.exchangeName}</div>
+        </div>
         <div className={styles.scripTable}>
             {info.profitInfo?.map(info => {
-                return <div key={info.name} className={styles.scripProfit}>
-                    <div style={{ width: '4em' }}>{_toFixed0(info.profit)}</div>
-                    <div style={{ width: '4em' }}>{_toFixed0(info.pricePer)}</div>
-                    <div style={{ width: '4em', color: color(info) }}>{_toFixed2(info.ratio)}</div>
-                    <div style={{ width: '4em' }}>{_toFixed2(info.perWeek)}</div>
-                    <div style={{ flex: '1' }}>{info.name}</div>
-                </div>
+                return (
+                    <div key={info.name} className={styles.scripProfit}>
+                        <div style={{ width: '4em' }}>{_toFixed0(info.profit)}</div>
+                        <div style={{ width: '4em' }}>{_toFixed0(info.pricePer)}</div>
+                        <div style={{ width: '4em', color: color(info) }}>{_toFixed2(info.ratio)}</div>
+                        <div style={{ width: '4em' }}>{_toFixed2(info.perWeek)}</div>
+                        <div style={{ flex: '1' }}>{info.name}</div>
+                    </div>
+                )
             })}
         </div>
     </>;
@@ -131,12 +166,13 @@ const fetchFirmanentInfo = async (statuses: Signal<string>[]): Promise<Firmament
     const results = [];
     for (const { cost, profitPromise } of exchangeCostInfo) {
         const profitInfo = await profitPromise;
-        results.push({ name: cost.name, profitInfo });
+        results.push({ name: cost.name, exchangeName: profitInfo?.exchangeName ?? '', profitInfo: profitInfo?.profitInfo ?? null });
     }
+
     return results;
 }
 
-const asyncProfitResults = async (cost: ExchangeCost, status: Signal<string>): Promise<ProfitInfo[] | null> => {
+const asyncProfitResults = async (cost: ExchangeCost, status: Signal<string>): Promise<ProfitResult | null> => {
     status.value = `${cost.name}: Fetching price & profit information from universalis`;
     const _price = asyncPrice(cost.search);
     const _profit = asyncProfit(cost.type);
@@ -150,14 +186,17 @@ const asyncProfitResults = async (cost: ExchangeCost, status: Signal<string>): P
     status.value = `${cost.name}: Waiting...`;
 
     const priceResult = calculatePrice(cost, universalisInfoStatsPrice);
-    return calculateProfits(cost.type, priceResult.pricePer, universalisInfoStatsProfit);
+    return {
+        exchangeName: priceResult.name,
+        profitInfo: calculateProfits(cost.type, priceResult.pricePerScrip, universalisInfoStatsProfit)
+    };
 }
 
 const asyncPrice = async (search: string) => await new UniversalisRequest(search, dataCenterOf(HOMEWORLD)).fetch();
 
 const asyncProfit = async (type: ValidExchangeType) => {
     const names = exchangeProfits
-        .filter(item => type in item)
+        .filter(item => item.type === type)
         .map(item => item.name.replaceAll(',', '\\,'))
         .join('|');
     const search = `:name !${names}`;
@@ -169,23 +208,31 @@ const universalisStats = async (count: number, universalisInfo: UniversalisInfo 
     return { universalisInfo, recStats: await allRecursiveStatsOfAsync(count, false, universalisInfo) }
 }
 
-const calculatePrice = (cost: ExchangeCost, universalisInfoStats: UniversalisInfoStats) => {
+const calculatePrice = (cost: ExchangeCost, universalisInfoStats: UniversalisInfoStats): PriceInfo => {
     const { universalisInfo, recStats } = universalisInfoStats;
     const itemInfo = universalisInfo.itemInfo;
     const cheapestList = recStats.topProfitStats
         .map(({ top }) => top)
-        .map(({ itemId, buy, craft }) => ({ itemId, buy: optMin(buy, craft) }))
-        .toSorted((a, b) => optSub(a.buy, b.buy).unwrap_or(Number.MIN_SAFE_INTEGER));
+        .map(({ itemId, buy, craft }) => ({
+            itemId,
+            buy: optMin(buy, craft),
+            scripsPerCraft: scripsPerCraft[cost.type](itemInfo[itemId].recipe?.level ?? 0)
+        }))
+        .map(({ itemId, buy, scripsPerCraft }) => ({
+            itemId,
+            buy,
+            pricePerScrip: buy.map(amount => amount / (cost.count * scripsPerCraft))
+        }))
+        .toSorted((a, b) => optSub(a.pricePerScrip, b.pricePerScrip).unwrapOr(Number.MIN_SAFE_INTEGER));
     const stats = cheapestList[0];
 
     return {
-        type: cost.type,
-        name: itemInfo[stats.itemId].name,
-        pricePer: stats.buy.unwrap_unchecked() / cost.exchange,
+        name: `${itemInfo[stats.itemId].name} [${itemInfo[stats.itemId].recipe?.level ?? 0}]`,
+        pricePerScrip: stats.pricePerScrip.unwrapUnchecked(),
     };
 }
 
-const calculateProfits = (type: ValidExchangeType, pricePer: number, universalisInfoStats: UniversalisInfoStats): ProfitInfo[] => {
+const calculateProfits = (type: ValidExchangeType, pricePerScrip: number, universalisInfoStats: UniversalisInfoStats): ProfitInfo[] => {
     const { universalisInfo, recStats } = universalisInfoStats;
 
     interface StatInfo { itemId: number, sell: OptionType<number>, buy: OptionType<number>, perWeek: OptionType<number> };
@@ -199,7 +246,7 @@ const calculateProfits = (type: ValidExchangeType, pricePer: number, universalis
     }
 
     const results: ProfitInfo[] = [];
-    const purchases = exchangeProfits.filter(item => type in item);
+    const purchases = exchangeProfits.filter(item => item.type === type);
     for (const purchase of purchases) {
         const stats = statMap[purchase.name];
         if (stats === undefined) {
@@ -208,7 +255,7 @@ const calculateProfits = (type: ValidExchangeType, pricePer: number, universalis
         }
 
         const profit = optMax(stats.sell, stats.buy);
-        if (!profit.is_some()) {
+        if (!profit.isSome()) {
             results.push({
                 profit,
                 pricePer: None<number>(),
@@ -219,8 +266,7 @@ const calculateProfits = (type: ValidExchangeType, pricePer: number, universalis
             continue;
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-        const itemPricePer = (purchase as any)[type] * pricePer;
+        const itemPricePer = purchase.scrips * pricePerScrip;
         results.push({
             profit,
             pricePer: Some(Math.round(itemPricePer)),
@@ -230,7 +276,8 @@ const calculateProfits = (type: ValidExchangeType, pricePer: number, universalis
         });
     }
 
-    results.sort((a, b) => optSub(b.ratio, a.ratio).unwrap_or(Number.MIN_SAFE_INTEGER));
+    results.sort((a, b) => optSub(b.ratio, a.ratio).unwrapOr(Number.MIN_SAFE_INTEGER));
+
     return results;
 }
 

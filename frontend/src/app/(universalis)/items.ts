@@ -9,6 +9,7 @@ export interface Ingredient {
 export interface Recipe {
     inputs: Ingredient[],
     outputs: number,
+    level: number,
 }
 
 export interface Listing {

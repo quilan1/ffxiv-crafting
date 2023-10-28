@@ -4,16 +4,13 @@ import { QueryDataCalc, QueryDataCalcState as QueryDataCalcState } from "./query
 import { UniversalisInfo } from "../(universalis)/universalis-api";
 import { useDeferredFn } from "../(util)/deferred-fn";
 import { recalculateUniversalis } from "./query-data-universalis";
+import { preparedQueries, processQuery } from "./query";
 
 type DeferredFn = (fn: () => Promise<void>) => void;
 
 export function useQueryDataState() {
-    const ui = new QueryDataUiState(useState<QueryDataUi>({
-        count: '100',
-        limit: '',
-        minVelocity: '',
-        isHq: false,
-    }));
+    const { count, limit, minVelocity } = processQuery(preparedQueries[0].value);
+    const ui = new QueryDataUiState(useState<QueryDataUi>({ count, limit, minVelocity, isHq: false }));
 
     const calc = new QueryDataCalcState(useState<QueryDataCalc>({
         checkedKeys: new Set<string>(),

@@ -32,7 +32,7 @@ export const recalculateUniversalis = async (
         || changedStates.has(ChangedState.IS_HQ)) {
         const hiddenKeys = new Set<string>();
         for (const { key, row } of calculated.tableRows ?? []) {
-            if (row.buy.unwrap_or(Number.MAX_SAFE_INTEGER) < row.craft.unwrap_or(Number.MIN_SAFE_INTEGER)) {
+            if (row.buy.unwrapOr(Number.MAX_SAFE_INTEGER) < row.craft.unwrapOr(Number.MIN_SAFE_INTEGER)) {
                 hiddenKeys.add(key);
             }
         }
@@ -44,14 +44,14 @@ export const recalculateUniversalis = async (
 
 const recalculateRecStatistics = async (ui: QueryDataUi, calculated: QueryDataCalc): Promise<RecursiveStats | undefined> => {
     if (calculated.universalisInfo === undefined) return undefined;
-    const _count = tryParse(ui.count).unwrap_or(1);
+    const _count = tryParse(ui.count).unwrapOr(1);
     return await allRecursiveStatsOfAsync(_count, ui.isHq, calculated.universalisInfo)
 }
 
 const recalculateTableRows = (ui: QueryDataUi, calculated: QueryDataCalc): QueryDataCalc => {
     if (calculated.universalisInfo === undefined || calculated.recursiveStats === undefined) return calculated;
-    const _limit = tryParse(ui.limit).unwrap_or(100);
-    const _minVelocity = tryParse(ui.minVelocity).unwrap_or(0);
+    const _limit = tryParse(ui.limit).unwrapOr(100);
+    const _minVelocity = tryParse(ui.minVelocity).unwrapOr(0);
     const tableRows = generateTableData(_limit, _minVelocity, ui.isHq, calculated.recursiveStats);
     return { ...calculated, tableRows };
 }
@@ -60,7 +60,7 @@ function generateTableData(limit: number, minVelocity: number, isHq: boolean, re
     const { itemStats, topProfitStats } = recursiveStats;
 
     let items = topProfitStats;
-    items.sort(({ top: a }, { top: b }) => optSub(a.profit, b.profit).unwrap_or(Number.MIN_SAFE_INTEGER));
+    items.sort(({ top: a }, { top: b }) => optSub(a.profit, b.profit).unwrapOr(Number.MIN_SAFE_INTEGER));
     items.reverse();
     items = items.filter(({ top }) => maxVelocityOf(itemStats[top.itemId], isHq) >= minVelocity);
     items = items.slice(0, limit);

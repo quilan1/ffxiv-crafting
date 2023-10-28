@@ -75,8 +75,8 @@ function TableRow(props: TableRow) {
     const classNames = (classes: string[]) => [styles.rowItem, ...classes].join(' ');
     const _toFixed = (v: number) => v.toFixed(2);
     const _toString = (v: number) => Math.floor(v).toString();
-    const _fixed = (o: OptionType<number>) => o.map(_toFixed).unwrap_or('-');
-    const _string = (o: OptionType<number>) => o.map(_toString).unwrap_or('-');
+    const _fixed = (o: OptionType<number>) => o.map(_toFixed).unwrapOr('-');
+    const _string = (o: OptionType<number>) => o.map(_toString).unwrapOr('-');
 
     const { _key, index, item, hasChildren, numListings, totalNumListings, perDay, perWeek, perBiWeek, count, sell, buy, craft, profit } = props;
     const { queryData } = useQueryContext();

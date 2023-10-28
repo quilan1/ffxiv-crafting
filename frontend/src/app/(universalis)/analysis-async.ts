@@ -35,7 +35,7 @@ const reattachOptions = (stats: RecursiveStats) => {
                 continue;
 
             /* eslint-disable @typescript-eslint/no-unsafe-argument */
-            if ("_is_none" in value) {
+            if ("_isNone" in value) {
                 reattach(value as OptionType<number>);
             } else {
                 attachRecursive(value as object);
