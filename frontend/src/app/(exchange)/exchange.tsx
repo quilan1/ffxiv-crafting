@@ -1,26 +1,20 @@
 import { RecursiveStats } from '../(universalis)/analysis';
 import { allRecursiveStatsOfAsync } from '../(universalis)/analysis-async';
 import { None, OptionType, Some, optMax, optMin, optSub } from '../(util)/option';
-import { Signal, useSignal } from '../(util)/signal';
+import { Signal } from '../(util)/signal';
 import { HOMEWORLD } from '../(universalis)/statistics';
 import UniversalisRequest, { UniversalisInfo } from '../(universalis)/universalis-api';
-import { useFirmamentContext } from './context';
-import styles from './firmament.module.css';
+import styles from './exchange.module.css';
 import { ExchangeCost, ValidExchangeType, exchangeCosts, exchangeProfits, scripsPerCraft } from './rewards';
 import { dataCenterOf } from '../(universalis)/data-center';
-
-export interface FirmamentState {
-    isFetching: Signal<boolean>,
-    statuses: Signal<string>[],
-    info: Signal<FirmamentInfo[] | undefined>;
-}
+import { useAppContext } from '../context';
 
 interface UniversalisInfoStats {
     universalisInfo: UniversalisInfo,
     recStats: RecursiveStats,
 }
 
-interface FirmamentInfo {
+export interface ExchangeInfo {
     name: string,
     exchangeName: string,
     profitInfo: ProfitInfo[] | null,
@@ -44,23 +38,48 @@ interface PriceInfo {
     pricePerScrip: number,
 }
 
-export function FirmamentContainer() {
+export function ExchangeContainer() {
     return (
-        <div className={styles.firmament}>
-            <FirmamentStatus />
-            <FirmamentAllScrips />
+        <div className={styles.exchange}>
+            <ExchangeStatus />
+            <ExchangeAllScrips />
         </div>
     )
 }
 
-function FirmamentStatus() {
-    const { isFetching, statuses, info } = useFirmamentContext();
+function ExchangeNotLoaded() {
+    return (
+        <div className={styles.nothingLoaded}>
+            <h2>Press &apos;Fetch&apos; to retrieve crafting exchange rates.</h2>
+            <h3>Explanation:</h3>
+            <div>
+                A number of crafts may be made to generate scrips:
+                <ul>
+                    <li>Level 90 Rarefied crafts may be exchanged for Purple Crafting Scrips</li>
+                    <li>Level 50-89 Rarefied crafts may be exchanged for White Crafting Scrips</li>
+                    <li>Level 4 Skybuilders&apos; crafts may be exchanged for Skybuilders&apos; Scrips</li>
+                </ul>
+            </div>
+            <p>
+                This page considers the process of buying the materials to craft one of these items, then trading in the scrips for
+                a reward that may be sold on the market board. If the traded item may be sold for more than it costs to craft, it will
+                have a ratio greater than 1. If it costs more to craft, than it does to sell, it will have a red ratio.
+            </p>
+            <p>
+                Tl;dr: Higher ratios better.
+            </p>
+        </div>
+    );
+}
+
+function ExchangeStatus() {
+    const { exchangeState: { isFetching, statuses, info } } = useAppContext();
 
     const onClick = () => {
         void (async () => {
             if (isFetching.value) return;
             isFetching.value = true;
-            info.value = await fetchFirmanentInfo(statuses);
+            info.value = await fetchExchangeInfo(statuses);
             isFetching.value = false;
             statuses[0].value = "";
             statuses[1].value = "";
@@ -82,35 +101,9 @@ function FirmamentStatus() {
     );
 }
 
-function FirmamentAllScrips() {
-    const { info } = useFirmamentContext();
-
-    if (!info.value) {
-        return (
-            <div className={styles.nothingLoaded}>
-                <div>
-                    <h2>Press &apos;Fetch&apos; to retrieve crafting exchange rates.</h2>
-                    <h3>Explanation:</h3>
-                    <div>
-                        A number of crafts may be made to generate scrips:
-                        <ul>
-                            <li>Level 90 Rarefied crafts may be exchanged for Purple Crafting Scrips</li>
-                            <li>Level 50-89 Rarefied crafts may be exchanged for White Crafting Scrips</li>
-                            <li>Level 4 Skybuilders&apos; crafts may be exchanged for Skybuilders&apos; Scrips</li>
-                        </ul>
-                    </div>
-                    <p>
-                        This page considers the process of buying the materials to craft one of these items, then trading in the scrips for
-                        a reward that may be sold on the market board. If the traded item may be sold for more than it costs to craft, it will
-                        have a ratio greater than 1. If it costs more to craft, than it is to sell, it will have a red ratio.
-                    </p>
-                    <p>
-                        Tl;dr: Higher ratios better.
-                    </p>
-                </div>
-            </div>
-        );
-    }
+function ExchangeAllScrips() {
+    const { exchangeState: { info } } = useAppContext();
+    if (!info.value) return <ExchangeNotLoaded />;
 
     return (
         <div className={styles.allScrips}>
@@ -123,12 +116,12 @@ function FirmamentAllScrips() {
                     <div style={{ flex: '1', fontWeight: 'bold' }}>Name</div>
                 </div>
             </div>
-            {info.value.map(info => <FirmamentInfo key={info.name} info={info} />)}
+            {info.value.map(info => <ExchangeInfo key={info.name} info={info} />)}
         </div>
     );
 }
 
-function FirmamentInfo({ info }: { info: FirmamentInfo }) {
+function ExchangeInfo({ info }: { info: ExchangeInfo }) {
     const _toFixedFn = (d: number) => (n: OptionType<number>) => n.map(v => v.toFixed(d)).unwrapOr('-');
     const _toFixed0 = _toFixedFn(0);
     const _toFixed2 = _toFixedFn(2);
@@ -154,7 +147,7 @@ function FirmamentInfo({ info }: { info: FirmamentInfo }) {
     </>;
 }
 
-const fetchFirmanentInfo = async (statuses: Signal<string>[]): Promise<FirmamentInfo[]> => {
+const fetchExchangeInfo = async (statuses: Signal<string>[]): Promise<ExchangeInfo[]> => {
     const exchangeCostInfo = [];
     for (let i = 0; i < exchangeCosts.length; ++i) {
         const cost = exchangeCosts[i];
@@ -281,10 +274,3 @@ const calculateProfits = (type: ValidExchangeType, pricePerScrip: number, univer
     return results;
 }
 
-export const useFirmamentStateDefault = (): FirmamentState => {
-    return {
-        isFetching: useSignal(false),
-        statuses: [useSignal(""), useSignal(""), useSignal("")],
-        info: useSignal<FirmamentInfo[] | undefined>(undefined),
-    };
-}

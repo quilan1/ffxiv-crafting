@@ -1,14 +1,14 @@
 import { ChangeEvent, useRef } from 'react';
 import styles from './query.module.css';
 import UniversalisRequest, { ListingRequestStatus } from '../(universalis)/universalis-api';
-import { useQueryContext } from './context';
 import { MarketInformation } from './table';
 import { KeysMatching } from '../(util)/util';
 import { useSignal } from '../(util)/signal';
 import { WorldInformation } from './purchase';
+import { useAppContext } from '../context';
 
 export function QueryContainer() {
-    const { queryData } = useQueryContext();
+    const { queryState: { queryData } } = useAppContext();
     return <>
         <QueryPanel />
         <MarketInformation />
@@ -27,7 +27,7 @@ export function QueryPanel() {
 }
 
 function FetchStatus() {
-    const { listingStatus: listingStatusInfo } = useQueryContext();
+    const { queryState: { listingStatus: listingStatusInfo } } = useAppContext();
     const status = listingStatusInfo.value;
 
     const fetchClass = (status: ListingRequestStatus) => {
@@ -66,7 +66,7 @@ function FetchStatus() {
 }
 
 export function QueryOptions() {
-    const { dataCenter, queryString, queryData } = useQueryContext();
+    const { queryState: { dataCenter, queryString, queryData } } = useAppContext();
     const onChangeQuery = (e: ChangeEvent<HTMLInputElement>) => { queryString.value = e.target.value; }
     const onChangeQuerySelect = (e: ChangeEvent<HTMLSelectElement>) => {
         const { queryString: _queryString, count, limit, minVelocity } = processQuery(e.target.value);
@@ -126,7 +126,7 @@ export function QueryOptions() {
 
 export function FetchButton() {
     const isFetching = useSignal(false);
-    const { listingStatus: listingStatusInfo, queryString, dataCenter, queryData } = useQueryContext();
+    const { queryState: { listingStatus: listingStatusInfo, queryString, dataCenter, queryData } } = useAppContext();
     const isCancelled = useRef(false);
 
     const onClick = () => {

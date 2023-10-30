@@ -1,23 +1,22 @@
-import React, { useState } from 'react';
+import React from 'react';
 import style from './main.module.css';
 
 export enum MarketForm {
+    CONFIG,
     QUERY,
-    FIRMAMENT,
+    EXCHANGE,
 }
 
-export default function Header(
-    { setForm }: { setForm: React.Dispatch<React.SetStateAction<MarketForm>> }
+export function Header(
+    { curForm, setForm }: { curForm: MarketForm, setForm: React.Dispatch<React.SetStateAction<MarketForm>> }
 ) {
-    const [curSelected, setCurSelected] = useState(MarketForm.QUERY);
-
     const headersInfo = [
+        { form: MarketForm.CONFIG, title: 'Config' },
         { form: MarketForm.QUERY, title: 'Query' },
-        { form: MarketForm.FIRMAMENT, title: 'Firmament' },
+        { form: MarketForm.EXCHANGE, title: 'Exchange' },
     ];
 
     const setSelection = (newForm: MarketForm) => {
-        setCurSelected(newForm);
         setForm(newForm);
     }
 
@@ -28,7 +27,7 @@ export default function Header(
                     <HeaderSegment
                         key={info.title}
                         title={info.title}
-                        isSelected={curSelected == info.form}
+                        isSelected={curForm == info.form}
                         setSelection={() => { setSelection(info.form); }}
                     />
                 )

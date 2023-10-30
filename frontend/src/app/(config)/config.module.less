@@ -15,47 +15,28 @@
         border-bottom: 2px solid @color-fg-border;
         padding: 10px;
 
-        .status {
-            display: flex;
-            flex-direction: column;
-
-            >label {
-                padding-left: 10px;
-                color: white;
-            }
+        label {
+            color: white;
+            padding-right: 10px;
         }
     }
 
-    .nothingLoaded {
-        padding: 10px;
-        font-weight: bold;
-        font-size: large;
-        color: white;
-    }
-
-    .allScrips {
+    >.usage {
         max-height: 100%;
-        margin: 10px;
         overflow: auto;
+        margin: 10px;
+        padding: 10px;
+        border: 1px solid black;
         background-color: @color-bg-table;
 
-        >* {
-            padding-left: 10px;
+        img {
+            max-width: 100%;
+            height: auto;
+            width: auto;
         }
 
-        .scripHeading {
-            font-weight: bold;
+        li {
+            margin: 10px 0;
         }
-
-        .scripTable {
-            margin: 10px;
-            border: 1px solid @color-fg-border;
-
-            .scripProfit {
-                display: flex;
-                flex-direction: row;
-            }
-        }
-
     }
 }

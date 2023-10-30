@@ -3,7 +3,7 @@ import { Ingredient } from '../(universalis)/items';
 import { calculatePurchases } from '../(universalis)/purchases';
 import { HOMEWORLD } from '../(universalis)/statistics';
 import { entriesOf } from '../(util)/util';
-import { useQueryContext } from './context';
+import { useAppContext } from '../context';
 import { QueryDataState } from './query-data';
 import styles from './query.module.css';
 
@@ -27,7 +27,7 @@ interface AllPurchaseInfo {
 };
 
 export function WorldInformation() {
-    const { queryData } = useQueryContext();
+    const { queryState: { queryData } } = useAppContext();
     const items = collectCheckedItems(queryData);
     const worldInfo = getPurchaseInfo(queryData, items);
 
