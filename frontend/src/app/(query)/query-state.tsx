@@ -6,7 +6,7 @@ import { QueryDataState, useQueryDataState } from "./query-data";
 
 export interface QueryState {
     queryString: Signal<string>,
-    dataCenter: Signal<string>,
+    purchaseFrom: Signal<string>,
     listingStatus: Signal<ListingStatus | undefined>,
     queryData: QueryDataState,
 }
@@ -15,7 +15,7 @@ export const useQueryStateDefault = (homeworld: Signal<string>) => {
     return {
         listingStatus: useSignal<ListingStatus | undefined>(undefined),
         queryString: useSignal(defaultQueryString),
-        dataCenter: useSignal(dataCenterOf(homeworld.value)),
+        purchaseFrom: useSignal(dataCenterOf(homeworld.value)),
         queryData: useQueryDataState(homeworld),
     }
 }

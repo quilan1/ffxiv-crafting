@@ -78,7 +78,7 @@ function ExchangeStatus() {
         void (async () => {
             if (isFetching.value) return;
             isFetching.value = true;
-            info.value = await fetchExchangeInfo(statuses, homeworld.value);
+            info.value = await fetchExchangeInfo(statuses, homeworld.value, dataCenterOf(homeworld.value));
             isFetching.value = false;
             statuses[0].value = "";
             statuses[1].value = "";
@@ -146,12 +146,12 @@ function ExchangeInfo({ info }: { info: ExchangeInfo }) {
     </>;
 }
 
-const fetchExchangeInfo = async (statuses: Signal<string>[], homeworld: string): Promise<ExchangeInfo[]> => {
+const fetchExchangeInfo = async (statuses: Signal<string>[], homeworld: string, purchaseFrom: string): Promise<ExchangeInfo[]> => {
     const exchangeCostInfo = [];
     for (let i = 0; i < exchangeCosts.length; ++i) {
         const cost = exchangeCosts[i];
         const status = statuses[i];
-        const profitPromise = asyncProfitResults(cost, status, homeworld);
+        const profitPromise = asyncProfitResults(cost, status, homeworld, purchaseFrom);
         exchangeCostInfo.push({ cost, profitPromise });
     }
 
@@ -164,11 +164,10 @@ const fetchExchangeInfo = async (statuses: Signal<string>[], homeworld: string):
     return results;
 }
 
-const asyncProfitResults = async (cost: ExchangeCost, status: Signal<string>, homeworld: string): Promise<ProfitResult | null> => {
-    const dataCenter = dataCenterOf(homeworld);
+const asyncProfitResults = async (cost: ExchangeCost, status: Signal<string>, homeworld: string, purchaseFrom: string): Promise<ProfitResult | null> => {
     status.value = `${cost.name}: Fetching price & profit information from universalis`;
-    const _price = asyncPrice(cost.search, dataCenter);
-    const _profit = asyncProfit(cost.type, dataCenter);
+    const _price = asyncPrice(cost.search, purchaseFrom);
+    const _profit = asyncProfit(cost.type, purchaseFrom);
     const universalisInfoPrice = await _price;
     status.value = `${cost.name}: Calculating price statistics`;
     const universalisInfoStatsPrice = await universalisStats(cost.count, universalisInfoPrice, homeworld);
@@ -185,15 +184,15 @@ const asyncProfitResults = async (cost: ExchangeCost, status: Signal<string>, ho
     };
 }
 
-const asyncPrice = async (search: string, dataCenter: string) => await new UniversalisRequest(search, dataCenter).fetch();
+const asyncPrice = async (search: string, purchaseFrom: string) => await new UniversalisRequest(search, purchaseFrom).fetch();
 
-const asyncProfit = async (type: ValidExchangeType, dataCenter: string) => {
+const asyncProfit = async (type: ValidExchangeType, purchaseFrom: string) => {
     const names = exchangeProfits
         .filter(item => item.type === type)
         .map(item => item.name.replaceAll(',', '\\,'))
         .join('|');
     const search = `:name !${names}`;
-    return await new UniversalisRequest(search, dataCenter).fetch();
+    return await new UniversalisRequest(search, purchaseFrom).fetch();
 };
 
 const universalisStats = async (count: number, universalisInfo: UniversalisInfo | null, homeworld: string) => {

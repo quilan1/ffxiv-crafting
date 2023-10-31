@@ -68,14 +68,14 @@ function FetchStatus() {
 
 export function QueryOptions() {
     const { queryState: { queryString, queryData } } = useAppContext();
-    const [dataCenter, dataCenters] = useDataCenter();
+    const [purchaseFrom, purchaseFromOptions] = usePurchaseFrom();
     const onChangeQuery = (e: ChangeEvent<HTMLInputElement>) => { queryString.value = e.target.value; }
     const onChangeQuerySelect = (e: ChangeEvent<HTMLSelectElement>) => {
         const { queryString: _queryString, count, limit, minVelocity } = processQuery(e.target.value);
         queryString.value = _queryString;
         queryData.ui.state = { ...queryData.ui.state, count, limit, minVelocity };
     };
-    const onChangeDataCenter = (e: ChangeEvent<HTMLSelectElement>) => { dataCenter.value = e.target.value; };
+    const onChangePurchaseFrom = (e: ChangeEvent<HTMLSelectElement>) => { purchaseFrom.value = e.target.value; };
     const onChangeCount = (e: ChangeEvent<HTMLInputElement>) => queryData.count = e.target.value;
     const onChangeLimit = (e: ChangeEvent<HTMLInputElement>) => queryData.limit = e.target.value;
     const onChangeMinVelocity = (e: ChangeEvent<HTMLInputElement>) => queryData.minVelocity = e.target.value;
@@ -112,9 +112,9 @@ export function QueryOptions() {
                     <input type="number" value={queryData.minVelocity} onChange={onChangeMinVelocity} style={{ width: '3.5em' }} />
                 </div></div>
                 <div><div>
-                    <label>Data Center: </label>
-                    <select onChange={onChangeDataCenter} value={dataCenter.value}>{
-                        dataCenters.map(dc => <option key={dc} value={dc}>{dc}</option>)
+                    <label>Purchase From: </label>
+                    <select onChange={onChangePurchaseFrom} value={purchaseFrom.value}>{
+                        purchaseFromOptions.map(dc => <option key={dc} value={dc}>{dc}</option>)
                     }</select>
                 </div></div>
                 <div><div>
@@ -126,26 +126,26 @@ export function QueryOptions() {
     );
 }
 
-function useDataCenter(): [Signal<string>, string[]] {
-    const { configState: { homeworld }, queryState: { dataCenter } } = useAppContext();
-    const dataCenters = useMemo(() => {
+function usePurchaseFrom(): [Signal<string>, string[]] {
+    const { configState: { homeworld }, queryState: { purchaseFrom } } = useAppContext();
+    const purchaseFromOptions = useMemo(() => {
         const dataCenterInfo = allDataCenters.find(info => info.world === homeworld.value);
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         return [dataCenterInfo!.world, dataCenterInfo!.dataCenter, dataCenterInfo!.region];
     }, [homeworld]);
 
     useEffect(() => {
-        if (!dataCenters.includes(dataCenter.value)) {
-            dataCenter.value = dataCenters[1];
+        if (!purchaseFromOptions.includes(purchaseFrom.value)) {
+            purchaseFrom.value = purchaseFromOptions[1];
         }
-    }, [homeworld, dataCenter, dataCenters]);
+    }, [homeworld, purchaseFrom, purchaseFromOptions]);
 
-    return [dataCenter, dataCenters];
+    return [purchaseFrom, purchaseFromOptions];
 }
 
 export function FetchButton() {
     const isFetching = useSignal(false);
-    const { queryState: { listingStatus: listingStatusInfo, queryString, dataCenter, queryData } } = useAppContext();
+    const { queryState: { listingStatus: listingStatusInfo, queryString, purchaseFrom, queryData } } = useAppContext();
     const isCancelled = useRef(false);
 
     const onClick = () => {
@@ -154,7 +154,7 @@ export function FetchButton() {
                 isFetching.value = true;
                 isCancelled.current = false;
                 try {
-                    const universalisInfo = await new UniversalisRequest(queryString.value, dataCenter.value)
+                    const universalisInfo = await new UniversalisRequest(queryString.value, purchaseFrom.value)
                         .setIsCancelled(() => isCancelled.current)
                         .setStatusFn(status => { listingStatusInfo.value = status; })
                         .fetch();

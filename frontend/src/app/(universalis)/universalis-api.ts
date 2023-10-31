@@ -35,11 +35,11 @@ export default class UniversalisRequest {
     private statusFn: ListingStatusFn = () => { };
     private isCancelledFn: IsCancelledFn = () => false;
     private searchQuery: string;
-    private dataCenter: string;
+    private purchaseFrom: string;
 
-    constructor(searchFilter: string, dataCenter: string) {
+    constructor(searchFilter: string, purchaseFrom: string) {
         this.searchQuery = searchFilter;
-        this.dataCenter = dataCenter;
+        this.purchaseFrom = purchaseFrom;
     }
 
     setStatusFn(fn: ListingStatusFn) {
@@ -57,7 +57,7 @@ export default class UniversalisRequest {
         const socket = this.openWebSocket();
         const state: UniversalisRequestState = { socket, isProcessing: true, failures: 0 };
 
-        const recipePayload = JSON.stringify({ query: this.searchQuery, dataCenter: this.dataCenter, retainNumDays: 14.0 });
+        const recipePayload = JSON.stringify({ query: this.searchQuery, purchaseFrom: this.purchaseFrom, retainNumDays: 14.0 });
         socket.addEventListener("open", () => { socket.send(recipePayload); });
         socket.addEventListener("close", e => { this.onClose(state, e); });
         socket.addEventListener("message", e => { this.onMessage(state, e); });

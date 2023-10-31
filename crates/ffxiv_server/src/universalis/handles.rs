@@ -58,7 +58,7 @@ async fn make_market_request_info<F: FileDownloader>(
     server_uuid: &str,
 ) -> RequestStream {
     let worlds: Vec<_> = payload
-        .data_center
+        .purchase_from
         .or(std::env::var("FFXIV_DATA_CENTERS").ok())
         .unwrap()
         .split(',')
