@@ -1,8 +1,6 @@
 import { ItemInfo, Listing } from "./items";
 import { None, OptionType, Some } from "../(util)/option";
 
-export const HOMEWORLD = "Seraph";
-
 export interface Quality<T> {
     hq: OptionType<T>,
     nq: OptionType<T>,
@@ -20,8 +18,8 @@ export interface Statistics {
     velocityWeeks: Quality<number>,
 }
 
-export const statisticsOf = (itemInfo: ItemInfo, count: number): Statistics => {
-    const isHomeworld = (listing: Listing) => listing.world === undefined || listing.world === HOMEWORLD;
+export const statisticsOf = (itemInfo: ItemInfo, count: number, homeworld: string): Statistics => {
+    const isHomeworld = (listing: Listing) => listing.world === undefined || listing.world === homeworld;
     const toPrice = (listing: Listing) => listing.price;
     const toCount = (listing: Listing) => listing.count;
 

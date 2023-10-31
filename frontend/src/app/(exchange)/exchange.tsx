@@ -2,7 +2,6 @@ import { RecursiveStats } from '../(universalis)/analysis';
 import { allRecursiveStatsOfAsync } from '../(universalis)/analysis-async';
 import { None, OptionType, Some, optMax, optMin, optSub } from '../(util)/option';
 import { Signal } from '../(util)/signal';
-import { HOMEWORLD } from '../(universalis)/statistics';
 import UniversalisRequest, { UniversalisInfo } from '../(universalis)/universalis-api';
 import styles from './exchange.module.css';
 import { ExchangeCost, ValidExchangeType, exchangeCosts, exchangeProfits, scripsPerCraft } from './rewards';
@@ -73,13 +72,13 @@ function ExchangeNotLoaded() {
 }
 
 function ExchangeStatus() {
-    const { exchangeState: { isFetching, statuses, info } } = useAppContext();
+    const { configState: { homeworld }, exchangeState: { isFetching, statuses, info } } = useAppContext();
 
     const onClick = () => {
         void (async () => {
             if (isFetching.value) return;
             isFetching.value = true;
-            info.value = await fetchExchangeInfo(statuses);
+            info.value = await fetchExchangeInfo(statuses, homeworld.value);
             isFetching.value = false;
             statuses[0].value = "";
             statuses[1].value = "";
@@ -147,12 +146,12 @@ function ExchangeInfo({ info }: { info: ExchangeInfo }) {
     </>;
 }
 
-const fetchExchangeInfo = async (statuses: Signal<string>[]): Promise<ExchangeInfo[]> => {
+const fetchExchangeInfo = async (statuses: Signal<string>[], homeworld: string): Promise<ExchangeInfo[]> => {
     const exchangeCostInfo = [];
     for (let i = 0; i < exchangeCosts.length; ++i) {
         const cost = exchangeCosts[i];
         const status = statuses[i];
-        const profitPromise = asyncProfitResults(cost, status);
+        const profitPromise = asyncProfitResults(cost, status, homeworld);
         exchangeCostInfo.push({ cost, profitPromise });
     }
 
@@ -165,16 +164,17 @@ const fetchExchangeInfo = async (statuses: Signal<string>[]): Promise<ExchangeIn
     return results;
 }
 
-const asyncProfitResults = async (cost: ExchangeCost, status: Signal<string>): Promise<ProfitResult | null> => {
+const asyncProfitResults = async (cost: ExchangeCost, status: Signal<string>, homeworld: string): Promise<ProfitResult | null> => {
+    const dataCenter = dataCenterOf(homeworld);
     status.value = `${cost.name}: Fetching price & profit information from universalis`;
-    const _price = asyncPrice(cost.search);
-    const _profit = asyncProfit(cost.type);
+    const _price = asyncPrice(cost.search, dataCenter);
+    const _profit = asyncProfit(cost.type, dataCenter);
     const universalisInfoPrice = await _price;
     status.value = `${cost.name}: Calculating price statistics`;
-    const universalisInfoStatsPrice = await universalisStats(cost.count, universalisInfoPrice);
+    const universalisInfoStatsPrice = await universalisStats(cost.count, universalisInfoPrice, homeworld);
     const universalisInfoProfit = await _profit;
     status.value = `${cost.name}: Calculating profit statistics`;
-    const universalisInfoStatsProfit = await universalisStats(1, universalisInfoProfit);
+    const universalisInfoStatsProfit = await universalisStats(1, universalisInfoProfit, homeworld);
     if (!universalisInfoStatsPrice || !universalisInfoStatsProfit) return null;
     status.value = `${cost.name}: Waiting...`;
 
@@ -185,20 +185,20 @@ const asyncProfitResults = async (cost: ExchangeCost, status: Signal<string>): P
     };
 }
 
-const asyncPrice = async (search: string) => await new UniversalisRequest(search, dataCenterOf(HOMEWORLD)).fetch();
+const asyncPrice = async (search: string, dataCenter: string) => await new UniversalisRequest(search, dataCenter).fetch();
 
-const asyncProfit = async (type: ValidExchangeType) => {
+const asyncProfit = async (type: ValidExchangeType, dataCenter: string) => {
     const names = exchangeProfits
         .filter(item => item.type === type)
         .map(item => item.name.replaceAll(',', '\\,'))
         .join('|');
     const search = `:name !${names}`;
-    return await new UniversalisRequest(search, dataCenterOf(HOMEWORLD)).fetch();
+    return await new UniversalisRequest(search, dataCenter).fetch();
 };
 
-const universalisStats = async (count: number, universalisInfo: UniversalisInfo | null) => {
+const universalisStats = async (count: number, universalisInfo: UniversalisInfo | null, homeworld: string) => {
     if (!universalisInfo) return null;
-    return { universalisInfo, recStats: await allRecursiveStatsOfAsync(count, false, universalisInfo) }
+    return { universalisInfo, recStats: await allRecursiveStatsOfAsync(count, false, universalisInfo, homeworld) }
 }
 
 const calculatePrice = (cost: ExchangeCost, universalisInfoStats: UniversalisInfoStats): PriceInfo => {

@@ -1,6 +1,7 @@
+import { dataCenterOf } from "../(universalis)/data-center";
 import { ListingStatus } from "../(universalis)/universalis-api";
 import { Signal, useSignal } from "../(util)/signal";
-import { defaultDataCenter, defaultQueryString } from "./query";
+import { defaultQueryString } from "./query";
 import { QueryDataState, useQueryDataState } from "./query-data";
 
 export interface QueryState {
@@ -10,11 +11,11 @@ export interface QueryState {
     queryData: QueryDataState,
 }
 
-export const useQueryStateDefault = () => {
+export const useQueryStateDefault = (homeworld: Signal<string>) => {
     return {
         listingStatus: useSignal<ListingStatus | undefined>(undefined),
         queryString: useSignal(defaultQueryString),
-        dataCenter: useSignal(defaultDataCenter),
-        queryData: useQueryDataState(),
+        dataCenter: useSignal(dataCenterOf(homeworld.value)),
+        queryData: useQueryDataState(homeworld),
     }
 }

@@ -1,11 +1,12 @@
-import { ChangeEvent, useRef } from 'react';
+import { ChangeEvent, useEffect, useMemo, useRef } from 'react';
 import styles from './query.module.css';
 import UniversalisRequest, { ListingRequestStatus } from '../(universalis)/universalis-api';
 import { MarketInformation } from './table';
 import { KeysMatching } from '../(util)/util';
-import { useSignal } from '../(util)/signal';
+import { Signal, useSignal } from '../(util)/signal';
 import { WorldInformation } from './purchase';
 import { useAppContext } from '../context';
+import { allDataCenters } from '../(universalis)/data-center';
 
 export function QueryContainer() {
     const { queryState: { queryData } } = useAppContext();
@@ -66,7 +67,8 @@ function FetchStatus() {
 }
 
 export function QueryOptions() {
-    const { queryState: { dataCenter, queryString, queryData } } = useAppContext();
+    const { queryState: { queryString, queryData } } = useAppContext();
+    const [dataCenter, dataCenters] = useDataCenter();
     const onChangeQuery = (e: ChangeEvent<HTMLInputElement>) => { queryString.value = e.target.value; }
     const onChangeQuerySelect = (e: ChangeEvent<HTMLSelectElement>) => {
         const { queryString: _queryString, count, limit, minVelocity } = processQuery(e.target.value);
@@ -124,6 +126,23 @@ export function QueryOptions() {
     );
 }
 
+function useDataCenter(): [Signal<string>, string[]] {
+    const { configState: { homeworld }, queryState: { dataCenter } } = useAppContext();
+    const dataCenters = useMemo(() => {
+        const dataCenterInfo = allDataCenters.find(info => info.world === homeworld.value);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        return [dataCenterInfo!.world, dataCenterInfo!.dataCenter, dataCenterInfo!.region];
+    }, [homeworld]);
+
+    useEffect(() => {
+        if (!dataCenters.includes(dataCenter.value)) {
+            dataCenter.value = dataCenters[1];
+        }
+    }, [homeworld, dataCenter, dataCenters]);
+
+    return [dataCenter, dataCenters];
+}
+
 export function FetchButton() {
     const isFetching = useSignal(false);
     const { queryState: { listingStatus: listingStatusInfo, queryString, dataCenter, queryData } } = useAppContext();
@@ -168,14 +187,7 @@ export const preparedQueries = [
     { label: 'Maps', value: ':count 1, :limit 6, :name Timeworn .*skin Map' },
 ];
 
-export const dataCenters = [
-    "Seraph",
-    "Dynamis",
-    "North-America",
-];
-
 export const defaultQueryString = processQuery(preparedQueries[0].value).queryString;
-export const defaultDataCenter = dataCenters[1];
 
 export function processQuery(queryString: string) {
     interface ProcessQueryResultType {

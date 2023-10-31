@@ -1,7 +1,6 @@
 import { dataCenterOf } from '../(universalis)/data-center';
 import { Ingredient } from '../(universalis)/items';
 import { calculatePurchases } from '../(universalis)/purchases';
-import { HOMEWORLD } from '../(universalis)/statistics';
 import { entriesOf } from '../(util)/util';
 import { useAppContext } from '../context';
 import { QueryDataState } from './query-data';
@@ -27,9 +26,9 @@ interface AllPurchaseInfo {
 };
 
 export function WorldInformation() {
-    const { queryState: { queryData } } = useAppContext();
+    const { configState: { homeworld }, queryState: { queryData } } = useAppContext();
     const items = collectCheckedItems(queryData);
-    const worldInfo = getPurchaseInfo(queryData, items);
+    const worldInfo = getPurchaseInfo(queryData, items, homeworld.value);
 
     return (
         <div className={styles.worldInfo}>
@@ -119,7 +118,7 @@ const collectCheckedItems = (queryData: QueryDataState): Ingredient[] => {
         .map(([key, val]) => ({ itemId: key, count: val }));
 }
 
-const getPurchaseInfo = (queryData: QueryDataState, items: Ingredient[]): AllPurchaseInfo => {
+const getPurchaseInfo = (queryData: QueryDataState, items: Ingredient[], homeworld: string): AllPurchaseInfo => {
     const itemInfo = queryData.universalisInfo?.itemInfo ?? {};
 
     // build the world info
@@ -138,7 +137,7 @@ const getPurchaseInfo = (queryData: QueryDataState, items: Ingredient[]): AllPur
 
         /* eslint-disable @typescript-eslint/no-unnecessary-condition */
         for (const listing of usedListings) {
-            const world = listing.world ?? HOMEWORLD;
+            const world = listing.world ?? homeworld;
             const usedCount = listing.count;
             const dataCenter = dataCenterOf(world);
             purchases[dataCenter] ??= {};

@@ -29,11 +29,11 @@ interface ChildStats {
     childStats: ChildStats[],
 }
 
-export const allRecursiveStatsOf = (count: number, isHq: boolean, info: UniversalisInfo): RecursiveStats => {
+export const allRecursiveStatsOf = (count: number, isHq: boolean, info: UniversalisInfo, homeworld: string): RecursiveStats => {
     const allIds = allIdsOf(info);
     const maxCounts = maxCountsOf(info.itemInfo, count);
     const itemStats = allIds
-        .reduce<ItemStats>((prev, itemId) => ({ ...prev, [itemId]: statisticsOf(info.itemInfo[itemId], maxCounts[itemId]) }), {});
+        .reduce<ItemStats>((prev, itemId) => ({ ...prev, [itemId]: statisticsOf(info.itemInfo[itemId], maxCounts[itemId], homeworld) }), {});
     const itemInfos = info.itemInfo;
 
     const topProfitStats = [];

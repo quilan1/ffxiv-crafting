@@ -9,11 +9,14 @@ export interface AppState {
     configState: ConfigState,
 }
 
-export const useAppStateDefault = () => {
+export const useAppStateDefault = (): AppState => {
+    const configState = useConfigStateDefault();
+    const queryState = useQueryStateDefault(configState.homeworld);
+    const exchangeState = useExchangeStateDefault();
     return {
-        queryState: useQueryStateDefault(),
-        exchangeState: useExchangeStateDefault(),
-        configState: useConfigStateDefault(),
+        queryState,
+        exchangeState,
+        configState,
     }
 }
 

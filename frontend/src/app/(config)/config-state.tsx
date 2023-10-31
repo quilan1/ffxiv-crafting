@@ -7,6 +7,6 @@ export interface ConfigState {
 
 export function useConfigStateDefault(): ConfigState {
     return {
-        homeworld: useSignal(allDataCenters[0].world)
+        homeworld: useSignal(allDataCenters[0].world, "homeworld")
     }
 }

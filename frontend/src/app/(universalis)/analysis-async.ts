@@ -2,10 +2,10 @@ import { RecursiveStats } from "./analysis";
 import { OptionType, Some } from "../(util)/option";
 import { UniversalisInfo } from "./universalis-api";
 
-export const allRecursiveStatsOfAsync = (count: number, isHq: boolean, info: UniversalisInfo): Promise<RecursiveStats> => {
+export const allRecursiveStatsOfAsync = (count: number, isHq: boolean, info: UniversalisInfo, homeworld: string): Promise<RecursiveStats> => {
     return new Promise((resolve, _reject) => {
         const worker = new Worker(new URL("./analysis-worker", import.meta.url));
-        worker.postMessage({ count, isHq, info });
+        worker.postMessage({ count, isHq, info, homeworld });
         worker.onmessage = (e: MessageEvent<RecursiveStats>) => {
             const stats = e.data;
             reattachOptions(stats);

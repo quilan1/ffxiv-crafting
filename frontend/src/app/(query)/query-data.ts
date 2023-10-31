@@ -5,10 +5,11 @@ import { UniversalisInfo } from "../(universalis)/universalis-api";
 import { useDeferredFn } from "../(util)/deferred-fn";
 import { recalculateUniversalis } from "./query-data-universalis";
 import { preparedQueries, processQuery } from "./query";
+import { Signal } from "../(util)/signal";
 
 type DeferredFn = (fn: () => Promise<void>) => void;
 
-export function useQueryDataState() {
+export function useQueryDataState(homeworld: Signal<string>) {
     const { count, limit, minVelocity } = processQuery(preparedQueries[0].value);
     const ui = new QueryDataUiState(useState<QueryDataUi>({ count, limit, minVelocity, isHq: false }));
 
@@ -20,7 +21,7 @@ export function useQueryDataState() {
     const prevUi = useRef({ ...ui.state });
     const deferredFn = useDeferredFn(20);
 
-    return new QueryDataState(ui, calc, deferredFn, prevUi);
+    return new QueryDataState(ui, calc, homeworld, deferredFn, prevUi);
 }
 
 export enum ChangedState {
@@ -36,14 +37,17 @@ export class QueryDataState {
     private _calc: QueryDataCalcState;
     private deferredFn: DeferredFn;
     private prevUi: MutableRefObject<QueryDataUi>;
+    private homeworld: Signal<string>;
 
     constructor(ui: QueryDataUiState, calc: QueryDataCalcState,
+        homeworld: Signal<string>,
         deferredFn: DeferredFn, prevUi: MutableRefObject<QueryDataUi>
     ) {
         this._ui = ui;
         this._calc = calc;
         this.deferredFn = deferredFn;
         this.prevUi = prevUi;
+        this.homeworld = homeworld;
     }
 
     get ui() { return this._ui; }
@@ -71,7 +75,7 @@ export class QueryDataState {
         const calc = { ... this.calc.state, universalisInfo };
         const changedValues = new Set<ChangedState>();
         changedValues.add(ChangedState.UNIVERSALIS_INFO);
-        this.calc.state = await recalculateUniversalis(this.ui.state, calc, changedValues);
+        this.calc.state = await recalculateUniversalis(this.ui.state, calc, changedValues, this.homeworld.value);
         this.prevUi.current = { ...this.ui.state };
     }
 
@@ -86,7 +90,7 @@ export class QueryDataState {
         if (ui.limit != current.limit) changedValues.add(ChangedState.LIMIT);
         if (ui.minVelocity != current.minVelocity) changedValues.add(ChangedState.MIN_VELOCITY);
         if (ui.isHq != current.isHq) changedValues.add(ChangedState.IS_HQ);
-        this.calc.state = await recalculateUniversalis(ui, this.calc.state, changedValues);
+        this.calc.state = await recalculateUniversalis(ui, this.calc.state, changedValues, this.homeworld.value);
         this.prevUi.current = { ...ui };
     }
 }

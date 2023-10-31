@@ -89,12 +89,12 @@ function ConfigText() {
                             Select one of the query patterns from
                             the <span style={{ fontWeight: 'bold' }}>&apos;Examples&apos;</span> dropdown then
                             press <span style={{ fontWeight: 'bold' }}>&apos;Fetch&apos;</span>.
-                            <div><Image src={startingExample} alt="Choosing an example from the Query tab" /></div>
+                            <div><Image src={startingExample} alt="Choosing an example from the Query tab" priority={true} /></div>
                         </li>
                         <li>
                             Choose a craft with a high expected profit, and click the checkmark next to the top level item of that
                             craft.
-                            <div><Image src={craftExample} alt="Identifying a craft with a high profit" /></div>
+                            <div><Image src={craftExample} alt="Identifying a craft with a high profit" priority={true} /></div>
                         </li>
                         <li>
                             Ingredient purchase listings will be shown below with retainer names, ordered by data center.
@@ -102,7 +102,7 @@ function ConfigText() {
                                 src={purchaseExample}
                                 alt="Purchase information for items"
                                 style={{ border: '2px solid #404040' }}
-                                priority={false}
+                                priority={true}
                             /></div>
                         </li>
                     </ol>

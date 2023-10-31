@@ -9,7 +9,7 @@ import { QueryDataUi } from "./query-data-ui";
 import { KeyedTableRow } from "./table";
 
 export const recalculateUniversalis = async (
-    ui: QueryDataUi, calculated: QueryDataCalc, changedStates: Set<ChangedState>
+    ui: QueryDataUi, calculated: QueryDataCalc, changedStates: Set<ChangedState>, homeworld: string
 ) => {
     if (calculated.universalisInfo === undefined) {
         return { ...calculated };
@@ -22,7 +22,7 @@ export const recalculateUniversalis = async (
     if (changedStates.has(ChangedState.UNIVERSALIS_INFO)
         || changedStates.has(ChangedState.COUNT)
         || changedStates.has(ChangedState.IS_HQ)) {
-        const recursiveStats = await recalculateRecStatistics(ui, calculated);
+        const recursiveStats = await recalculateRecStatistics(ui, calculated, homeworld);
         calculated = { ...calculated, recursiveStats };
     }
 
@@ -42,10 +42,10 @@ export const recalculateUniversalis = async (
     return { ...calculated };
 }
 
-const recalculateRecStatistics = async (ui: QueryDataUi, calculated: QueryDataCalc): Promise<RecursiveStats | undefined> => {
+const recalculateRecStatistics = async (ui: QueryDataUi, calculated: QueryDataCalc, homeworld: string): Promise<RecursiveStats | undefined> => {
     if (calculated.universalisInfo === undefined) return undefined;
     const _count = tryParse(ui.count).unwrapOr(1);
-    return await allRecursiveStatsOfAsync(_count, ui.isHq, calculated.universalisInfo)
+    return await allRecursiveStatsOfAsync(_count, ui.isHq, calculated.universalisInfo, homeworld)
 }
 
 const recalculateTableRows = (ui: QueryDataUi, calculated: QueryDataCalc): QueryDataCalc => {
