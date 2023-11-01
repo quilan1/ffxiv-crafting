@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct Input {
     pub query: String,
-    pub purchase_from: Option<String>,
+    pub purchase_from: String,
     pub retain_num_days: Option<f32>,
 }
 

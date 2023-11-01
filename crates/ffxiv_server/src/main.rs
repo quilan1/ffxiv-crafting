@@ -36,15 +36,6 @@ fn setup() {
     use chrono::Local;
     use std::io::Write;
 
-    if let Ok(val) = std::env::var("FFXIV_DATA_CENTERS") {
-        log::info!(target: "ffxiv_server", "FFXIV_DATA_CENTERS is currently set to {val}");
-    } else {
-        log::info!(target: "ffxiv_server",
-            "FFXIV_DATA_CENTERS environment variable not currently set. Defaulting to Dynamis."
-        );
-        std::env::set_var("FFXIV_DATA_CENTERS", "Dynamis");
-    };
-
     if let Ok(val) = std::env::var("FFXIV_ITEM_DB_CONN") {
         log::info!(target: "ffxiv_server", "FFXIV_ITEM_DB_CONN is currently set to {val}");
     } else {

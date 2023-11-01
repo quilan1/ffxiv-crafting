@@ -59,8 +59,6 @@ async fn make_market_request_info<F: FileDownloader>(
 ) -> RequestStream {
     let worlds: Vec<_> = payload
         .purchase_from
-        .or(std::env::var("FFXIV_DATA_CENTERS").ok())
-        .unwrap()
         .split(',')
         .map(str::trim)
         .map(ToString::to_string)
