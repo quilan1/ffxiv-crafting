@@ -1,6 +1,6 @@
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 
-export type SimpleStateUse<T> = [T, Dispatch<SetStateAction<T>>];
+export type SimpleStateUse<T> = [T, (value: T) => void];
 
 export type Signaled<T extends object> = {
     [K in keyof T]-?: Signal<T[K]>
@@ -18,10 +18,7 @@ export class Signal<T> {
     }
 
     get value(): T { return this.state };
-    set value(value: T) {
-        if (this.name) localStorage.setItem(this.name, value as string);
-        this.setState(value);
-    }
+    set value(value: T) { this.setState(value); }
 }
 
 export function useSignal<T>(val: T, name?: string): Signal<T> {
@@ -33,5 +30,12 @@ export function useSignal<T>(val: T, name?: string): Signal<T> {
         }
     }, [name, val]);
 
-    return new Signal([state, setState], name);
+    const namedSetState = (value: T) => {
+        if (name !== undefined) {
+            localStorage.setItem(name, value as string)
+        }
+        setState(value);
+    }
+
+    return new Signal([state, namedSetState as Dispatch<SetStateAction<T>>]);
 }
