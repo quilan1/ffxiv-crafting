@@ -73,7 +73,7 @@ export function QueryOptions() {
     const onChangeQuerySelect = (e: ChangeEvent<HTMLSelectElement>) => {
         const { queryString: _queryString, count, limit, minVelocity } = processQuery(e.target.value);
         queryString.value = _queryString;
-        queryData.ui.state = { ...queryData.ui.state, count, limit, minVelocity };
+        queryData.inputs.values = { ...queryData.inputs.values, count, limit, minVelocity };
     };
     const onChangePurchaseFrom = (e: ChangeEvent<HTMLSelectElement>) => { purchaseFrom.value = e.target.value; };
     const onChangeCount = (e: ChangeEvent<HTMLInputElement>) => queryData.count = e.target.value;

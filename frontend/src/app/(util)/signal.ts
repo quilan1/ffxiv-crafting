@@ -2,6 +2,10 @@ import { Dispatch, SetStateAction, useEffect, useState } from "react";
 
 export type SimpleStateUse<T> = [T, Dispatch<SetStateAction<T>>];
 
+export type Signaled<T extends object> = {
+    [K in keyof T]-?: Signal<T[K]>
+};
+
 export class Signal<T> {
     readonly state: T;
     readonly setState: SimpleStateUse<T>[1];

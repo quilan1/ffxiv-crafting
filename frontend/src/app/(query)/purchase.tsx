@@ -3,7 +3,7 @@ import { Ingredient } from '../(universalis)/items';
 import { calculatePurchases } from '../(universalis)/purchases';
 import { entriesOf } from '../(util)/util';
 import { useAppContext } from '../context';
-import { QueryDataState } from './query-data';
+import { QuerySharedState } from './(shared-state)/query-shared';
 import styles from './query.module.css';
 
 interface PurchaseInfo {
@@ -100,7 +100,7 @@ function PurchaseInfoNode({ worldBuyInfo }: { worldBuyInfo: PurchaseInfo }) {
     );
 }
 
-const collectCheckedItems = (queryData: QueryDataState): Ingredient[] => {
+const collectCheckedItems = (queryData: QuerySharedState): Ingredient[] => {
     const checkedItems = queryData.tableRows
         ?.filter(({ row }) => row.item.itemId > 19)
         ?.filter(({ row, key }) => !row.hasChildren || queryData.hiddenKeys.has(key))
@@ -118,7 +118,7 @@ const collectCheckedItems = (queryData: QueryDataState): Ingredient[] => {
         .map(([key, val]) => ({ itemId: key, count: val }));
 }
 
-const getPurchaseInfo = (queryData: QueryDataState, items: Ingredient[], homeworld: string): AllPurchaseInfo => {
+const getPurchaseInfo = (queryData: QuerySharedState, items: Ingredient[], homeworld: string): AllPurchaseInfo => {
     const itemInfo = queryData.universalisInfo?.itemInfo ?? {};
 
     // build the world info

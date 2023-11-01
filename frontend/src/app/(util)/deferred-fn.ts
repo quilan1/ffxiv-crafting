@@ -1,5 +1,7 @@
 import { useRef } from "react";
 
+export type DeferredFn = (fn: () => Promise<void>) => void;
+
 export function useDeferredFn(timeout: number) {
     const isRunning = useRef(false);
     const timeoutId = useRef<NodeJS.Timeout | undefined>(undefined);
