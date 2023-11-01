@@ -30,7 +30,7 @@ interface UniversalisRequestState {
 type ListingStatusFn = (_: ListingStatus) => void;
 type IsCancelledFn = () => boolean;
 
-export default class UniversalisRequest {
+export class UniversalisRequest {
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     private statusFn: ListingStatusFn = () => { };
     private isCancelledFn: IsCancelledFn = () => false;

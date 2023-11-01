@@ -2,7 +2,7 @@ import { RecursiveStats } from '../(universalis)/analysis';
 import { allRecursiveStatsOfAsync } from '../(universalis)/analysis-async';
 import { None, OptionType, Some, optMax, optMin, optSub } from '../(util)/option';
 import { Signal } from '../(util)/signal';
-import UniversalisRequest, { UniversalisInfo } from '../(universalis)/universalis-api';
+import { UniversalisInfo, UniversalisRequest } from '../(universalis)/universalis-api';
 import styles from './exchange.module.css';
 import { ExchangeCost, ValidExchangeType, exchangeCosts, exchangeProfits, scripsPerCraft } from './rewards';
 import { dataCenterOf } from '../(universalis)/data-center';

@@ -1,5 +1,5 @@
 import { Signaled, useSignal } from "@/app/(util)/signal";
-import { preparedQueries, processQuery } from "../query";
+import { defaultQuery } from "../query-processing";
 
 export interface QuerySharedInputs {
     count: string,
@@ -9,10 +9,10 @@ export interface QuerySharedInputs {
 }
 
 export function useQuerySharedInputsDefault(): Signaled<QuerySharedInputs> {
-    const { count: _count, limit: _limit, minVelocity: _minVelocity } = processQuery(preparedQueries[0].value);
-    const count = useSignal(_count);
-    const limit = useSignal(_limit);
-    const minVelocity = useSignal(_minVelocity);
+    const { count: _count, limit: _limit, minVelocity: _minVelocity } = defaultQuery;
+    const count = useSignal(_count ?? '');
+    const limit = useSignal(_limit ?? '');
+    const minVelocity = useSignal(_minVelocity ?? '');
     const isHq = useSignal(false);
     return { count, limit, minVelocity, isHq };
 }
