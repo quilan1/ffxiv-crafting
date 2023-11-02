@@ -15,7 +15,7 @@ This will take some time for the rust server to compile the project for the firs
 ### Example usage
 
 To access the webpage, simply navigate on your browser to:
-[http://localhost:3000](http://localhost:3000).
+[http://localhost](http://localhost).
 
 As an example of usage, where the 'Filters:' dropdown sits, choose 'Level 90 Crafting Mats' as an example, and click 'Refresh'. This should, after a brief communication, fill the table with crafting information.
 
@@ -25,7 +25,7 @@ The Rust crates are inside of the 'crates' directory, and the Typescript files a
 
 ### Frontend
 
-* [frontend](frontend): The frontend has been completely rewritten as a Next.JS React project. It's now hosted on port 3000.
+* [frontend](frontend): The frontend has been completely rewritten as a Next.JS React project. It's now hosted on port 3000, but routed through nginx to port 80.
 
 ### Backend
 
