@@ -1,9 +1,11 @@
+import { useMemo } from 'react';
+import { useHomeworld } from '../(config)/config-state';
 import { dataCenterOf } from '../(universalis)/data-center';
 import { Ingredient } from '../(universalis)/items';
 import { calculatePurchases } from '../(universalis)/purchases';
 import { entriesOf } from '../(util)/util';
-import { useAppContext } from '../context';
 import { QuerySharedState } from './(shared-state)/query-shared';
+import { useQueryState } from './query-state';
 import styles from './query.module.css';
 
 interface PurchaseInfo {
@@ -26,9 +28,12 @@ interface AllPurchaseInfo {
 };
 
 export function WorldInformation() {
-    const { configState: { homeworld }, queryState: { queryData } } = useAppContext();
-    const items = collectCheckedItems(queryData);
-    const worldInfo = getPurchaseInfo(queryData, items, homeworld.value);
+    const { queryData } = useQueryState();
+    const homeworld = useHomeworld();
+    const worldInfo = useMemo(() => {
+        const items = collectCheckedItems(queryData);
+        return getPurchaseInfo(queryData, items, homeworld.value);
+    }, [queryData, homeworld.value]);
 
     return (
         <div className={styles.worldInfo}>
