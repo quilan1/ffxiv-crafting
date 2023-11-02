@@ -45,16 +45,17 @@ impl Processor {
     ///
     /// ```rust,no_run
     /// use mock_traits::ReqwestDownloader;
-    /// use ffxiv_universalis::Processor;
+    /// use ffxiv_universalis::{Processor, RequestBuilder};
     ///
     /// let processor = Processor::new();
     /// tokio::spawn(processor.async_processor());
     ///
     /// // Grab all of the Dynamis data center market board data
     /// // for the item 'Water Shard' from within the past 7 days.
-    /// let worlds = [String::from("Dynamis")];
+    /// let world = String::from("Dynamis");
     /// let ids = [7];  // ID=7 is "Water Shard"
-    /// let handle = processor.make_request::<ReqwestDownloader>(&worlds, &ids, 7.0);
+    /// let handle = RequestBuilder::new(&ids, world)
+    ///     .execute::<ReqwestDownloader>(&processor);
     /// ```
     ///
     /// When finished with the processor, one may disconnect it. This will allow it to finish its current
@@ -72,11 +73,18 @@ impl Processor {
     /// ```
     pub fn make_request<F: FileDownloader>(
         &self,
-        worlds: &[String],
         ids: &[u32],
+        purchase_from: String,
+        sell_to: String,
         retain_num_days: f32,
     ) -> ProcessorHandle {
-        let data = ProcessorData::new(self.async_processor(), worlds, ids, retain_num_days);
+        let data = ProcessorData::new(
+            self.async_processor(),
+            ids,
+            purchase_from,
+            sell_to,
+            retain_num_days,
+        );
         let status = data.status.clone();
         let uuid = data.uuid.clone();
 
@@ -91,28 +99,26 @@ impl Processor {
         let mut chunk_id = 1;
         let mut handles = Vec::new();
         for ids in &id_chunks {
-            for world in &data.worlds {
-                let listings = Request::<F>::new(
-                    data.clone(),
-                    world.clone(),
-                    ids.clone(),
-                    RequestType::Listing,
-                    chunk_id,
-                )
-                .process_listing();
+            let listings = Request::<F>::new(
+                data.clone(),
+                data.purchase_from.clone(),
+                ids.clone(),
+                RequestType::Listing,
+                chunk_id,
+            )
+            .process_listing();
 
-                let history = Request::<F>::new(
-                    data.clone(),
-                    world.clone(),
-                    ids.clone(),
-                    RequestType::History,
-                    chunk_id,
-                )
-                .process_listing();
+            let history = Request::<F>::new(
+                data.clone(),
+                data.sell_to.clone(),
+                ids.clone(),
+                RequestType::History,
+                chunk_id,
+            )
+            .process_listing();
 
-                handles.push((listings, history));
-                chunk_id += 1;
-            }
+            handles.push((listings, history));
+            chunk_id += 1;
         }
 
         let mut async_packets = Vec::new();

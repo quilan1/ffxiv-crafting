@@ -2,7 +2,7 @@ mod mock_server;
 
 mod mocks {
     use anyhow::Result;
-    use ffxiv_universalis::{ListingsResults, Processor};
+    use ffxiv_universalis::{ListingsResults, Processor, RequestBuilder};
 
     use crate::mock_server::MockDownloader;
 
@@ -11,13 +11,14 @@ mod mocks {
     async fn send_universalis_request(
         processor: Processor,
         all_ids: &[u32],
-        worlds: Vec<String>,
+        purchase_from: String,
     ) -> Result<ListingsResults> {
         let all_ids = Vec::from(all_ids);
 
         let async_processor = processor.async_processor();
-        let mut universalis_handle =
-            processor.make_request::<MockDownloader>(&worlds, &all_ids, 7.0);
+        let mut universalis_handle = RequestBuilder::new(&all_ids, purchase_from)
+            .retain_num_days(7.0)
+            .execute::<MockDownloader>(&processor);
 
         async_processor.disconnect();
         async_processor.await;
@@ -32,7 +33,7 @@ mod mocks {
             listings,
             history,
             failures,
-        } = send_universalis_request(processor, &ALL_IDS_ONE, vec!["Dynamis".to_owned()]).await?;
+        } = send_universalis_request(processor, &ALL_IDS_ONE, "Dynamis".to_owned()).await?;
 
         for id in &ALL_IDS_ONE {
             assert!(listings.contains_key(id));

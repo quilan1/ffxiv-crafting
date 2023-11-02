@@ -36,10 +36,12 @@ export class UniversalisRequest {
     private isCancelledFn: IsCancelledFn = () => false;
     private searchQuery: string;
     private purchaseFrom: string;
+    private sellTo: string;
 
-    constructor(searchFilter: string, purchaseFrom: string) {
+    constructor(searchFilter: string, purchaseFrom: string, sellTo: string) {
         this.searchQuery = searchFilter;
         this.purchaseFrom = purchaseFrom;
+        this.sellTo = sellTo;
     }
 
     setStatusFn(fn: ListingStatusFn) {
@@ -57,7 +59,13 @@ export class UniversalisRequest {
         const socket = this.openWebSocket();
         const state: UniversalisRequestState = { socket, isProcessing: true, failures: 0 };
 
-        const recipePayload = JSON.stringify({ query: this.searchQuery, purchaseFrom: this.purchaseFrom, retainNumDays: 14.0 });
+        const recipePayload = JSON.stringify({
+            query: this.searchQuery,
+            purchaseFrom: this.purchaseFrom,
+            sellTo: this.sellTo,
+            retainNumDays: 14.0
+        });
+
         socket.addEventListener("open", () => { socket.send(recipePayload); });
         socket.addEventListener("close", e => { this.onClose(state, e); });
         socket.addEventListener("message", e => { this.onMessage(state, e); });

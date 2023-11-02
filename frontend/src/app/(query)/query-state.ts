@@ -5,6 +5,7 @@ import { defaultQuery } from "./query-processing";
 import { QuerySharedState, useQuerySharedStateDefault } from "./(shared-state)/query-shared";
 import { useAppContext } from "../context";
 import { MutableRefObject, useEffect, useMemo, useRef } from "react";
+import { useHomeworld } from "../(config)/config-state";
 
 export interface QueryState {
     queryString: Signal<string>,
@@ -32,18 +33,32 @@ export function useQueryState(): QueryState {
     return useAppContext().queryState;
 }
 
-export function usePurchaseFrom(): [Signal<string>, string[]] {
+export interface PurchaseOption {
+    label: string,
+    value: string,
+}
+
+export function usePurchaseFrom(): [Signal<string>, PurchaseOption[]] {
     const { purchaseFrom } = useQueryState();
     const { configState: { homeworld } } = useAppContext();
     const purchaseFromOptions = useMemo(() => {
-        const dataCenterInfo = allDataCenters.find(info => info.world === homeworld.value);
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        return [dataCenterInfo!.world, dataCenterInfo!.dataCenter, dataCenterInfo!.region];
+        const dataCenter = dataCenterOf(homeworld.value);
+        const dataCenterInfo = allDataCenters.filter(info => info.dataCenter === dataCenter);
+        const results = [
+            { value: dataCenterInfo[0].region, label: 'Cross-DC' },
+            { value: dataCenterInfo[0].dataCenter, label: 'Cross-World' },
+        ];
+
+        for (const info of dataCenterInfo) {
+            results.push({ value: info.world, label: info.world });
+        }
+
+        return results;
     }, [homeworld]);
 
     useEffect(() => {
-        if (!purchaseFromOptions.includes(purchaseFrom.value)) {
-            purchaseFrom.value = purchaseFromOptions[1];
+        if (!purchaseFromOptions.map(options => options.value).includes(purchaseFrom.value)) {
+            purchaseFrom.value = purchaseFromOptions[1].value;
         }
     }, [homeworld, purchaseFrom, purchaseFromOptions]);
 
@@ -52,6 +67,7 @@ export function usePurchaseFrom(): [Signal<string>, string[]] {
 
 export function useFetchQuery() {
     const { listingStatus, queryString, purchaseFrom, isFetching, isCancelled, queryData } = useQueryState();
+    const homeworld = useHomeworld();
 
     return () => {
         void (async () => {
@@ -59,7 +75,7 @@ export function useFetchQuery() {
                 isFetching.value = true;
                 isCancelled.current = false;
                 try {
-                    const universalisInfo = await new UniversalisRequest(queryString.value, purchaseFrom.value)
+                    const universalisInfo = await new UniversalisRequest(queryString.value, purchaseFrom.value, homeworld.value)
                         .setIsCancelled(() => isCancelled.current)
                         .setStatusFn(status => { listingStatus.value = status; })
                         .fetch();

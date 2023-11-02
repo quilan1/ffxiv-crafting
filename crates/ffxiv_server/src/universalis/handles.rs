@@ -5,7 +5,9 @@ use std::{
 
 use anyhow::Result;
 use axum::extract::ws::{Message, WebSocket};
-use ffxiv_universalis::{MReceiver, PacketResult, Processor, ProcessorHandle, RequestState};
+use ffxiv_universalis::{
+    MReceiver, PacketResult, Processor, ProcessorHandle, RequestBuilder, RequestState,
+};
 use futures::{future::BoxFuture, stream::FuturesUnordered, FutureExt, StreamExt};
 use mock_traits::FileDownloader;
 use tokio::{select, sync::broadcast::Receiver, time::sleep};
@@ -57,16 +59,10 @@ async fn make_market_request_info<F: FileDownloader>(
     all_ids: &[u32],
     server_uuid: &str,
 ) -> RequestStream {
-    let worlds: Vec<_> = payload
-        .purchase_from
-        .split(',')
-        .map(str::trim)
-        .map(ToString::to_string)
-        .collect();
-
-    let retain_num_days = payload.retain_num_days.unwrap_or(7.0);
-
-    let handle = universalis_processor.make_request::<F>(&worlds, all_ids, retain_num_days);
+    let handle = RequestBuilder::new(all_ids, payload.purchase_from.clone())
+        .sell_to(payload.sell_to.clone())
+        .retain_num_days(payload.retain_num_days.unwrap_or(7.0))
+        .execute::<F>(universalis_processor);
     log::info!(target: "ffxiv_server",
         "Server uuid {server_uuid} maps to universalis uuid {}",
         handle.uuid()

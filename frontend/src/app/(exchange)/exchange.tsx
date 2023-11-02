@@ -166,8 +166,8 @@ const fetchExchangeInfo = async (statuses: Signal<string>[], homeworld: string, 
 
 const asyncProfitResults = async (cost: ExchangeCost, status: Signal<string>, homeworld: string, purchaseFrom: string): Promise<ProfitResult | null> => {
     status.value = `${cost.name}: Fetching price & profit information from universalis`;
-    const _price = asyncPrice(cost.search, purchaseFrom);
-    const _profit = asyncProfit(cost.type, purchaseFrom);
+    const _price = asyncPrice(cost.search, purchaseFrom, homeworld);
+    const _profit = asyncProfit(cost.type, purchaseFrom, homeworld);
     const universalisInfoPrice = await _price;
     status.value = `${cost.name}: Calculating price statistics`;
     const universalisInfoStatsPrice = await universalisStats(cost.count, universalisInfoPrice, homeworld);
@@ -184,15 +184,15 @@ const asyncProfitResults = async (cost: ExchangeCost, status: Signal<string>, ho
     };
 }
 
-const asyncPrice = async (search: string, purchaseFrom: string) => await new UniversalisRequest(search, purchaseFrom).fetch();
+const asyncPrice = async (search: string, purchaseFrom: string, sellTo: string) => await new UniversalisRequest(search, purchaseFrom, sellTo).fetch();
 
-const asyncProfit = async (type: ValidExchangeType, purchaseFrom: string) => {
+const asyncProfit = async (type: ValidExchangeType, purchaseFrom: string, sellTo: string) => {
     const names = exchangeProfits
         .filter(item => item.type === type)
         .map(item => item.name.replaceAll(',', '\\,'))
         .join('|');
     const search = `:name !${names}`;
-    return await new UniversalisRequest(search, purchaseFrom).fetch();
+    return await new UniversalisRequest(search, purchaseFrom, sellTo).fetch();
 };
 
 const universalisStats = async (count: number, universalisInfo: UniversalisInfo | null, homeworld: string) => {

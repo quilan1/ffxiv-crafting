@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 pub struct Input {
     pub query: String,
     pub purchase_from: String,
+    pub sell_to: String,
     pub retain_num_days: Option<f32>,
 }
 

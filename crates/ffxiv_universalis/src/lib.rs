@@ -10,7 +10,7 @@
 //!
 //! ```rust,no_run
 //! use ffxiv_items::ItemDB;
-//! use ffxiv_universalis::{ListingsResults, PacketResult, Processor};
+//! use ffxiv_universalis::{ListingsResults, PacketResult, Processor, RequestBuilder};
 //! use futures::StreamExt;
 //! use mock_traits::{ReqwestDownloader};
 //!
@@ -23,16 +23,15 @@
 //!     db.initialize::<ReqwestDownloader>().await?;
 //!
 //!     // Prepare the values to request from universalis
-//!     let retain_num_days = 7.0;
-//!     let worlds = [String::from("Seraph")];
+//!     let world = String::from("Seraph");
 //!     let ids = db
 //!         .ids_from_query(":rlevel 90, :cat !Metal|Lumber|Leather|Stone|Cloth|Reagent")
 //!         .await?;
 //!
 //!     // Request listings for the item ids
 //!     let processor = Processor::new();
-//!     let mut request =
-//!         processor.make_request::<ReqwestDownloader>(&worlds, &ids, retain_num_days);
+//!     let mut request = RequestBuilder::new(&ids, world)
+//!         .execute::<ReqwestDownloader>(&processor);
 //!
 //!     // Spawn the server
 //!     let server = tokio::spawn(processor.async_processor());
@@ -73,7 +72,9 @@ mod universalis;
 use multi_signal::{multi_signal, MSender};
 
 pub use multi_signal::MReceiver;
-pub use processor::{ListingsResults, PacketResult, Processor, ProcessorHandle, Status};
+pub use processor::{
+    ListingsResults, PacketResult, Processor, ProcessorHandle, RequestBuilder, Status,
+};
 use universalis::AsyncProcessorHandle;
 pub use universalis::{AsyncProcessor, ItemListing, ListingsMap, RequestState};
 

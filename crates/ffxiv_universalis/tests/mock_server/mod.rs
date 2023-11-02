@@ -69,14 +69,12 @@ impl MockDownloader {
 
 impl FileDownloader for MockDownloader {
     fn download(url: &str) -> futures::future::BoxFuture<'_, Result<String>> {
-        match url {
-            "https://universalis.app/api/v2/Dynamis/31980,2?entries=0" => {
-                Self::get_listings("31980,2").boxed()
-            }
-            "https://universalis.app/api/v2/history/Dynamis/31980,2" => {
-                Self::get_histories("Dynamis", "31980,2").boxed()
-            }
-            _ => panic!("No match for {url}"),
+        if url.starts_with("https://universalis.app/api/v2/Dynamis/") {
+            Self::get_listings("31980,2").boxed()
+        } else if url.starts_with("https://universalis.app/api/v2/history/Dynamis/") {
+            Self::get_histories("Dynamis", "31980,2").boxed()
+        } else {
+            panic!("No match for {url}")
         }
     }
 }

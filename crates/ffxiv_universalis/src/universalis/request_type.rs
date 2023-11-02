@@ -21,9 +21,10 @@ impl RequestType {
                 ids.as_ref()
             ),
             RequestType::History => format!(
-                "https://universalis.app/api/v2/history/{}/{}",
+                "https://universalis.app/api/v2/history/{}/{}?entriesWithin={}",
                 world.as_ref(),
-                ids.as_ref()
+                ids.as_ref(),
+                2 * 7 * 24 * 60 * 60, // two weeks, in seconds
             ),
         }
     }

@@ -146,7 +146,7 @@ function OptionsInputs() {
             <div><div>
                 <label>Purchase From: </label>
                 <select onChange={onChangePurchaseFrom} value={purchaseFrom.value}>{
-                    purchaseFromOptions.map(dc => <option key={dc} value={dc}>{dc}</option>)
+                    purchaseFromOptions.map(({ label, value }) => <option key={value} value={value}>{label}</option>)
                 }</select>
             </div></div>
             <div><div>

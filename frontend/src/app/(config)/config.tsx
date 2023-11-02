@@ -111,8 +111,9 @@ function ConfigText() {
             <h3>References</h3>
             <div>
                 <ul>
-                    <li><a href="https://github.com/quilan1/ffxiv-crafting#query-language">Query string format reference</a></li>
+                    <li><a href="https://github.com/quilan1/ffxiv-crafting">This Project&apos;s GitHub</a> and query string format reference.</li>
                     <li><a href="https://universalis.app/">Universalis App</a></li>
+                    <li><a href="https://notranged.github.io/#/solver">Crafting Solver Macros</a></li>
                 </ul>
             </div>
         </div >
