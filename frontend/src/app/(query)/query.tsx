@@ -3,12 +3,11 @@ import styles from './query.module.css';
 import { ListingRequestStatus } from '../(universalis)/universalis-api';
 import { MarketInformation } from './table';
 import { WorldInformation } from './purchase';
-import { useAppContext } from '../context';
 import { useFetchQuery, usePurchaseFrom, useQueryState } from './query-state';
 import { preparedQueries } from './query-processing';
 
 export function QueryContainer() {
-    const { queryState: { queryData } } = useAppContext();
+    const { queryData } = useQueryState();
     return <>
         <QueryPanel />
         <MarketInformation />

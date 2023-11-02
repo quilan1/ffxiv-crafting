@@ -4,7 +4,7 @@ import styles from './config.module.css';
 import startingExample from './startingExample.png';
 import craftExample from './craftExample.png';
 import purchaseExample from './purchaseExample.png';
-import { useAppContext } from '../context';
+import { useHomeworld } from './config-state';
 
 export function ConfigContainer() {
     return (
@@ -16,7 +16,7 @@ export function ConfigContainer() {
 }
 
 function ConfigStatus() {
-    const { configState: { homeworld } } = useAppContext();
+    const homeworld = useHomeworld();
 
     const regions = [...allDataCenters
         .reduce((set, info) => set.add(info.region), new Set<string>())

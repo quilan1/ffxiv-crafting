@@ -1,4 +1,5 @@
 import { Signal, useSignal } from "../(util)/signal";
+import { useAppContext } from "../context";
 import { ExchangeInfo } from "./exchange";
 
 export interface ExchangeState {
@@ -13,4 +14,9 @@ export const useExchangeStateDefault = (): ExchangeState => {
         statuses: [useSignal(""), useSignal(""), useSignal("")],
         info: useSignal<ExchangeInfo[] | undefined>(undefined),
     };
+}
+
+export const useExchangeState = (): ExchangeState => {
+    const { exchangeState } = useAppContext();
+    return exchangeState;
 }

@@ -12,7 +12,12 @@ export function useConfigStateDefault(): ConfigState {
     }
 }
 
+export function useConfigState() {
+    const { configState } = useAppContext();
+    return configState;
+}
+
 export function useHomeworld() {
-    const { configState: { homeworld } } = useAppContext();
+    const { homeworld } = useConfigState();
     return homeworld;
 }

@@ -40,7 +40,7 @@ export interface PurchaseOption {
 
 export function usePurchaseFrom(): [Signal<string>, PurchaseOption[]] {
     const { purchaseFrom } = useQueryState();
-    const { configState: { homeworld } } = useAppContext();
+    const homeworld = useHomeworld();
     const purchaseFromOptions = useMemo(() => {
         const dataCenter = dataCenterOf(homeworld.value);
         const dataCenterInfo = allDataCenters.filter(info => info.dataCenter === dataCenter);

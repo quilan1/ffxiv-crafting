@@ -6,7 +6,8 @@ import { UniversalisInfo, UniversalisRequest } from '../(universalis)/universali
 import styles from './exchange.module.css';
 import { ExchangeCost, ValidExchangeType, exchangeCosts, exchangeProfits, scripsPerCraft } from './rewards';
 import { dataCenterOf } from '../(universalis)/data-center';
-import { useAppContext } from '../context';
+import { useHomeworld } from '../(config)/config-state';
+import { useExchangeState } from './exchange-state';
 
 interface UniversalisInfoStats {
     universalisInfo: UniversalisInfo,
@@ -72,7 +73,8 @@ function ExchangeNotLoaded() {
 }
 
 function ExchangeStatus() {
-    const { configState: { homeworld }, exchangeState: { isFetching, statuses, info } } = useAppContext();
+    const { isFetching, statuses, info } = useExchangeState();
+    const homeworld = useHomeworld();
 
     const onClick = () => {
         void (async () => {
@@ -101,7 +103,7 @@ function ExchangeStatus() {
 }
 
 function ExchangeAllScrips() {
-    const { exchangeState: { info } } = useAppContext();
+    const { info } = useExchangeState();
     if (!info.value) return <ExchangeNotLoaded />;
 
     return (

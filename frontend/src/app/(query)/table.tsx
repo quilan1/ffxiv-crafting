@@ -2,7 +2,7 @@ import styles from './query.module.css';
 import { OptionType } from '@/app/(util)/option';
 import { ChangeEvent } from 'react';
 import { Ingredient } from '../(universalis)/items';
-import { useAppContext } from '../context';
+import { useQueryState } from './query-state';
 
 export interface TableRow {
     _key: string,
@@ -27,7 +27,7 @@ export interface KeyedTableRow {
 }
 
 export function MarketInformation() {
-    const { queryState: { queryData } } = useAppContext();
+    const { queryData } = useQueryState();
     const tableRows = queryData.tableRows;
 
     return (
@@ -79,7 +79,7 @@ function TableRow(props: TableRow) {
     const _string = (o: OptionType<number>) => o.map(_toString).unwrapOr('-');
 
     const { _key, index, item, hasChildren, numListings, totalNumListings, perDay, perWeek, perBiWeek, count, sell, buy, craft, profit } = props;
-    const { queryState: { queryData } } = useAppContext();
+    const { queryData } = useQueryState();
 
     const quantity = item.count > 1 ? `${item.count}x ` : '';
     const baseName = queryData.universalisInfo?.itemInfo[item.itemId]?.name ?? '';
