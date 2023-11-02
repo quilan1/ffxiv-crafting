@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::Result;
-use axum::extract::ws::{Message, WebSocket};
+use axum::extract::ws::WebSocket;
 use ffxiv_universalis::{
     MReceiver, PacketResult, Processor, ProcessorHandle, RequestBuilder, RequestState,
 };
@@ -12,7 +12,7 @@ use futures::{future::BoxFuture, stream::FuturesUnordered, FutureExt, StreamExt}
 use mock_traits::FileDownloader;
 use tokio::{select, sync::broadcast::Receiver, time::sleep};
 
-use super::{DetailedStatus, Input, Output};
+use super::{write_message, DetailedStatus, Input, Output};
 
 ////////////////////////////////////////////////////////////
 
@@ -69,7 +69,7 @@ async fn make_market_request_info<F: FileDownloader>(
     );
 
     let signals = handle.status().signals().await;
-    RequestStream::new(handle, signals)
+    RequestStream::new(handle, signals, payload.is_compressed.unwrap_or(false))
 }
 
 ////////////////////////////////////////////////////////////
@@ -79,12 +79,17 @@ struct RequestStream {
     values: BTreeMap<usize, MReceiver<RequestState>>,
     futures: FuturesUnordered<BoxFuture<'static, usize>>,
     last_update: Instant,
+    is_compressed: bool,
 }
 
 ////////////////////////////////////////////////////////////
 
 impl RequestStream {
-    fn new(handle: ProcessorHandle, signals: Vec<MReceiver<RequestState>>) -> Self {
+    fn new(
+        handle: ProcessorHandle,
+        signals: Vec<MReceiver<RequestState>>,
+        is_compressed: bool,
+    ) -> Self {
         let mut values = BTreeMap::new();
         let futures = FuturesUnordered::new();
         for (index, signal) in signals.into_iter().enumerate() {
@@ -97,6 +102,7 @@ impl RequestStream {
             values,
             futures,
             last_update: Instant::now(),
+            is_compressed,
         }
     }
 
@@ -178,7 +184,7 @@ impl RequestStream {
 
             let output = output.unwrap_or(Output::Done {});
             let message_text = serde_json::to_string(&output)?;
-            socket.send(Message::Text(message_text)).await?;
+            write_message(socket, message_text, self.is_compressed).await?;
 
             if matches!(output, Output::Done {}) {
                 break;
@@ -195,7 +201,7 @@ impl RequestStream {
         };
 
         let message_text = serde_json::to_string(&output)?;
-        socket.send(Message::Text(message_text)).await?;
+        write_message(socket, message_text, self.is_compressed).await?;
         Ok(())
     }
 }

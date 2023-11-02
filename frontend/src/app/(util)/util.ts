@@ -70,3 +70,15 @@ export function equalsDeep<T>(a: T, b: T): boolean {
 export const sleep = (ms: number): Promise<void> => {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+export const compress = async (data: string): Promise<string> => {
+    const cs = new CompressionStream("gzip");
+    const compressedStream = new Blob([data]).stream().pipeThrough(cs);
+    return await new Response(compressedStream).text();
+}
+
+export const decompress = async (data: Blob): Promise<string> => {
+    const ds = new DecompressionStream("gzip");
+    const decompressedStream = data.stream().pipeThrough(ds);
+    return await new Response(decompressedStream).text();
+}

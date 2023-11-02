@@ -1,3 +1,4 @@
+use std::io::Write;
 use std::sync::Arc;
 
 use anyhow::{bail, Result};
@@ -10,6 +11,7 @@ use axum::{
 };
 use ffxiv_items::ItemDB;
 use ffxiv_universalis::Processor;
+use flate2::{write::GzEncoder, Compression};
 use mock_traits::FileDownloader;
 use uuid::Uuid;
 
@@ -42,7 +44,8 @@ async fn handle_socket<F: FileDownloader>(
         let payload: Input = fetch_payload(socket).await?;
         log::info!(target: "ffxiv_server", "New request for '{}'", payload.query);
         let (top_ids, all_ids, items) = db.all_info_from_query(&payload.query).await?;
-        send_recipes(socket, &top_ids, items).await?;
+        let is_compressed = payload.is_compressed.unwrap_or(false);
+        send_recipes(socket, &top_ids, items, is_compressed).await?;
         wait_for_universalis::<F>(
             socket,
             &universalis_processor,
@@ -71,4 +74,21 @@ async fn fetch_payload(socket: &mut WebSocket) -> Result<Input> {
     };
 
     Ok(serde_json::from_str(&payload_str)?)
+}
+
+pub async fn write_message<S: Into<String>>(
+    socket: &mut WebSocket,
+    message: S,
+    is_compressed: bool,
+) -> Result<()> {
+    if is_compressed {
+        let mut e = GzEncoder::new(Vec::new(), Compression::default());
+        let message: String = message.into();
+        e.write_all(message.as_bytes())?;
+        let bytes = e.finish()?;
+        socket.send(Message::Binary(bytes)).await?;
+    } else {
+        socket.send(Message::Text(message.into())).await?;
+    };
+    Ok(())
 }

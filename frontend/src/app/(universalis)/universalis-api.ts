@@ -1,6 +1,8 @@
-import { sleep } from "../(util)/util";
+import { decompress, sleep } from "../(util)/util";
 import { Id, ItemInfo } from "./items";
 import { Validate, RecipeJson, MessageDetailedStatusInfo, MessageSuccessInfo, MessageFailureInfo } from "./universalis-api-json";
+
+const WEBSOCKET_IS_COMPRESSED = true;
 
 export class CancelError extends Error {
     constructor(message?: string, options?: ErrorOptions) {
@@ -25,6 +27,7 @@ interface UniversalisRequestState {
     recipeJson?: RecipeJson;
     serverError?: string;
     failures: number;
+    isCompressed: boolean;
 }
 
 type ListingStatusFn = (_: ListingStatus) => void;
@@ -57,13 +60,20 @@ export class UniversalisRequest {
     async fetch(): Promise<UniversalisInfo | null> {
         this.statusFn({ status: 'Fetching Item IDs' });
         const socket = this.openWebSocket();
-        const state: UniversalisRequestState = { socket, isProcessing: true, failures: 0 };
+
+        const state: UniversalisRequestState = {
+            socket,
+            isProcessing: true,
+            failures: 0,
+            isCompressed: WEBSOCKET_IS_COMPRESSED
+        };
 
         const recipePayload = JSON.stringify({
             query: this.searchQuery,
             purchaseFrom: this.purchaseFrom,
             sellTo: this.sellTo,
-            retainNumDays: 14.0
+            retainNumDays: 14.0,
+            isCompressed: state.isCompressed,
         });
 
         socket.addEventListener("open", () => { socket.send(recipePayload); });
@@ -117,19 +127,26 @@ export class UniversalisRequest {
     }
 
     private onMessage(state: UniversalisRequestState, e: MessageEvent) {
-        const message = JSON.parse(e.data as string) as unknown;
-        Validate.assertIsMessage(message);
-        if (Validate.isMessageRecipe(message)) {
-            this.onMessageRecipe(state, message.recipe);
-        } else if (Validate.isMessageDetailedStatus(message)) {
-            this.onMessageDetailedStatus(state, message.detailedStatus);
-        } else if (Validate.isMessageSuccess(message)) {
-            this.onMessageSuccess(state, message.success);
-        } else if (Validate.isMessageFailure(message)) {
-            this.onMessageFailure(state, message.failure);
-        } else if (Validate.isMessageDone(message)) {
-            this.onMessageDone(state, message.done);
-        } else { const _: never = message; }
+        void (async () => {
+            try {
+                const data = state.isCompressed ? await decompress(e.data as Blob) : e.data as string;
+                const message = JSON.parse(data) as unknown;
+                Validate.assertIsMessage(message);
+                if (Validate.isMessageRecipe(message)) {
+                    this.onMessageRecipe(state, message.recipe);
+                } else if (Validate.isMessageDetailedStatus(message)) {
+                    this.onMessageDetailedStatus(state, message.detailedStatus);
+                } else if (Validate.isMessageSuccess(message)) {
+                    this.onMessageSuccess(state, message.success);
+                } else if (Validate.isMessageFailure(message)) {
+                    this.onMessageFailure(state, message.failure);
+                } else if (Validate.isMessageDone(message)) {
+                    this.onMessageDone(state, message.done);
+                } else { const _: never = message; }
+            } catch (err) {
+                throw err;
+            }
+        })();
     }
 
     private onMessageRecipe(state: UniversalisRequestState, recipeJson: RecipeJson) {

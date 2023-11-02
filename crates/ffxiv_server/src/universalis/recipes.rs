@@ -1,8 +1,8 @@
 use anyhow::Result;
-use axum::extract::ws::{Message, WebSocket};
+use axum::extract::ws::WebSocket;
 use tokio::task::spawn_blocking;
 
-use super::{Ingredient, ItemInfo, Output, Recipe};
+use super::{write_message, Ingredient, ItemInfo, Output, Recipe};
 
 ////////////////////////////////////////////////////////////
 
@@ -10,9 +10,10 @@ pub async fn send_recipes(
     socket: &mut WebSocket,
     top_ids: &[u32],
     items: Vec<ffxiv_items::ItemInfo>,
+    is_compressed: bool,
 ) -> Result<()> {
     let recipe_text = get_recipe_info_data(top_ids, items).await?;
-    socket.send(Message::Text(recipe_text)).await?;
+    write_message(socket, recipe_text, is_compressed).await?;
     Ok(())
 }
 

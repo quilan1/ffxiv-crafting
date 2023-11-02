@@ -12,6 +12,7 @@ pub struct Input {
     pub purchase_from: String,
     pub sell_to: String,
     pub retain_num_days: Option<f32>,
+    pub is_compressed: Option<bool>,
 }
 
 ////////////////////////////////////////////////////////////
