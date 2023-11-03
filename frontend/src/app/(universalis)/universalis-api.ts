@@ -105,7 +105,7 @@ export class UniversalisRequest {
     }
 
     private openWebSocket() {
-        return new WebSocket(`ws://${location.host}/ws/v1/universalis`);
+        return new WebSocket(`ws://${location.hostname}/ws/v1/universalis`);
     }
 
     private checkCancel(state: UniversalisRequestState) {
