@@ -1,45 +1,42 @@
-import { allDataCenters, dataCenterOf } from "../(universalis)/data-center";
+import { allDataCenters, dataCenterOf, defaultDataCenter } from "../(universalis)/data-center";
 import { ListingStatus, UniversalisRequest } from "../(universalis)/universalis-api";
 import { Signal, useSignal } from "../(util)/signal";
 import { defaultQuery } from "./query-processing";
-import { QuerySharedState, useQuerySharedStateDefault } from "./(shared-state)/query-shared";
-import { useAppContext } from "../context";
-import { MutableRefObject, useEffect, useMemo, useRef } from "react";
+import { useQueryShared, updateUniversalisInfo } from "./(shared-state)/query-shared";
+import { useEffect, useMemo } from "react";
 import { useHomeworld } from "../(config)/config-state";
-
-export interface QueryState {
-    queryString: Signal<string>,
-    queryDropdown: Signal<string>,
-    purchaseFrom: Signal<string>,
-    listingStatus: Signal<ListingStatus | undefined>,
-    isFetching: Signal<boolean>,
-    isCancelled: MutableRefObject<boolean>,
-    queryData: QuerySharedState,
-}
-
-export const useQueryStateDefault = (homeworld: Signal<string>): QueryState => {
-    return {
-        listingStatus: useSignal<ListingStatus | undefined>(undefined),
-        queryString: useSignal(defaultQuery.query),
-        queryDropdown: useSignal(defaultQuery.label),
-        purchaseFrom: useSignal(dataCenterOf(homeworld.value)),
-        isFetching: useSignal(false),
-        isCancelled: useRef(false),
-        queryData: useQuerySharedStateDefault(homeworld),
-    }
-}
-
-export function useQueryState(): QueryState {
-    return useAppContext().queryState;
-}
+import { atom } from "jotai";
+import { useCheckedKeys, useHiddenKeys, useIsChildOfHiddenKey, useTableRows, useUniversalisInfo } from "./(shared-state)/query-shared-calc";
+import { FailureInfo, PurchaseWorldInfo } from "./purchase";
+import { calculatePurchases } from "../(universalis)/purchases";
+import { Ingredient } from "../(universalis)/items";
+import { entriesOf } from "../(util)/util";
 
 export interface PurchaseOption {
     label: string,
     value: string,
 }
 
-export function usePurchaseFrom(): [Signal<string>, PurchaseOption[]] {
-    const { purchaseFrom } = useQueryState();
+const queryStringAtom = atom(defaultQuery.query);
+export const useQueryString = () => useSignal(queryStringAtom);
+
+const queryDropdownAtom = atom(defaultQuery.label);
+export const useQueryDropdown = () => useSignal(queryDropdownAtom);
+
+const listingStatusAtom = atom<ListingStatus | undefined>(undefined);
+export const useListingStatus = () => useSignal(listingStatusAtom);
+
+const isFetchingAtom = atom(false);
+export const useIsFetching = () => useSignal(isFetchingAtom);
+
+const purchaseFromAtom = atom(dataCenterOf(defaultDataCenter.world));
+export const usePurchaseFrom = (): Signal<string> => useSignal(purchaseFromAtom);
+
+const isCancelledAtom = atom(() => ({ current: false }));
+const useIsCancelled = () => useSignal(isCancelledAtom).value;
+
+export function usePurchaseFromData(): [Signal<string>, PurchaseOption[]] {
+    const purchaseFrom = usePurchaseFrom();
     const homeworld = useHomeworld();
     const purchaseFromOptions = useMemo(() => {
         const dataCenter = dataCenterOf(homeworld.value);
@@ -66,8 +63,13 @@ export function usePurchaseFrom(): [Signal<string>, PurchaseOption[]] {
 }
 
 export function useFetchQuery() {
-    const { listingStatus, queryString, purchaseFrom, isFetching, isCancelled, queryData } = useQueryState();
+    const purchaseFrom = usePurchaseFrom();
+    const listingStatus = useListingStatus();
+    const isFetching = useIsFetching();
     const homeworld = useHomeworld();
+    const queryString = useQueryString();
+    const isCancelled = useIsCancelled();
+    const [data, setData] = useQueryShared();
 
     return () => {
         void (async () => {
@@ -81,9 +83,9 @@ export function useFetchQuery() {
                         .fetch();
 
                     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-                    if (!isCancelled.current) {
+                    if (!isCancelled.current && universalisInfo) {
                         listingStatus.value = { status: "Calculating statistics..." };
-                        await queryData.setUniversalisInfo(universalisInfo ?? undefined);
+                        setData(await updateUniversalisInfo(data, universalisInfo));
                     }
                 } finally {
                     listingStatus.value = undefined;
@@ -96,3 +98,74 @@ export function useFetchQuery() {
         })()
     };
 };
+
+export const usePurchaseInfo = () => {
+    const items = useCollectCheckedItems();
+    const universalisInfo = useUniversalisInfo();
+    const homeworld = useHomeworld();
+
+    return useMemo(() => {
+        const itemInfo = universalisInfo.value?.itemInfo ?? {};
+
+        // build the world info
+        const failures: FailureInfo[] = [];
+        const purchases: PurchaseWorldInfo = {};
+        for (const { itemId, count } of items) {
+            // Calculate listings
+            const usedListings = calculatePurchases(itemInfo[itemId].listings, count);
+            if (usedListings == undefined) {
+                failures.push({
+                    itemName: itemInfo[itemId].name,
+                    count,
+                });
+                continue;
+            }
+
+            /* eslint-disable @typescript-eslint/no-unnecessary-condition */
+            for (const listing of usedListings) {
+                const world = listing.world ?? homeworld.value;
+                const usedCount = listing.count;
+                const dataCenter = dataCenterOf(world);
+                purchases[dataCenter] ??= {};
+                purchases[dataCenter][world] ??= [];
+                purchases[dataCenter][world].push({
+                    itemName: itemInfo[itemId].name,
+                    name: listing.name ?? "",
+                    price: Math.floor(listing.price / 1.05),
+                    count: usedCount,
+                });
+            }
+            /* eslint-enable @typescript-eslint/no-unnecessary-condition */
+        }
+
+        return {
+            failures,
+            purchases
+        };
+    }, [universalisInfo, homeworld, items]);
+}
+
+const useCollectCheckedItems = (): Ingredient[] => {
+    const tableRows = useTableRows();
+    const checkedKeys = useCheckedKeys();
+    const hiddenKeys = useHiddenKeys();
+    const isChildOfHiddenKey = useIsChildOfHiddenKey();
+
+    return useMemo(() => {
+        const checkedItems = tableRows.value
+            ?.filter(({ row }) => row.item.itemId > 19)
+            ?.filter(({ row, key }) => !row.hasChildren || hiddenKeys.value.has(key))
+            ?.filter(({ key }) => !isChildOfHiddenKey(key))
+            ?.filter(({ key }) => checkedKeys.value.has(key))
+            ?.map(({ row }) => row.item)
+            ?? [];
+
+        const items: Record<number, number | undefined> = {};
+        for (const item of checkedItems) {
+            items[item.itemId] = (items[item.itemId] ?? 0) + item.count;
+        }
+
+        return entriesOf(items as Record<number, number>)
+            .map(([key, val]) => ({ itemId: key, count: val }));
+    }, [checkedKeys, hiddenKeys, isChildOfHiddenKey, tableRows]);
+}

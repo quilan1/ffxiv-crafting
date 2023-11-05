@@ -1,99 +1,117 @@
-import { Signal } from "@/app/(util)/signal";
-import { QuerySharedInputs, QuerySharedInputsState, useQuerySharedInputsDefault } from "./query-shared-inputs";
-import { QuerySharedCalcState, useQuerySharedCalcDefault } from "./query-shared-calc";
-import { MutableRefObject, useRef } from "react";
-import { DeferredFn, useDeferredFn } from "@/app/(util)/deferred-fn";
 import { UniversalisInfo } from "@/app/(universalis)/universalis-api";
-import { recalculateUniversalis } from "./query-shared-universalis";
+import { useDeferredFn } from "@/app/(util)/deferred-fn";
+import { ChangedState, recalculateUniversalis } from "./recalculate-universalis";
+import { useCheckedKeys, useHiddenKeys, useRecursiveStats, useTableRows, useUniversalisInfo } from "./query-shared-calc";
+import { useCount, useIsHq, useLimit, useMinVelocity } from "./query-shared-inputs";
+import { useHomeworld } from "@/app/(config)/config-state";
+import { tryParse } from "@/app/(util)/util";
+import { RecursiveStats } from "@/app/(universalis)/analysis";
+import { KeyedTableRow } from "../table";
+import { atom } from "jotai";
+import { useSignal } from "@/app/(util)/signal";
 
-export enum ChangedState {
-    COUNT,
-    LIMIT,
-    MIN_VELOCITY,
-    IS_HQ,
-    UNIVERSALIS_INFO,
+interface ChangedValues {
+    count?: string,
+    limit?: string,
+    minVelocity?: string,
+    isHq?: boolean,
+    universalisInfo?: UniversalisInfo,
 }
 
-export class QuerySharedState {
-    private _inputs: QuerySharedInputsState;
-    private _calc: QuerySharedCalcState;
-    private deferredFn: DeferredFn;
-    private prevUi: MutableRefObject<QuerySharedInputs>;
-    private homeworld: Signal<string>;
-
-    constructor(ui: QuerySharedInputsState, calc: QuerySharedCalcState,
-        homeworld: Signal<string>,
-        deferredFn: DeferredFn, prevUi: MutableRefObject<QuerySharedInputs>
-    ) {
-        this._inputs = ui;
-        this._calc = calc;
-        this.deferredFn = deferredFn;
-        this.prevUi = prevUi;
-        this.homeworld = homeworld;
-    }
-
-    get inputs() { return this._inputs; }
-    private get calc() { return this._calc; }
-
-    get count() { return this.inputs.count.value; }
-    set count(count: string) {
-        this.inputs.count.value = count;
-        this.setupRecalculate({ ...this.inputs.values, count });
-    }
-    get limit() { return this.inputs.limit.value; }
-    set limit(limit: string) {
-        this.inputs.limit.value = limit;
-        this.setupRecalculate({ ...this.inputs.values, limit });
-    }
-    get minVelocity() { return this.inputs.minVelocity.value; }
-    set minVelocity(minVelocity: string) {
-        this.inputs.minVelocity.value = minVelocity;
-        this.setupRecalculate({ ...this.inputs.values, minVelocity });
-    }
-    get isHq() { return this.inputs.isHq.value; }
-    set isHq(isHq: boolean) {
-        this.inputs.isHq.value = isHq;
-        this.setupRecalculate({ ...this.inputs.values, isHq });
-    }
-
-    get universalisInfo() { return this.calc.universalisInfo.value; }
-    get tableRows() { return this.calc.tableRows.value; }
-    get checkedKeys() { return this.calc.checkedKeys.value; }
-    get hiddenKeys() { return this.calc.hiddenKeys.value; }
-    get recursiveStats() { return this.calc.recursiveStats.value; }
-
-    setCheckKey(key: string, isSet: boolean) { this.calc.setCheckKey(key, isSet); }
-    toggleHiddenKey(key: string) { this.calc.toggleHiddenKey(key); }
-    isChildOfHiddenKey(key: string): boolean { return this.calc.isChildOfHiddenKey(key); }
-
-    async setUniversalisInfo(universalisInfo: UniversalisInfo | undefined): Promise<void> {
-        const calc = { ... this.calc.values, universalisInfo };
-        const changedValues = new Set<ChangedState>();
-        changedValues.add(ChangedState.UNIVERSALIS_INFO);
-        this.calc.values = await recalculateUniversalis(this.inputs.values, calc, changedValues, this.homeworld.value);
-        this.prevUi.current = { ...this.inputs.values };
-    }
-
-    private setupRecalculate(inputs: QuerySharedInputs) {
-        this.deferredFn(async () => this.recalculateDeferred(inputs));
-    }
-
-    async recalculateDeferred(inputs: QuerySharedInputs) {
-        const changedValues = new Set<ChangedState>();
-        const current = this.prevUi.current;
-        if (inputs.count != current.count) changedValues.add(ChangedState.COUNT);
-        if (inputs.limit != current.limit) changedValues.add(ChangedState.LIMIT);
-        if (inputs.minVelocity != current.minVelocity) changedValues.add(ChangedState.MIN_VELOCITY);
-        if (inputs.isHq != current.isHq) changedValues.add(ChangedState.IS_HQ);
-        this.calc.values = await recalculateUniversalis(inputs, this.calc.values, changedValues, this.homeworld.value);
-        this.prevUi.current = { ...inputs };
-    }
+export interface QueryShared {
+    count: number,
+    limit: number,
+    minVelocity: number,
+    isHq: boolean,
+    checkedKeys: Set<string>,
+    hiddenKeys: Set<string>,
+    homeworld: string,
+    universalisInfo?: UniversalisInfo,
+    recursiveStats?: RecursiveStats,
+    tableRows?: KeyedTableRow[],
 }
 
-export function useQuerySharedStateDefault(homeworld: Signal<string>) {
-    const inputs = new QuerySharedInputsState(useQuerySharedInputsDefault());
-    const calc = new QuerySharedCalcState(useQuerySharedCalcDefault());
-    const prevUi = useRef({ ...inputs.values });
+export const useQueryShared = (): [QueryShared, (_: QueryShared) => void] => {
+    const count = useCount();
+    const limit = useLimit();
+    const minVelocity = useMinVelocity();
+    const isHq = useIsHq();
+    const universalisInfo = useUniversalisInfo();
+    const checkedKeys = useCheckedKeys();
+    const hiddenKeys = useHiddenKeys();
+    const recursiveStats = useRecursiveStats();
+    const tableRows = useTableRows();
+    const homeworld = useHomeworld();
+
+    const data = {
+        count: tryParse(count.value).unwrapOr(1),
+        limit: tryParse(limit.value).unwrapOr(100),
+        minVelocity: tryParse(minVelocity.value).unwrapOr(0),
+        isHq: isHq.value,
+        universalisInfo: universalisInfo.value,
+        checkedKeys: checkedKeys.value,
+        hiddenKeys: hiddenKeys.value,
+        recursiveStats: recursiveStats.value,
+        tableRows: tableRows.value,
+        homeworld: homeworld.value,
+    }
+
+    const set = (data: QueryShared) => {
+        universalisInfo.value = data.universalisInfo;
+        checkedKeys.value = data.checkedKeys;
+        hiddenKeys.value = data.hiddenKeys;
+        recursiveStats.value = data.recursiveStats;
+        tableRows.value = data.tableRows;
+    }
+
+    return [data, set];
+}
+
+export const updateUniversalisInfo = async (data: QueryShared, universalisInfo: UniversalisInfo): Promise<QueryShared> => {
+    return await recalculateDeferred(data, { universalisInfo });
+}
+
+const allChangedValues = atom<{ current: ChangedValues }>(() => ({ current: {} }));
+const useAllChangedValues = () => useSignal(allChangedValues).value;
+
+export const useUpdateUniversalis = () => {
     const deferredFn = useDeferredFn(20);
-    return new QuerySharedState(inputs, calc, homeworld, deferredFn, prevUi);
+    const allChangedValues = useAllChangedValues();
+    const [data, setData] = useQueryShared();
+
+    return (changedValues: ChangedValues) => {
+        allChangedValues.current.count = changedValues.count ?? allChangedValues.current.count;
+        allChangedValues.current.limit = changedValues.limit ?? allChangedValues.current.limit;
+        allChangedValues.current.minVelocity = changedValues.minVelocity ?? allChangedValues.current.minVelocity;
+        allChangedValues.current.isHq = changedValues.isHq ?? allChangedValues.current.isHq;
+        deferredFn(async () => {
+            const values = { ...allChangedValues.current };
+            allChangedValues.current = {};
+            setData(await recalculateDeferred(data, values));
+        });
+    };
+}
+
+const recalculateDeferred = async (data: QueryShared, changedValues: ChangedValues): Promise<QueryShared> => {
+    const changedStates = new Set<ChangedState>();
+    if (changedValues.count !== undefined) {
+        changedStates.add(ChangedState.COUNT);
+        data.count = tryParse(changedValues.count).unwrapOr(1);
+    }
+    if (changedValues.limit !== undefined) {
+        changedStates.add(ChangedState.LIMIT);
+        data.limit = tryParse(changedValues.limit).unwrapOr(100);
+    }
+    if (changedValues.minVelocity !== undefined) {
+        changedStates.add(ChangedState.MIN_VELOCITY);
+        data.minVelocity = tryParse(changedValues.minVelocity).unwrapOr(0);
+    }
+
+    if (changedValues.isHq !== undefined) changedStates.add(ChangedState.IS_HQ);
+    if (changedValues.universalisInfo !== undefined) changedStates.add(ChangedState.UNIVERSALIS_INFO);
+    data.isHq = changedValues.isHq ?? data.isHq;
+    data.universalisInfo = changedValues.universalisInfo ?? data.universalisInfo;
+
+    await recalculateUniversalis(data, changedStates);
+    return data;
 }

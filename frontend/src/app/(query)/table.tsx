@@ -2,7 +2,7 @@ import styles from './query.module.css';
 import { OptionType } from '@/app/(util)/option';
 import { ChangeEvent } from 'react';
 import { Ingredient } from '../(universalis)/items';
-import { useQueryState } from './query-state';
+import { useCheckedKeys, useHiddenKeys, useIsChildOfHiddenKey, useSetCheckKey, useTableRows, useToggleHiddenKey, useUniversalisInfo } from './(shared-state)/query-shared-calc';
 
 export interface TableRow {
     _key: string,
@@ -27,21 +27,21 @@ export interface KeyedTableRow {
 }
 
 export function MarketInformation() {
-    const { queryData } = useQueryState();
-    const tableRows = queryData.tableRows;
+    const tableRows = useTableRows();
+    const isChildOfHiddenKey = useIsChildOfHiddenKey();
 
     return (
         <div className={styles.marketInfo}>
             <div className={styles.tableContainer}>
-                {tableRows ?
+                {tableRows.value ?
                     <table className={styles.informationTable}>
                         <thead>
                             <TableHeader />
                         </thead>
                         <tbody>
-                            {tableRows
+                            {tableRows.value
                                 .filter(({ row }) => row.item.itemId > 19)
-                                .filter(({ key }) => !queryData.isChildOfHiddenKey(key))
+                                .filter(({ key }) => !isChildOfHiddenKey(key))
                                 .map(({ key, row }) => <TableRow key={key} {...row} />)}
                         </tbody>
                     </table>
@@ -72,26 +72,30 @@ function TableHeader() {
 }
 
 function TableRow(props: TableRow) {
+    const { _key, index, item, hasChildren, numListings, totalNumListings, perDay, perWeek, perBiWeek, count, sell, buy, craft, profit } = props;
+    const universalisInfo = useUniversalisInfo();
+    const hiddenKeys = useHiddenKeys();
+    const checkedKeys = useCheckedKeys();
+    const setCheckKey = useSetCheckKey();
+    const toggleHiddenKey = useToggleHiddenKey();
+
     const classNames = (classes: string[]) => [styles.rowItem, ...classes].join(' ');
     const _toFixed = (v: number) => v.toFixed(2);
     const _toString = (v: number) => Math.floor(v).toString();
     const _fixed = (o: OptionType<number>) => o.map(_toFixed).unwrapOr('-');
     const _string = (o: OptionType<number>) => o.map(_toString).unwrapOr('-');
 
-    const { _key, index, item, hasChildren, numListings, totalNumListings, perDay, perWeek, perBiWeek, count, sell, buy, craft, profit } = props;
-    const { queryData } = useQueryState();
-
     const quantity = item.count > 1 ? `${item.count}x ` : '';
-    const baseName = queryData.universalisInfo?.itemInfo[item.itemId]?.name ?? '';
+    const baseName = universalisInfo.value?.itemInfo[item.itemId]?.name ?? '';
     const name = `${quantity}${baseName}`;
 
     const generation = _key.split('').reduce((prev, cur) => cur != '|' ? prev : (prev + 1), 0);
     const namePadding = generation * 1.8;
-    const onClickNameButton = () => { queryData.toggleHiddenKey(_key); };
-    const nameNode = !hasChildren ? name : <><button type='button' onClick={onClickNameButton}>{queryData.hiddenKeys.has(_key) ? '+' : '-'}</button>{name}</>;
+    const onClickNameButton = () => { toggleHiddenKey(_key); };
+    const nameNode = !hasChildren ? name : <><button type='button' onClick={onClickNameButton}>{hiddenKeys.value.has(_key) ? '+' : '-'}</button>{name}</>;
 
-    const isChecked = queryData.checkedKeys.has(_key);
-    const onChangeChecked = (e: ChangeEvent<HTMLInputElement>) => { queryData.setCheckKey(_key, e.target.checked); };
+    const isChecked = checkedKeys.value.has(_key);
+    const onChangeChecked = (e: ChangeEvent<HTMLInputElement>) => { setCheckKey(_key, e.target.checked); };
     const checkedNode = <input type='checkbox' checked={isChecked} onChange={onChangeChecked}></input>;
 
     const rowStyle = [

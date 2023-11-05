@@ -1,6 +1,9 @@
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { Atom, useAtom } from "jotai";
+import { useState } from "react";
+import { useLocalStorageGet, useLocalStorageSet } from "./local-storage";
 
-export type SimpleStateUse<T> = [T, (value: T) => void];
+export type SimpleSetter<T> = (_: T) => void;
+export type SimpleValueSetter<T> = [T, SimpleSetter<T>];
 
 export type Signaled<T extends object> = {
     [K in keyof T]-?: Signal<T[K]>
@@ -8,34 +11,44 @@ export type Signaled<T extends object> = {
 
 export class Signal<T> {
     readonly state: T;
-    readonly setState: SimpleStateUse<T>[1];
-    readonly name?: string;
-    constructor(def: SimpleStateUse<T>, name?: string) {
+    readonly setState: SimpleSetter<T>;
+    constructor(def: SimpleValueSetter<T>) {
         const [state, setState] = def;
         this.state = state;
         this.setState = setState;
-        this.name = name;
     }
 
     get value(): T { return this.state };
     set value(value: T) { this.setState(value); }
 }
 
-export function useSignal<T>(val: T, name?: string): Signal<T> {
-    const [state, setState] = useState(val);
+function isAtom<T>(obj: unknown): obj is Atom<T> {
+    if (!obj) return false;
+    if (typeof obj !== "object") return false;
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string
+    return obj.toString().startsWith("atom");
+}
 
-    useEffect(() => {
-        if (name !== undefined) {
-            setState((localStorage.getItem(name) ?? val) as T);
-        }
-    }, [name, val]);
+function useStateOrAtom<T>(val: T | Atom<T>): SimpleValueSetter<T> {
+    return (isAtom(val))
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        ? useAtom(val) as SimpleValueSetter<T>
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        : useState(val);
+}
 
-    const namedSetState = (value: T) => {
-        if (name !== undefined) {
-            localStorage.setItem(name, value as string)
-        }
-        setState(value);
-    }
+export function useSignal<T>(val: T | Atom<T>): Signal<T> {
+    return new Signal(useStateOrAtom(val));
+}
 
-    return new Signal([state, namedSetState as Dispatch<SetStateAction<T>>]);
+export function useSignalLocalStorage<T>(val: T | Atom<T>, name: string): Signal<T> {
+    const [state, setState] = useStateOrAtom(val);
+    return useLocalStorage([state, setState], name);
+}
+
+function useLocalStorage<T>(stateType: SimpleValueSetter<T>, name: string): Signal<T> {
+    const [state, setState] = stateType;
+    const namedSetState = useLocalStorageSet(name, setState);
+    useLocalStorageGet(name, setState);
+    return new Signal([state, namedSetState]);
 }

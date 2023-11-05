@@ -103,4 +103,5 @@ export const allDataCenters: DataCenterInfo[] = [
     { region: 'Oceania', dataCenter: 'Materia', world: 'Sephirot' },
     { region: 'Oceania', dataCenter: 'Materia', world: 'Sophia' },
     { region: 'Oceania', dataCenter: 'Materia', world: 'Zurvan' },
-]
+];
+export const defaultDataCenter = allDataCenters[0];

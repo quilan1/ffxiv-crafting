@@ -1,45 +1,15 @@
-import { Signaled, useSignal } from "@/app/(util)/signal";
+import { useSignal } from "@/app/(util)/signal";
 import { defaultQuery } from "../query-processing";
+import { atom } from "jotai";
 
-export interface QuerySharedInputs {
-    count: string,
-    limit: string,
-    minVelocity: string,
-    isHq: boolean,
-}
+const countAtom = atom(defaultQuery.count ?? '');
+export const useCount = () => useSignal(countAtom);
 
-export function useQuerySharedInputsDefault(): Signaled<QuerySharedInputs> {
-    const { count: _count, limit: _limit, minVelocity: _minVelocity } = defaultQuery;
-    const count = useSignal(_count ?? '');
-    const limit = useSignal(_limit ?? '');
-    const minVelocity = useSignal(_minVelocity ?? '');
-    const isHq = useSignal(false);
-    return { count, limit, minVelocity, isHq };
-}
+const limitAtom = atom(defaultQuery.limit ?? '');
+export const useLimit = () => useSignal(limitAtom);
 
-export class QuerySharedInputsState {
-    private _state: Signaled<QuerySharedInputs>;
-    constructor(state: Signaled<QuerySharedInputs>) {
-        this._state = state;
-    }
+const minVelocityAtom = atom(defaultQuery.minVelocity ?? '');
+export const useMinVelocity = () => useSignal(minVelocityAtom);
 
-    get state() { return this._state; }
-    get values(): QuerySharedInputs {
-        return {
-            count: this.count.value,
-            limit: this.limit.value,
-            minVelocity: this.minVelocity.value,
-            isHq: this.isHq.value
-        }
-    }
-    set values(values: QuerySharedInputs) {
-        this.count.value = values.count;
-        this.limit.value = values.limit;
-        this.minVelocity.value = values.minVelocity;
-        this.isHq.value = values.isHq;
-    }
-    get count() { return this._state.count; }
-    get limit() { return this._state.limit; }
-    get minVelocity() { return this._state.minVelocity; }
-    get isHq() { return this._state.isHq; }
-}
+const isHqAtom = atom(false);
+export const useIsHq = () => useSignal(isHqAtom);

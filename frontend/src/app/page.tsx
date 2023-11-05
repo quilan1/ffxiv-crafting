@@ -5,7 +5,6 @@ import styles from './main.module.css';
 import { QueryContainer } from './(query)/query';
 import { ExchangeContainer } from './(exchange)/exchange';
 import { ConfigContainer } from './(config)/config';
-import { AppContextProvider } from './context';
 
 export default function Home() {
     const [curForm, setForm] = useState(MarketForm.CONFIG);
@@ -28,10 +27,8 @@ export default function Home() {
 
     return (
         <main className={styles.main}>
-            <AppContextProvider>
-                <Header curForm={curForm} setForm={setForm} />
-                <div className={styles.contentContainer}>{form}</div>
-            </AppContextProvider>
+            <Header curForm={curForm} setForm={setForm} />
+            <div className={styles.contentContainer}>{form}</div>
         </main>
     )
 }

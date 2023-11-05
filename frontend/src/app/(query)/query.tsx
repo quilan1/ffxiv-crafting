@@ -3,15 +3,18 @@ import styles from './query.module.css';
 import { ListingRequestStatus } from '../(universalis)/universalis-api';
 import { MarketInformation } from './table';
 import { WorldInformation } from './purchase';
-import { useFetchQuery, usePurchaseFrom, useQueryState } from './query-state';
+import { useFetchQuery, useQueryString, useQueryDropdown, useListingStatus, useIsFetching, usePurchaseFromData } from './query-state';
 import { preparedQueries } from './query-processing';
+import { useCheckedKeys } from './(shared-state)/query-shared-calc';
+import { useCount, useIsHq, useLimit, useMinVelocity } from './(shared-state)/query-shared-inputs';
+import { useUpdateUniversalis } from './(shared-state)/query-shared';
 
 export function QueryContainer() {
-    const { queryData } = useQueryState();
+    const checkedKeys = useCheckedKeys();
     return <>
         <QueryPanel />
         <MarketInformation />
-        {queryData.checkedKeys.size > 0 && <WorldInformation />}
+        {checkedKeys.value.size > 0 && <WorldInformation />}
     </>;
 }
 
@@ -26,7 +29,7 @@ function QueryPanel() {
 }
 
 function FetchStatus() {
-    const { listingStatus: { value: status } } = useQueryState();
+    const { value: status } = useListingStatus();
 
     const fetchClass = (status: ListingRequestStatus) => {
         return ("active" in status)
@@ -73,8 +76,13 @@ function Options() {
 }
 
 function OptionsQueryString() {
-    const { queryString, queryDropdown, queryData } = useQueryState();
+    const count = useCount();
+    const limit = useLimit();
+    const minVelocity = useMinVelocity();
+    const queryString = useQueryString();
+    const queryDropdown = useQueryDropdown();
     const fetchQuery = useFetchQuery();
+
     const onChangeQuery = (e: ChangeEvent<HTMLInputElement>) => { queryString.value = e.target.value; }
     const onKeyDownQuery = (e: KeyboardEvent) => {
         if (e.key === 'Enter') fetchQuery();
@@ -83,15 +91,12 @@ function OptionsQueryString() {
         const preparedQuery = preparedQueries.find(preparedQuery => preparedQuery.query === e.target.value);
         if (preparedQuery === undefined) return;
 
-        const { query, count, limit, minVelocity } = preparedQuery;
+        const { query, count: _count, limit: _limit, minVelocity: _minVelocity } = preparedQuery;
         queryString.value = query;
         queryDropdown.value = query;
-        queryData.inputs.values = {
-            ...queryData.inputs.values,
-            count: count ?? '',
-            limit: limit ?? '',
-            minVelocity: minVelocity ?? ''
-        };
+        count.value = _count ?? '';
+        limit.value = _limit ?? '';
+        minVelocity.value = _minVelocity ?? '';
     };
 
     return <>
@@ -119,28 +124,32 @@ function OptionsQueryString() {
 }
 
 function OptionsInputs() {
-    const [purchaseFrom, purchaseFromOptions] = usePurchaseFrom();
-    const { queryData } = useQueryState();
+    const [purchaseFrom, purchaseFromOptions] = usePurchaseFromData();
+    const count = useCount();
+    const limit = useLimit();
+    const minVelocity = useMinVelocity();
+    const isHq = useIsHq();
+    const updateUniversalis = useUpdateUniversalis();
 
     const onChangePurchaseFrom = (e: ChangeEvent<HTMLSelectElement>) => { purchaseFrom.value = e.target.value; };
-    const onChangeCount = (e: ChangeEvent<HTMLInputElement>) => queryData.count = e.target.value;
-    const onChangeLimit = (e: ChangeEvent<HTMLInputElement>) => queryData.limit = e.target.value;
-    const onChangeMinVelocity = (e: ChangeEvent<HTMLInputElement>) => queryData.minVelocity = e.target.value;
-    const onChangeIsHq = (e: ChangeEvent<HTMLInputElement>) => queryData.isHq = e.target.checked;
+    const onChangeCount = (e: ChangeEvent<HTMLInputElement>) => { count.value = e.target.value; updateUniversalis({ count: e.target.value }); };
+    const onChangeLimit = (e: ChangeEvent<HTMLInputElement>) => { limit.value = e.target.value; updateUniversalis({ limit: e.target.value }); };
+    const onChangeMinVelocity = (e: ChangeEvent<HTMLInputElement>) => { minVelocity.value = e.target.value; updateUniversalis({ minVelocity: e.target.value }); };
+    const onChangeIsHq = (e: ChangeEvent<HTMLInputElement>) => { isHq.value = e.target.checked; updateUniversalis({ isHq: e.target.checked }); }
 
     return (
         <div className={styles.optionsBlock}>
             <div><div>
                 <label>Count: </label>
-                <input type="number" value={queryData.count} onChange={onChangeCount} style={{ width: '3em' }} />
+                <input type="number" value={count.value} onChange={onChangeCount} style={{ width: '3em' }} />
             </div></div>
             <div><div>
                 <label>Limit: </label>
-                <input type="number" value={queryData.limit} onChange={onChangeLimit} style={{ width: '2.5em' }} />
+                <input type="number" value={limit.value} onChange={onChangeLimit} style={{ width: '2.5em' }} />
             </div></div>
             <div><div>
                 <label>Min Velocity: </label>
-                <input type="number" value={queryData.minVelocity} onChange={onChangeMinVelocity} style={{ width: '3.5em' }} />
+                <input type="number" value={minVelocity.value} onChange={onChangeMinVelocity} style={{ width: '3.5em' }} />
             </div></div>
             <div><div>
                 <label>Purchase From: </label>
@@ -150,14 +159,14 @@ function OptionsInputs() {
             </div></div>
             <div><div>
                 <label>HQ: </label>
-                <input id="is-hq" type="checkbox" onChange={onChangeIsHq} checked={queryData.isHq} />
+                <input id="is-hq" type="checkbox" onChange={onChangeIsHq} checked={isHq.value} />
             </div></div>
         </div>
     );
 }
 
 function FetchButton() {
-    const { isFetching } = useQueryState();
+    const isFetching = useIsFetching();
     const onClick = useFetchQuery();
 
     return (

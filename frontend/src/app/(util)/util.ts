@@ -4,6 +4,10 @@ export type Mutable<T> = {
     -readonly [k in keyof T]: T[k];
 };
 
+export type NonOptional<T> = {
+    [k in keyof T]-?: T[k];
+}
+
 export type KeysMatching<T extends object, V> = {
     [K in keyof T]-?: T[K] extends V ? K : never
 }[keyof T];

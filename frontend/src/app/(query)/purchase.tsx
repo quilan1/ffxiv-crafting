@@ -1,45 +1,34 @@
-import { useMemo } from 'react';
-import { useHomeworld } from '../(config)/config-state';
-import { dataCenterOf } from '../(universalis)/data-center';
-import { Ingredient } from '../(universalis)/items';
-import { calculatePurchases } from '../(universalis)/purchases';
 import { entriesOf } from '../(util)/util';
-import { QuerySharedState } from './(shared-state)/query-shared';
-import { useQueryState } from './query-state';
+import { usePurchaseInfo } from './query-state';
 import styles from './query.module.css';
 
-interface PurchaseInfo {
+export interface PurchaseInfo {
     itemName: string,
     name: string,
     price: number,
     count: number
 };
 
-type PurchaseWorldInfo = Record<string, Record<string, PurchaseInfo[]>>;
+export type PurchaseWorldInfo = Record<string, Record<string, PurchaseInfo[]>>;
 
-interface FailureInfo {
+export interface FailureInfo {
     itemName: string,
     count: number,
 }
 
-interface AllPurchaseInfo {
+export interface AllPurchaseInfo {
     failures: FailureInfo[],
     purchases: PurchaseWorldInfo,
 };
 
 export function WorldInformation() {
-    const { queryData } = useQueryState();
-    const homeworld = useHomeworld();
-    const worldInfo = useMemo(() => {
-        const items = collectCheckedItems(queryData);
-        return getPurchaseInfo(queryData, items, homeworld.value);
-    }, [queryData, homeworld.value]);
+    const purchaseInfo = usePurchaseInfo();
 
     return (
         <div className={styles.worldInfo}>
             <div>
-                {(worldInfo.failures.length > 0) && <DataCenterFailures failures={worldInfo.failures} />}
-                {entriesOf(worldInfo.purchases).map(([dataCenter, worldsInfo]) => {
+                {(purchaseInfo.failures.length > 0) && <DataCenterFailures failures={purchaseInfo.failures} />}
+                {entriesOf(purchaseInfo.purchases).map(([dataCenter, worldsInfo]) => {
                     return <DataCenterPurchaseInfo key={dataCenter} dataCenter={dataCenter} worldsInfo={worldsInfo} />
                 })}
             </div>
@@ -103,62 +92,4 @@ function PurchaseInfoNode({ worldBuyInfo }: { worldBuyInfo: PurchaseInfo }) {
             <div>{itemName} [{name}]</div>
         </div>
     );
-}
-
-const collectCheckedItems = (queryData: QuerySharedState): Ingredient[] => {
-    const checkedItems = queryData.tableRows
-        ?.filter(({ row }) => row.item.itemId > 19)
-        ?.filter(({ row, key }) => !row.hasChildren || queryData.hiddenKeys.has(key))
-        ?.filter(({ key }) => !queryData.isChildOfHiddenKey(key))
-        ?.filter(({ key }) => queryData.checkedKeys.has(key))
-        ?.map(({ row }) => row.item)
-        ?? [];
-
-    const items: Record<number, number | undefined> = {};
-    for (const item of checkedItems) {
-        items[item.itemId] = (items[item.itemId] ?? 0) + item.count;
-    }
-
-    return entriesOf(items as Record<number, number>)
-        .map(([key, val]) => ({ itemId: key, count: val }));
-}
-
-const getPurchaseInfo = (queryData: QuerySharedState, items: Ingredient[], homeworld: string): AllPurchaseInfo => {
-    const itemInfo = queryData.universalisInfo?.itemInfo ?? {};
-
-    // build the world info
-    const failures: FailureInfo[] = [];
-    const purchases: PurchaseWorldInfo = {};
-    for (const { itemId, count } of items) {
-        // Calculate listings
-        const usedListings = calculatePurchases(itemInfo[itemId].listings, count);
-        if (usedListings == undefined) {
-            failures.push({
-                itemName: itemInfo[itemId].name,
-                count,
-            });
-            continue;
-        }
-
-        /* eslint-disable @typescript-eslint/no-unnecessary-condition */
-        for (const listing of usedListings) {
-            const world = listing.world ?? homeworld;
-            const usedCount = listing.count;
-            const dataCenter = dataCenterOf(world);
-            purchases[dataCenter] ??= {};
-            purchases[dataCenter][world] ??= [];
-            purchases[dataCenter][world].push({
-                itemName: itemInfo[itemId].name,
-                name: listing.name ?? "",
-                price: Math.floor(listing.price / 1.05),
-                count: usedCount,
-            });
-        }
-        /* eslint-enable @typescript-eslint/no-unnecessary-condition */
-    }
-
-    return {
-        failures,
-        purchases
-    };
 }

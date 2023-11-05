@@ -1,23 +1,14 @@
-import { allDataCenters } from "../(universalis)/data-center";
-import { Signal, useSignal } from "../(util)/signal";
-import { useAppContext } from "../context";
+import { atom } from "jotai";
+import { defaultDataCenter } from "../(universalis)/data-center";
+import { Signal, useSignalLocalStorage } from "../(util)/signal";
 
 export interface ConfigState {
     homeworld: Signal<string>,
 }
 
-export function useConfigStateDefault(): ConfigState {
-    return {
-        homeworld: useSignal(allDataCenters[0].world, "homeworld")
-    }
-}
-
-export function useConfigState() {
-    const { configState } = useAppContext();
-    return configState;
-}
+const homeworldAtom = atom(defaultDataCenter.world);
 
 export function useHomeworld() {
-    const { homeworld } = useConfigState();
+    const homeworld = useSignalLocalStorage(homeworldAtom, "homeworld");
     return homeworld;
 }
