@@ -1,6 +1,5 @@
 import { ChangeEvent, KeyboardEvent } from 'react';
 import styles from './query.module.css';
-import { ListingRequestStatus } from '../(universalis)/universalis-api';
 import { MarketInformation } from './table';
 import { WorldInformation } from './purchase';
 import { useFetchQuery, useQueryString, useQueryDropdown, useListingStatus, useIsFetching, usePurchaseFromData } from './query-state';
@@ -8,6 +7,7 @@ import { preparedQueries } from './query-processing';
 import { useCheckedKeys } from './(shared-state)/query-shared-calc';
 import { useCount, useIsHq, useLimit, useMinVelocity } from './(shared-state)/query-shared-inputs';
 import { useUpdateUniversalis } from './(shared-state)/query-shared';
+import { FetchStatus } from '../(fetch-status)/fetch-status';
 
 export function QueryContainer() {
     const checkedKeys = useCheckedKeys();
@@ -23,47 +23,14 @@ function QueryPanel() {
         <div className={styles.queries}>
             <Options />
             <FetchButton />
-            <FetchStatus />
+            <QueryFetchStatus />
         </div>
     )
 }
 
-function FetchStatus() {
-    const { value: status } = useListingStatus();
-
-    const fetchClass = (status: ListingRequestStatus) => {
-        return ("active" in status)
-            ? styles.active
-            : ("warn" in status)
-                ? styles.warn
-                : ("finished" in status)
-                    ? (status.finished ? styles.finishedGood : styles.finishedBad)
-                    : styles.queued;
-    };
-    const statusDiv = (key: number, status: ListingRequestStatus) => {
-        return <div key={key} className={`${styles.fetchRequest} ${fetchClass(status)}`} />;
-    };
-    const statusChildren = (statuses: ListingRequestStatus[]) => {
-        return statuses.map((status, i) => statusDiv(i, status));
-    };
-
-    let children = <></>;
-    if (!status) {
-    } else if ("status" in status) {
-        children = <div><label>{status.status}</label></div>;
-    } else {
-        const childElements = statusChildren(status.listings);
-
-        const numDiv = 4;
-        const len = Math.max(10, Math.floor(childElements.length + numDiv - 1) / numDiv);
-        const childDivs = [];
-        for (let i = 0; i < numDiv; ++i) {
-            childDivs.push(childElements.slice(i * len, (i + 1) * len));
-        }
-        children = <>{childDivs.map((children, i) => <div key={i}>{children}</div>)}</>;
-    }
-
-    return <div className={styles.fetchStatus}>{children}</div>
+function QueryFetchStatus() {
+    const { value: listingStatus } = useListingStatus();
+    return <FetchStatus listingStatus={listingStatus} />
 }
 
 function Options() {

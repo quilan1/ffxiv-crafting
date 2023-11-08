@@ -1,8 +1,9 @@
 import { RecursiveStats } from "../(universalis)/analysis";
 import { allRecursiveStatsOfAsync } from "../(universalis)/analysis-async";
-import { UniversalisInfo, UniversalisRequest } from "../(universalis)/universalis-api";
+import { ListingStatus, UniversalisInfo, UniversalisRequest } from "../(universalis)/universalis-api";
 import { None, OptionType, Some, optMax, optMin, optSub } from "../(util)/option";
 import { Signal } from "../(util)/signal";
+import { ListingStatusPair } from "./exchange-state";
 import { ExchangeCost, ValidExchangeType, exchangeCosts, exchangeProfits, scripsPerCraft } from "./rewards";
 
 export interface ExchangeInfo {
@@ -34,11 +35,14 @@ interface UniversalisInfoStats {
     recStats: RecursiveStats,
 }
 
-export const fetchExchangeInfo = async (statuses: Signal<string>[], homeworld: string, purchaseFrom: string): Promise<ExchangeInfo[]> => {
+export const fetchExchangeInfo = async (
+    statusPairs: ListingStatusPair<Signal<ListingStatus | undefined>>[],
+    homeworld: string, purchaseFrom: string
+): Promise<ExchangeInfo[]> => {
     const exchangeCostInfo = [];
     for (let i = 0; i < exchangeCosts.length; ++i) {
         const cost = exchangeCosts[i];
-        const status = statuses[i];
+        const status = statusPairs[i];
         const profitPromise = asyncProfitResults(cost, status, homeworld, purchaseFrom);
         exchangeCostInfo.push({ cost, profitPromise });
     }
@@ -52,18 +56,14 @@ export const fetchExchangeInfo = async (statuses: Signal<string>[], homeworld: s
     return results;
 }
 
-const asyncProfitResults = async (cost: ExchangeCost, status: Signal<string>, homeworld: string, purchaseFrom: string): Promise<ProfitResult | null> => {
-    status.value = `${cost.name}: Fetching price & profit information from universalis`;
-    const _price = asyncPrice(cost.search, purchaseFrom, homeworld);
-    const _profit = asyncProfit(cost.type, purchaseFrom, homeworld);
+const asyncProfitResults = async (cost: ExchangeCost, status: ListingStatusPair<Signal<ListingStatus | undefined>>, homeworld: string, purchaseFrom: string): Promise<ProfitResult | null> => {
+    const _price = asyncPrice(cost.search, status.price, purchaseFrom, homeworld);
+    const _profit = asyncProfit(cost.type, status.profit, purchaseFrom, homeworld);
     const universalisInfoPrice = await _price;
-    status.value = `${cost.name}: Calculating price statistics`;
     const universalisInfoStatsPrice = await universalisStats(cost.count, universalisInfoPrice, homeworld);
     const universalisInfoProfit = await _profit;
-    status.value = `${cost.name}: Calculating profit statistics`;
     const universalisInfoStatsProfit = await universalisStats(1, universalisInfoProfit, homeworld);
     if (!universalisInfoStatsPrice || !universalisInfoStatsProfit) return null;
-    status.value = `${cost.name}: Waiting...`;
 
     const priceResult = calculatePrice(cost, universalisInfoStatsPrice);
     return {
@@ -72,15 +72,21 @@ const asyncProfitResults = async (cost: ExchangeCost, status: Signal<string>, ho
     };
 }
 
-const asyncPrice = async (search: string, purchaseFrom: string, sellTo: string) => await new UniversalisRequest(search, purchaseFrom, sellTo).fetch();
+const asyncPrice = async (search: string, status: Signal<ListingStatus | undefined>, purchaseFrom: string, sellTo: string) => {
+    return await new UniversalisRequest(search, purchaseFrom, sellTo)
+        .setStatusFn(s => status.value = s)
+        .fetch();
+}
 
-const asyncProfit = async (type: ValidExchangeType, purchaseFrom: string, sellTo: string) => {
+const asyncProfit = async (type: ValidExchangeType, status: Signal<ListingStatus | undefined>, purchaseFrom: string, sellTo: string) => {
     const names = exchangeProfits
         .filter(item => item.type === type)
         .map(item => item.name.replaceAll(',', '\\,'))
         .join('|');
     const search = `:name !${names}`;
-    return await new UniversalisRequest(search, purchaseFrom, sellTo).fetch();
+    return await new UniversalisRequest(search, purchaseFrom, sellTo)
+        .setStatusFn(s => status.value = s)
+        .fetch();
 };
 
 const universalisStats = async (count: number, universalisInfo: UniversalisInfo | null, homeworld: string) => {

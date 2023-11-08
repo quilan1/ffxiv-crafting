@@ -1,7 +1,10 @@
 import { OptionType } from '../(util)/option';
 import styles from './exchange.module.css';
-import { useFetchInfo, useInfo, useIsFetching, useStatuses } from './exchange-state';
+import { ListingStatusPair, useFetchInfo, useInfo, useIsFetching, useListingStatuses } from './exchange-state';
 import { ExchangeInfo, ProfitInfo } from './fetch-exchange-info';
+import { ListingStatus } from '../(universalis)/universalis-api';
+import { Signal } from '../(util)/signal';
+import { FetchStatus } from '../(fetch-status)/fetch-status';
 
 export function ExchangeContainer() {
     return (
@@ -39,19 +42,27 @@ function ExchangeNotLoaded() {
 
 function ExchangeStatus() {
     const isFetching = useIsFetching();
-    const statuses = useStatuses();
+    const listingStatuses = useListingStatuses();
     const fetchInfo = useFetchInfo();
 
     return (
         <div className={styles.statusHeader}>
             <button type="button" onClick={fetchInfo} disabled={isFetching.value}>Fetch</button>
-            {!statuses.every(s => s.value.length == 0) &&
-                <div className={styles.status}>
-                    <label>{statuses[0].value}</label>
-                    <label>{statuses[1].value}</label>
-                    <label>{statuses[2].value}</label>
-                </div>
-            }
+            <div className={styles.status}>
+                {listingStatuses.map((listings, i) => <ExchangeFetchStatus key={i} listings={listings} />)}
+            </div>
+        </div>
+    );
+}
+
+function ExchangeFetchStatus(
+    { listings }: { listings: ListingStatusPair<Signal<ListingStatus | undefined>> }
+) {
+    const { price, profit } = listings;
+    return (
+        <div>
+            <FetchStatus key={0} listingStatus={price.value} />
+            <FetchStatus key={1} listingStatus={profit.value} />
         </div>
     );
 }
