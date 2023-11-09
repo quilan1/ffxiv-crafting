@@ -3,6 +3,7 @@ import styles from './main.module.css';
 export const metadata = {
     title: 'FFXIV Crafting',
     description: 'An app that fetches marketplace information for FFXIV',
+    robots: 'noindex,nofollow',
 }
 
 export default function RootLayout({
