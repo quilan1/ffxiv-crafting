@@ -105,7 +105,8 @@ export class UniversalisRequest {
     }
 
     private openWebSocket() {
-        return new WebSocket(`ws://${location.hostname}/ws/v1/universalis`);
+        const ws = (location.protocol == "http:") ? "ws" : "wss";
+        return new WebSocket(`${ws}://${location.hostname}/ws/v1/universalis`);
     }
 
     private checkCancel(state: UniversalisRequestState) {
