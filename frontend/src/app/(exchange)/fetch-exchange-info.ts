@@ -114,7 +114,7 @@ const calculatePrice = (cost: ExchangeCost, universalisInfoStats: UniversalisInf
 
     return {
         name: `${itemInfo[stats.itemId].name} [${itemInfo[stats.itemId].recipe?.level ?? 0}]`,
-        pricePerScrip: stats.pricePerScrip.unwrapUnchecked(),
+        pricePerScrip: stats.pricePerScrip.unwrapOr(0),
     };
 }
 
