@@ -3,6 +3,8 @@ import { OptionType } from '@/app/(util)/option';
 import { ChangeEvent } from 'react';
 import { Ingredient } from '../(universalis)/items';
 import { useCheckedKeys, useHiddenKeys, useIsChildOfHiddenKey, useSetCheckKey, useTableRows, useToggleHiddenKey, useUniversalisInfo } from './(shared-state)/query-shared-calc';
+import triangleIcon from './triangle.png';
+import Image from 'next/image';
 
 export interface TableRow {
     _key: string,
@@ -92,7 +94,14 @@ function TableRow(props: TableRow) {
     const generation = _key.split('').reduce((prev, cur) => cur != '|' ? prev : (prev + 1), 0);
     const namePadding = generation * 1.8;
     const onClickNameButton = () => { toggleHiddenKey(_key); };
-    const nameNode = !hasChildren ? name : <><button type='button' onClick={onClickNameButton}>{hiddenKeys.value.has(_key) ? '+' : '-'}</button>{name}</>;
+    const nameNode = !hasChildren
+        ? name
+        : <>
+            <Image src={triangleIcon} className={styles.childIcon} alt="triangle" onClick={onClickNameButton} style={{
+                transform: hiddenKeys.value.has(_key) ? 'rotate(0deg)' : 'rotate(90deg)',
+            }} />
+            {name}
+        </>;
 
     const isChecked = checkedKeys.value.has(_key);
     const onChangeChecked = (e: ChangeEvent<HTMLInputElement>) => { setCheckKey(_key, e.target.checked); };
