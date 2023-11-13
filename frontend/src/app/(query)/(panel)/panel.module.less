@@ -1,5 +1,7 @@
 @import '../../colors.less';
 
+@small-width: ~'(max-width: 56em)';
+
 .queries {
     flex: 0;
     display: flex;
@@ -29,7 +31,7 @@
         margin-right: 0px;
     }
 
-    @media (max-width: 768px) {
+    @media @small-width {
         flex-direction: column;
         align-content: stretch;
     }
@@ -43,7 +45,7 @@
     flex: 1 1 55%;
     max-width: 100%;
 
-    @media (max-width: 768px) {
+    @media @small-width {
         flex: 0;
     }
 }
@@ -84,7 +86,7 @@
 
     margin-top: 0.25em;
 
-    @media (max-width: 768px) {
+    @media @small-width {
         grid-template-columns: repeat(auto-fill, minmax(min(100%, 7em), 1fr));
         grid-auto-columns: auto auto;
     }
@@ -131,7 +133,7 @@
     column-gap: 0.5em;
     flex: 0;
 
-    @media (max-width: 768px) {
+    @media @small-width {
         align-content: center;
     }
 }
@@ -139,7 +141,7 @@
 .fetchButton {
     flex: 0;
 
-    @media (max-width: 768px) {
+    @media @small-width {
         flex: 1;
     }
 }

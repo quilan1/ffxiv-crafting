@@ -1,5 +1,7 @@
 @import '../../colors.less';
 
+@small-width: ~'(max-width: 48em)';
+
 .hdivider,
 .vdivider {
     display: flex;
@@ -9,7 +11,7 @@
         display: block;
         background-color: @color-fg-divider;
         border: 1px solid @color-fg-divider-border;
-        border-width: 1px 0px 1px 0px;
+        border-width: 1px 0px;
     }
 
     span:first-child {
@@ -21,7 +23,7 @@
     flex-direction: row;
 
     span {
-        border-width: 1px 0px 1px 0px;
+        border-width: 1px 0px;
     }
 
     span:first-child {
@@ -33,12 +35,12 @@
         height: 1px;
     }
 
-    @media (max-width: 768px) {
+    @media @small-width {
         &.flipped {
             flex-direction: column;
 
             span {
-                border-width: 0px 1px 0px 1px;
+                border-width: 0px 1px;
             }
 
             span:first-child {
@@ -58,7 +60,7 @@
     flex-direction: column;
 
     span {
-        border-width: 0px 1px 0px 1px;
+        border-width: 0px 1px;
     }
 
     span:first-child {
@@ -70,12 +72,12 @@
         height: 100%;
     }
 
-    @media (max-width: 768px) {
+    @media @small-width {
         &.flipped {
             flex-direction: row;
 
             span {
-                border-width: 1px 0px 1px 0px;
+                border-width: 1px 0px;
             }
 
             span:first-child {

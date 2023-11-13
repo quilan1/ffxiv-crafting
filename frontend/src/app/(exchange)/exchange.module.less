@@ -1,5 +1,7 @@
 @import '../colors.less';
 
+@small-width: ~'(max-width: 36em)';
+
 .statusHeader {
     flex: 0;
     display: flex;
@@ -20,7 +22,7 @@
         flex-direction: column;
     }
 
-    @media (max-width: 570px) {
+    @media @small-width {
         flex-direction: column;
 
         >div {
