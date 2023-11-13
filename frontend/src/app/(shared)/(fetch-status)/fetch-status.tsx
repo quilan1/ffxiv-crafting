@@ -1,5 +1,5 @@
-import { ListingRequestStatus, ListingStatus } from "../(universalis)/universalis-api";
-import { None, Some, optMin } from "../(util)/option";
+import { ListingRequestStatus, ListingStatus } from "../../(universalis)/universalis-api";
+import { None, Some, optMin } from "../../(util)/option";
 import styles from './fetch-status.module.css';
 
 export function FetchStatus({ listingStatus }: { listingStatus: ListingStatus | undefined }) {

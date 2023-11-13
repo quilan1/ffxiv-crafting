@@ -1,6 +1,6 @@
-import { entriesOf } from '../(util)/util';
-import { usePurchaseInfo } from './query-state';
-import styles from './query.module.css';
+import { entriesOf } from '../../(util)/util';
+import { usePurchaseInfo } from '../query-state';
+import styles from './purchase.module.css';
 
 export interface PurchaseInfo {
     itemName: string,
@@ -23,10 +23,12 @@ export interface AllPurchaseInfo {
 
 export function WorldInformation() {
     const purchaseInfo = usePurchaseInfo();
+    if (entriesOf(purchaseInfo.purchases).length == 0 && purchaseInfo.failures.length == 0)
+        return <></>;
 
     return (
         <div className={styles.worldInfo}>
-            <div>
+            <div className={styles.purchasesContainer}>
                 {(purchaseInfo.failures.length > 0) && <DataCenterFailures failures={purchaseInfo.failures} />}
                 {entriesOf(purchaseInfo.purchases).map(([dataCenter, worldsInfo]) => {
                     return <DataCenterPurchaseInfo key={dataCenter} dataCenter={dataCenter} worldsInfo={worldsInfo} />
@@ -41,13 +43,11 @@ function DataCenterFailures({ failures }: { failures: FailureInfo[] }) {
         <div className={styles.dataCenterName} style={{ color: 'red' }}>Insufficient Quantity on Market</div>
         {failures.map(({ itemName, count }) => {
             return (
-                <div key={itemName} className={styles.worldPurchaseInfo}>
-                    <div className={styles.purchasesInfo}>
-                        <div className={styles.purchaseInfo}>
-                            <div style={{ width: '4em' }}>{count}x</div>
-                            <div style={{ width: '6em' }}>-</div>
-                            <div>{itemName}</div>
-                        </div>
+                <div key={itemName} className={styles.purchasesInfo}>
+                    <div className={styles.purchaseInfo}>
+                        <div style={{ width: '4em' }}>{count}x</div>
+                        <div style={{ width: '6em' }}>-</div>
+                        <div>{itemName}</div>
                     </div>
                 </div>
             );
@@ -71,25 +71,22 @@ function WorldPurchaseInfo(
     { world, worldBuyInfo }
         : { world: string, worldBuyInfo: PurchaseInfo[] }
 ) {
-    return (
-        <div className={styles.worldPurchaseInfo}>
-            <div style={{ fontWeight: 'bold' }}>{world}</div>
-            <div className={styles.purchasesInfo}>
-                {worldBuyInfo.map((worldBuyInfo, i) => {
-                    return <PurchaseInfoNode key={i} worldBuyInfo={worldBuyInfo} />
-                })}
-            </div>
+    return <>
+        <div className={styles.worldName}>{world}</div>
+        <div className={styles.purchasesInfo}>
+            {worldBuyInfo.map((worldBuyInfo, i) => {
+                return <PurchaseInfoNode key={i} worldBuyInfo={worldBuyInfo} />
+            })}
         </div>
-    );
+    </>;
 }
 
 function PurchaseInfoNode({ worldBuyInfo }: { worldBuyInfo: PurchaseInfo }) {
     const { itemName, name, price, count } = worldBuyInfo;
-    return (
-        <div className={styles.purchaseInfo}>
-            <div style={{ width: '4em' }}>{count}x</div>
-            <div style={{ width: '6em' }}>[{price} gil]</div>
-            <div>{itemName} [{name}]</div>
-        </div>
-    );
+    return <>
+        <div className={styles.count}>{count}x</div>
+        <div className={styles.price}>[{price} gil]</div>
+        <div className={styles.name}>{itemName}</div>
+        <div className={styles.retainer}>[{name}]</div>
+    </>;
 }

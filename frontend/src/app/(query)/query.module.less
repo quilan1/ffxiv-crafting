@@ -2,11 +2,14 @@
 
 .queries {
     flex: 0;
-    height: 200px;
     display: flex;
+    flex-direction: row;
+    position: relative;
+    gap: 0.5em;
+
     padding: 0.5em;
-    border: 1px solid @color-fg-border;
-    border-top: unset;
+
+    background-color: @color-bg-content;
 
     label {
         color: @color-fg-label
@@ -18,25 +21,42 @@
         background-color: @color-bg-input
     }
 
-    >* {
-        margin-left: 5px;
-        margin-right: 5px;
-    }
-
     > :first-child {
-        margin-left: 0px;
+        margin-left: 0;
     }
 
     > :last-child {
         margin-right: 0px;
     }
+
+    @media (max-width: 768px) {
+        flex-direction: column;
+        align-content: stretch;
+    }
+}
+
+.minimized {
+    width: auto;
 }
 
 .queryOptions {
-    flex: 55%;
+    flex: 1 1 55%;
+    max-width: 100%;
+
+    @media (max-width: 768px) {
+        flex: 0;
+    }
 
     >.labelRow {
         display: flex;
+        max-width: 100%;
+
+        select,
+        input {
+            width: 100%;
+            max-width: 100%;
+            min-width: 2em;
+        }
 
         >label:first-child {
             flex: 0 5em;
@@ -52,211 +72,79 @@
         }
     }
 
-    >.queryString {
-        font-size: 60%;
+}
+
+.queryString {
+    font-size: 80%;
+}
+
+.optionsBlock {
+    display: grid;
+    gap: 0.5em;
+    margin-top: 0.25em;
+    justify-items: stretch;
+    justify-content: stretch;
+    grid-template-columns: repeat(5, 1fr);
+
+    @media (max-width: 768px) {
+        grid-template-columns: repeat(auto-fill, minmax(min-content, 11em));
     }
 
-    >.optionsBlock {
+    >div {
         display: flex;
         flex-direction: row;
-        margin-top: 0.25em;
+        max-width: 100%;
 
-        >div {
-            flex: auto;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-left: 0.1em;
-            margin-right: 0.1em;
-        }
-
-        >div:first-child {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
+        >* {
+            flex: 0 1 auto;
+            white-space: nowrap;
+            width: 100%;
+            max-width: 100%;
+            margin-right: 0px;
             margin-left: 0px;
         }
 
-        >div:last-child {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            margin-right: 0px;
-
-            input {
-                margin-right: 0px;
-            }
+        >:first-child {
+            align-items: center;
+            text-align: right;
+            margin-right: 0.5em;
         }
+
+        label {
+            color: @color-fg-label
+        }
+
+        input:not([type=checkbox]) {
+            min-width: 2em;
+        }
+
+        select {
+            width: fit-content;
+        }
+
+        input[type=checkbox] {
+            width: auto;
+            margin: 3px 0 3px 0;
+        }
+    }
+}
+
+.fetch {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    column-gap: 0.5em;
+    flex: 0;
+
+    @media (max-width: 768px) {
+        align-content: center;
     }
 }
 
 .fetchButton {
     flex: 0;
-}
 
-.fetchStatus {
-    flex: 1;
-
-    >div {
-        width: 100%;
-        display: flex;
-
-        >label {
-            font-weight: bolder;
-        }
-
-        >div:first-of-type {
-            border-left: 1px solid black;
-        }
-
-        >div:last-of-type {
-            border-right: 1px solid black;
-        }
-
-        .fetchRequest {
-            flex: 1;
-            border-top: 1px solid black;
-            border-bottom: 1px solid black;
-            max-width: 1em;
-            height: 1em;
-        }
-
-        .active {
-            background-color: yellow;
-        }
-
-        .warn {
-            background-color: orange;
-        }
-
-        .finishedGood {
-            background-color: green;
-        }
-
-        .finishedBad {
-            background-color: red;
-        }
-
-        .queued {
-            background-color: grey;
-        }
-    }
-}
-
-.marketInfo {
-    flex: 1;
-    padding: 0.5em;
-    border: 1px solid @color-fg-border;
-    min-height: 0px;
-
-    label {
-        color: @color-fg-label
-    }
-}
-
-.tableContainer {
-    overflow: auto;
-    max-height: 100%;
-}
-
-.informationTable {
-    border: 1px solid black;
-    width: 100%;
-    border-collapse: collapse;
-
-    .tableRow {
-        background-color: @color-bg-table;
-
-        td.velocity,
-        td.costs {
-            background-color: darken(@color-bg-table, 10%);
-        }
-    }
-
-    .tableRowDark {
-        background-color: darken(@color-bg-table, 10%);
-
-        td.velocity,
-        td.costs {
-            background-color: darken(@color-bg-table, 20%);
-        }
-    }
-
-    .heading {
-        background-color: @color-bg-table-header;
-        border-bottom: 1px solid black;
-    }
-
-    .rowItem {
-        text-align: center;
-    }
-
-    .isChildRow {
-        font-style: italic;
-        font-size: smaller;
-    }
-
-    td.name {
-        text-align: left;
-    }
-
-    td {
-        border: unset;
-        border-bottom: 1px solid black;
-    }
-
-    .leftBorder {
-        border-left: 1px solid black;
-    }
-
-    .rightBorder {
-        border-right: 1px solid black;
-    }
-
-    .childIcon {
-        font-style: normal;
-        font-size: medium;
-        width: 1.0em;
-        height: 1.0em;
-        vertical-align: middle;
-        cursor: pointer;
-    }
-}
-
-.worldInfo {
-    flex: 1;
-    padding: 0.5em;
-    min-height: 0px;
-    border: 1px solid @color-fg-border;
-
-    >div {
-        padding: 0.5em;
-        display: flex;
-        flex-direction: column;
-        overflow: auto;
-        max-height: 100%;
-        border: 1px solid @color-fg-border;
-        background-color: @color-bg-table;
-
-        .dataCenterName {
-            font-size: x-large;
-            font-weight: bolder;
-        }
-
-        .worldPurchaseInfo {
-            display: flex;
-            flex-direction: column;
-            padding: 0.5em;
-
-            >.purchasesInfo {
-                border: 1px solid @color-fg-border;
-
-                >.purchaseInfo {
-                    display: flex;
-                    flex-direction: row;
-                    margin: 0.5em;
-                }
-            }
-        }
+    @media (max-width: 768px) {
+        flex: 1;
     }
 }

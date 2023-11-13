@@ -1,74 +1,101 @@
 @import '../colors.less';
 
-.exchange {
-    flex: 1;
+.statusHeader {
+    flex: 0;
+    display: flex;
+    flex-direction: row;
+
+    padding: 0.5em;
+    column-gap: 0.5em;
+
+    background-color: @color-bg-content;
+
+    label {
+        color: white;
+    }
+
+    >div {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    @media (max-width: 570px) {
+        flex-direction: column;
+
+        >div {
+            flex-direction: row;
+        }
+    }
+}
+
+.nothingLoaded {
+    padding: 0.5em;
+    min-height: 0;
+    max-height: 100%;
+    height: 100%;
+
+    background-color: @color-bg-content;
+}
+
+.nothingLoadedContainer {
+    overflow: auto;
+
+    max-height: 100%;
+    height: 100%;
+    padding: 0.5em;
+
+    background-color: @color-bg-table;
+    border: 1px solid black;
+}
+
+.allScrips {
+    min-height: 0;
+    max-height: 100%;
+    padding: 0.5em;
+
+    background-color: @color-bg-content;
+}
+
+.allScripsContainer {
+    overflow: auto;
     display: flex;
     flex-direction: column;
-    border: 1px solid @color-fg-border;
-    border-top: unset;
+    row-gap: 0.5em;
+
     max-height: 100%;
+    padding: 0.5em;
 
-    .statusHeader {
-        flex: 0;
-        display: flex;
-        flex-direction: row;
-        border-bottom: 2px solid @color-fg-border;
-        padding: 0.5em;
+    background-color: @color-bg-table;
+    border: 1px solid black;
+}
 
-        label {
-            color: white;
-        }
+.scripHeading {
+    display: flex;
+    flex-direction: row;
+    font-weight: bold;
+    gap: 1em;
 
-        .status {
-            display: flex;
-            flex-direction: row;
-            width: 100%;
-            padding-left: 0.5em;
-
-            >div {
-                flex: 1;
-            }
-        }
+    >* {
+        white-space: nowrap;
     }
 
-    .nothingLoaded {
-        max-height: 100%;
-        height: 100%;
-        overflow: auto;
-        margin: 0.5em;
-        padding: 0.5em;
-        border: 1px solid black;
-        background-color: @color-bg-table;
+    .scripType {
+        width: 16.5em;
     }
+}
 
-    .allScrips {
-        max-height: 100%;
-        margin: 0.5em;
-        overflow: auto;
-        background-color: @color-bg-table;
+.scripTable {
+    display: grid;
+    grid-template-columns: repeat(4, min-content) max-content;
+    gap: 0.2em 1em;
 
-        >* {
-            padding-left: 0.5em;
-        }
+    width: fit-content;
+    padding: 0.5em;
 
-        .scripHeading {
-            display: flex;
-            flex-direction: row;
-            font-weight: bold;
+    border: 1px solid @color-fg-border;
 
-            .scripType {
-                width: 16.5em;
-            }
-        }
-
-        .scripTable {
-            margin: 0.5em;
-            border: 1px solid @color-fg-border;
-
-            .scripProfit {
-                display: flex;
-                flex-direction: row;
-            }
-        }
+    >* {
+        white-space: nowrap;
     }
 }

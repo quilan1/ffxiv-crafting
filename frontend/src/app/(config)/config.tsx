@@ -7,12 +7,10 @@ import purchaseExample from './purchaseExample.png';
 import { useHomeworld } from './config-state';
 
 export function ConfigContainer() {
-    return (
-        <div className={styles.config}>
-            <ConfigStatus />
-            <ConfigText />
-        </div>
-    )
+    return <>
+        <ConfigStatus />
+        <ConfigText />
+    </>
 }
 
 function ConfigStatus() {
@@ -52,70 +50,70 @@ function ConfigStatus() {
 
     return (
         <div className={styles.configHeader}>
-            <div>
-                <label>Homeworld:</label>
-                <select value={homeworld.value} onChange={onChange}>
-                    {allKeys.map(key => {
-                        return (key.startsWith('=') || key.startsWith('['))
-                            ? <option key={key} value={key} style={{ fontWeight: 'bold' }}>{key}</option>
-                            : <option key={key} value={key}>{key}</option>
-                    })}
-                </select>
-            </div>
+            <label>Homeworld:</label>
+            <select value={homeworld.value} onChange={onChange}>
+                {allKeys.map(key => {
+                    return (key.startsWith('=') || key.startsWith('['))
+                        ? <option key={key} value={key} style={{ fontWeight: 'bold' }}>{key}</option>
+                        : <option key={key} value={key}>{key}</option>
+                })}
+            </select>
         </div >
     );
 }
 
 function ConfigText() {
     return (
-        <div className={styles.usage}>
-            <div>
-                <h2>Overview</h2>
-                This website is intended as a way of querying market deals in FFXIV that can be made by crafting
-                various materials. Query strings determine which items will be fetched from Universalis for current
-                marketplace information. With this, the calculated optimal crafting, expected profit and
-                individual purchases are determined for each item.
-            </div>
-            <div>
-                <h3>Quick Start</h3>
+        <div className={styles.usageContainer}>
+            <div className={styles.usage}>
                 <div>
-                    <ol>
-                        <li>
-                            Select your FFXIV homeworld from the dropdown of the <span style={{ fontWeight: 'bold' }}>Config Tab</span>.
-                            Top of this page.
-                        </li>
-                        <li>Navigate to the <span style={{ fontWeight: 'bold' }}>Query Tab</span>.</li>
-                        <li>
-                            Select one of the query patterns from
-                            the <span style={{ fontWeight: 'bold' }}>&apos;Examples&apos;</span> dropdown then
-                            press <span style={{ fontWeight: 'bold' }}>&apos;Fetch&apos;</span>.
-                            <div><Image src={startingExample} alt="Choosing an example from the Query tab" priority={true} /></div>
-                        </li>
-                        <li>
-                            Choose a craft with a high expected profit, and click the checkmark next to the top level item of that
-                            craft.
-                            <div><Image src={craftExample} alt="Identifying a craft with a high profit" priority={true} /></div>
-                        </li>
-                        <li>
-                            Ingredient purchase listings will be shown below with retainer names, ordered by data center.
-                            <div><Image
-                                src={purchaseExample}
-                                alt="Purchase information for items"
-                                style={{ border: '2px solid #404040' }}
-                                priority={true}
-                            /></div>
-                        </li>
-                    </ol>
+                    <h2 style={{ marginTop: '0' }}>Overview</h2>
+                    This website is intended as a way of querying market deals in FFXIV that can be made by crafting
+                    various materials. Query strings determine which items will be fetched from Universalis for current
+                    marketplace information. With this, the calculated optimal crafting, expected profit and
+                    individual purchases are determined for each item.
                 </div>
-            </div>
-            <h3>References</h3>
-            <div>
-                <ul>
-                    <li><a href="https://github.com/quilan1/ffxiv-crafting">This Project&apos;s GitHub</a> and query string format reference.</li>
-                    <li><a href="https://universalis.app/">Universalis App</a></li>
-                    <li><a href="https://notranged.github.io/#/solver">Crafting Solver Macros</a></li>
-                </ul>
-            </div>
-        </div >
+                <div>
+                    <h3>Quick Start</h3>
+                    <div>
+                        <ol>
+                            <li>
+                                Select your FFXIV homeworld from the dropdown of the <span style={{ fontWeight: 'bold' }}>Config Tab</span>.
+                                Top of this page.
+                            </li>
+                            <li>Navigate to the <span style={{ fontWeight: 'bold' }}>Query Tab</span>.</li>
+                            <li>
+                                Select one of the query patterns from
+                                the <span style={{ fontWeight: 'bold' }}>&apos;Examples&apos;</span> dropdown then
+                                press <span style={{ fontWeight: 'bold' }}>&apos;Fetch&apos;</span>.
+                                <div><Image src={startingExample} alt="Choosing an example from the Query tab" priority={true} /></div>
+                            </li>
+                            <li>
+                                Choose a craft with a high expected profit, and click the checkmark next to the top level item of that
+                                craft.
+                                <div><Image src={craftExample} alt="Identifying a craft with a high profit" priority={true} /></div>
+                            </li>
+                            <li>
+                                Ingredient purchase listings will be shown below with retainer names, ordered by data center.
+                                <div><Image
+                                    src={purchaseExample}
+                                    alt="Purchase information for items"
+                                    style={{ border: '2px solid #404040' }}
+                                    priority={true}
+                                /></div>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+                <h3>References</h3>
+                <div>
+                    <ul>
+                        <li><a href="https://github.com/quilan1/ffxiv-crafting">This Project&apos;s GitHub</a> and query string format reference.</li>
+                        <li><a href="https://universalis.app/">Universalis App</a></li>
+                        <li><a href="https://notranged.github.io/#/solver">Crafting Solver Macros</a></li>
+                    </ul>
+                </div>
+            </div >
+        </div>
     )
 }

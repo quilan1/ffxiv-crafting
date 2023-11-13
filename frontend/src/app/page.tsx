@@ -10,6 +10,7 @@ export default function Home() {
     const [curForm, setForm] = useState(MarketForm.CONFIG);
 
     let form = <div className={styles.error}>Invalid MarketForm value: {curForm}</div>;
+
     switch (curForm) {
         case MarketForm.CONFIG:
             form = <ConfigContainer />;

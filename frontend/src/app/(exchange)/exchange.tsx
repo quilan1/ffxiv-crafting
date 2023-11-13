@@ -4,38 +4,38 @@ import { ListingStatusPair, useFetchInfo, useInfo, useIsFetching, useListingStat
 import { ExchangeInfo, ProfitInfo } from './fetch-exchange-info';
 import { ListingStatus } from '../(universalis)/universalis-api';
 import { Signal } from '../(util)/signal';
-import { FetchStatus } from '../(fetch-status)/fetch-status';
+import { FetchStatus } from '../(shared)/(fetch-status)/fetch-status';
 
 export function ExchangeContainer() {
-    return (
-        <div className={styles.exchange}>
-            <ExchangeStatus />
-            <ExchangeAllScrips />
-        </div>
-    )
+    return <>
+        <ExchangeStatus />
+        <ExchangeAllScrips />
+    </>
 }
 
 function ExchangeNotLoaded() {
     return (
         <div className={styles.nothingLoaded}>
-            <h2>Press &apos;Fetch&apos; to retrieve crafting exchange rates.</h2>
-            <h3>Explanation:</h3>
-            <div>
-                A number of crafts may be made to generate scrips:
-                <ul>
-                    <li>Level 90 Rarefied crafts may be exchanged for Purple Crafting Scrips</li>
-                    <li>Level 50-89 Rarefied crafts may be exchanged for White Crafting Scrips</li>
-                    <li>Level 4 Skybuilders&apos; crafts may be exchanged for Skybuilders&apos; Scrips</li>
-                </ul>
+            <div className={styles.nothingLoadedContainer}>
+                <h2 style={{ marginTop: '0' }}>Press &apos;Fetch&apos; to retrieve crafting exchange rates.</h2>
+                <h3>Explanation:</h3>
+                <div>
+                    A number of crafts may be made to generate scrips:
+                    <ul>
+                        <li>Level 90 Rarefied crafts may be exchanged for Purple Crafting Scrips</li>
+                        <li>Level 50-89 Rarefied crafts may be exchanged for White Crafting Scrips</li>
+                        <li>Level 80 Level 4 Skybuilders&apos; crafts may be exchanged for Skybuilders&apos; Scrips</li>
+                    </ul>
+                </div>
+                <p>
+                    This page considers the process of buying the materials to craft one of these items, then trading in the scrips for
+                    a reward that may be sold on the market board. If the traded item may be sold for more than it costs to craft, it will
+                    have a ratio greater than 1. If it costs more to craft, than it does to sell, it will have a red ratio.
+                </p>
+                <p>
+                    Tl;dr: Higher ratios better.
+                </p>
             </div>
-            <p>
-                This page considers the process of buying the materials to craft one of these items, then trading in the scrips for
-                a reward that may be sold on the market board. If the traded item may be sold for more than it costs to craft, it will
-                have a ratio greater than 1. If it costs more to craft, than it does to sell, it will have a red ratio.
-            </p>
-            <p>
-                Tl;dr: Higher ratios better.
-            </p>
         </div>
     );
 }
@@ -48,9 +48,7 @@ function ExchangeStatus() {
     return (
         <div className={styles.statusHeader}>
             <button type="button" onClick={fetchInfo} disabled={isFetching.value}>Fetch</button>
-            <div className={styles.status}>
-                {listingStatuses.map((listings, i) => <ExchangeFetchStatus key={i} listings={listings} />)}
-            </div>
+            {listingStatuses.map((listings, i) => <ExchangeFetchStatus key={i} listings={listings} />)}
         </div>
     );
 }
@@ -73,16 +71,9 @@ function ExchangeAllScrips() {
 
     return (
         <div className={styles.allScrips}>
-            <div className={styles.scripTable}>
-                <div className={styles.scripProfit}>
-                    <div style={{ width: '4em', fontWeight: 'bold' }}>Sell</div>
-                    <div style={{ width: '4em', fontWeight: 'bold' }}>Cost</div>
-                    <div style={{ width: '4em', fontWeight: 'bold' }}>Ratio</div>
-                    <div style={{ width: '4em', fontWeight: 'bold' }}>#/Wk</div>
-                    <div style={{ flex: '1', fontWeight: 'bold' }}>Name</div>
-                </div>
+            <div className={styles.allScripsContainer}>
+                {info.value.map(info => <ExchangeInfo key={info.name} info={info} />)}
             </div>
-            {info.value.map(info => <ExchangeInfo key={info.name} info={info} />)}
         </div>
     );
 }
@@ -98,16 +89,19 @@ function ExchangeInfo({ info }: { info: ExchangeInfo }) {
             <div>{info.exchangeName}</div>
         </div>
         <div className={styles.scripTable}>
-            {info.profitInfo?.map(info => {
-                return (
-                    <div key={info.name} className={styles.scripProfit}>
-                        <div style={{ width: '4em' }}>{_toFixed0(info.profit)}</div>
-                        <div style={{ width: '4em' }}>{_toFixed0(info.pricePer)}</div>
-                        <div style={{ width: '4em', color: color(info) }}>{_toFixed2(info.ratio)}</div>
-                        <div style={{ width: '4em' }}>{_toFixed2(info.perWeek)}</div>
-                        <div style={{ flex: '1' }}>{info.name}</div>
-                    </div>
-                )
+            <div style={{ fontWeight: 'bold' }}>Sell</div>
+            <div style={{ fontWeight: 'bold' }}>Cost</div>
+            <div style={{ fontWeight: 'bold' }}>Ratio</div>
+            <div style={{ fontWeight: 'bold' }}>#/Wk</div>
+            <div style={{ fontWeight: 'bold' }}>Name</div>
+            {info.profitInfo?.flatMap((info, index) => {
+                return [
+                    <div key={`${index}-0`}>{_toFixed0(info.profit)}</div>,
+                    <div key={`${index}-1`}>{_toFixed0(info.pricePer)}</div>,
+                    <div key={`${index}-2`} style={{ color: color(info) }}>{_toFixed2(info.ratio)}</div>,
+                    <div key={`${index}-3`}>{_toFixed2(info.perWeek)}</div>,
+                    <div key={`${index}-4`}>{info.name}</div>,
+                ]
             })}
         </div>
     </>;

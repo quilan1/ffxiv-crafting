@@ -1,10 +1,13 @@
-import styles from './query.module.css';
+import styles from './table.module.css';
 import { OptionType } from '@/app/(util)/option';
 import { ChangeEvent } from 'react';
-import { Ingredient } from '../(universalis)/items';
-import { useCheckedKeys, useHiddenKeys, useIsChildOfHiddenKey, useSetCheckKey, useTableRows, useToggleHiddenKey, useUniversalisInfo } from './(shared-state)/query-shared-calc';
-import triangleIcon from './triangle.png';
+import { Ingredient } from '../../(universalis)/items';
+import { useCheckedKeys, useHiddenKeys, useIsChildOfHiddenKey, useSetCheckKey, useTableRows, useToggleHiddenKey, useUniversalisInfo } from '../(shared-state)/query-shared-calc';
+import triangleIcon from '../../(shared)/triangle.png';
 import Image from 'next/image';
+import { useIsTableMinimized, usePurchaseInfo } from '../query-state';
+import { Minimize } from '@/app/(shared)/(minimize)/minimize';
+import { keysOf } from '@/app/(util)/util';
 
 export interface TableRow {
     _key: string,
@@ -29,29 +32,44 @@ export interface KeyedTableRow {
 }
 
 export function MarketInformation() {
-    const tableRows = useTableRows();
-    const isChildOfHiddenKey = useIsChildOfHiddenKey();
+    const purchaseInfo = usePurchaseInfo();
+    const isMinimized = useIsTableMinimized();
+    const style = [styles.marketInfo, isMinimized.value ? styles.minimized : '']
+        .filter(s => s.length > 0)
+        .join(' ');
 
     return (
-        <div className={styles.marketInfo}>
-            <div className={styles.tableContainer}>
-                {tableRows.value ?
-                    <table className={styles.informationTable}>
-                        <thead>
-                            <TableHeader />
-                        </thead>
-                        <tbody>
-                            {tableRows.value
-                                .filter(({ row }) => row.item.itemId > 19)
-                                .filter(({ key }) => !isChildOfHiddenKey(key))
-                                .map(({ key, row }) => <TableRow key={key} {...row} />)}
-                        </tbody>
-                    </table>
-                    : <></>
-                }
-            </div>
+        <div className={style}>
+            {isMinimized.value
+                ? <></>
+                : <Table />}
+            {(isMinimized.value || keysOf(purchaseInfo.purchases).length > 0)
+                ? <Minimize isMinimized={isMinimized} />
+                : <></>}
         </div>
     );
+}
+
+function Table() {
+    const tableRows = useTableRows();
+    const isChildOfHiddenKey = useIsChildOfHiddenKey();
+    if (tableRows.value === undefined) return <></>;
+
+    return (
+        <div className={styles.tableContainer}>
+            <table className={styles.informationTable}>
+                <thead>
+                    <TableHeader />
+                </thead>
+                <tbody>
+                    {tableRows.value
+                        .filter(({ row }) => row.item.itemId > 19)
+                        .filter(({ key }) => !isChildOfHiddenKey(key))
+                        .map(({ key, row }) => <TableRow key={key} {...row} />)}
+                </tbody>
+            </table>
+        </div>
+    )
 }
 
 function TableHeader() {

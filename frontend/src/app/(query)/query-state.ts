@@ -7,7 +7,7 @@ import { useEffect, useMemo } from "react";
 import { useHomeworld } from "../(config)/config-state";
 import { atom } from "jotai";
 import { useCheckedKeys, useHiddenKeys, useIsChildOfHiddenKey, useTableRows, useUniversalisInfo } from "./(shared-state)/query-shared-calc";
-import { FailureInfo, PurchaseWorldInfo } from "./purchase";
+import { FailureInfo, PurchaseWorldInfo } from "./(purchase)/purchase";
 import { calculatePurchases } from "../(universalis)/purchases";
 import { Ingredient } from "../(universalis)/items";
 import { entriesOf } from "../(util)/util";
@@ -34,6 +34,12 @@ export const usePurchaseFrom = (): Signal<string> => useSignal(purchaseFromAtom)
 
 const isCancelledAtom = atom(() => ({ current: false }));
 const useIsCancelled = () => useSignal(isCancelledAtom).value;
+
+const isQueryMinimizedAtom = atom(false);
+export const useIsQueryMinimized = () => useSignal(isQueryMinimizedAtom);
+
+const isTableMinimizedAtom = atom(false);
+export const useIsTableMinimized = () => useSignal(isTableMinimizedAtom);
 
 export function usePurchaseFromData(): [Signal<string>, PurchaseOption[]] {
     const purchaseFrom = usePurchaseFrom();

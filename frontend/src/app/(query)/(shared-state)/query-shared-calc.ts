@@ -1,6 +1,6 @@
 import { RecursiveStats } from "@/app/(universalis)/analysis";
 import { UniversalisInfo } from "@/app/(universalis)/universalis-api";
-import { KeyedTableRow } from "../table";
+import { KeyedTableRow } from "../(table)/table";
 import { useSignal } from "@/app/(util)/signal";
 import { atom } from "jotai";
 

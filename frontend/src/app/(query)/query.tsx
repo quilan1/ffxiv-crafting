@@ -1,13 +1,14 @@
 import { ChangeEvent, KeyboardEvent } from 'react';
 import styles from './query.module.css';
-import { MarketInformation } from './table';
-import { WorldInformation } from './purchase';
-import { useFetchQuery, useQueryString, useQueryDropdown, useListingStatus, useIsFetching, usePurchaseFromData } from './query-state';
+import { MarketInformation } from './(table)/table';
+import { WorldInformation } from './(purchase)/purchase';
+import { useFetchQuery, useQueryString, useQueryDropdown, useListingStatus, useIsFetching, usePurchaseFromData, useIsQueryMinimized } from './query-state';
 import { preparedQueries } from './query-processing';
 import { useCheckedKeys } from './(shared-state)/query-shared-calc';
 import { useCount, useIsHq, useLimit, useMinVelocity } from './(shared-state)/query-shared-inputs';
 import { useUpdateUniversalis } from './(shared-state)/query-shared';
-import { FetchStatus } from '../(fetch-status)/fetch-status';
+import { FetchStatus } from '../(shared)/(fetch-status)/fetch-status';
+import { Minimize } from '../(shared)/(minimize)/minimize';
 
 export function QueryContainer() {
     const checkedKeys = useCheckedKeys();
@@ -19,11 +20,21 @@ export function QueryContainer() {
 }
 
 function QueryPanel() {
+    const isMinimized = useIsQueryMinimized();
+    const style = [styles.queries, isMinimized.value ? styles.minimized : '']
+        .filter(s => s.length > 0)
+        .join(' ');
+
     return (
-        <div className={styles.queries}>
-            <Options />
-            <FetchButton />
-            <QueryFetchStatus />
+        <div className={style}>
+            {!isMinimized.value && <>
+                <Options />
+                <div className={styles.fetch}>
+                    <FetchButton />
+                    <QueryFetchStatus />
+                </div>
+            </>}
+            <Minimize isMinimized={isMinimized} />
         </div>
     )
 }
@@ -104,30 +115,17 @@ function OptionsInputs() {
     const onChangeMinVelocity = (e: ChangeEvent<HTMLInputElement>) => { minVelocity.value = e.target.value; updateUniversalis({ minVelocity: e.target.value }); };
     const onChangeIsHq = (e: ChangeEvent<HTMLInputElement>) => { isHq.value = e.target.checked; updateUniversalis({ isHq: e.target.checked }); }
 
+    const pair = (first: React.ReactNode, second: React.ReactNode) => <div><label>{first}</label>{second}</div>;
+
     return (
         <div className={styles.optionsBlock}>
-            <div><div>
-                <label>Count: </label>
-                <input type="number" value={count.value} onChange={onChangeCount} style={{ width: '3em' }} />
-            </div></div>
-            <div><div>
-                <label>Limit: </label>
-                <input type="number" value={limit.value} onChange={onChangeLimit} style={{ width: '2.5em' }} />
-            </div></div>
-            <div><div>
-                <label>Min Velocity: </label>
-                <input type="number" value={minVelocity.value} onChange={onChangeMinVelocity} style={{ width: '3.5em' }} />
-            </div></div>
-            <div><div>
-                <label>Purchase From: </label>
-                <select onChange={onChangePurchaseFrom} value={purchaseFrom.value}>{
-                    purchaseFromOptions.map(({ label, value }) => <option key={value} value={value}>{label}</option>)
-                }</select>
-            </div></div>
-            <div><div>
-                <label>HQ: </label>
-                <input id="is-hq" type="checkbox" onChange={onChangeIsHq} checked={isHq.value} />
-            </div></div>
+            {pair("Count:", <input type="number" value={count.value} onChange={onChangeCount} />)}
+            {pair("Limit:", <input type="number" value={limit.value} onChange={onChangeLimit} />)}
+            {pair("Min Velocity:", <input type="number" value={minVelocity.value} onChange={onChangeMinVelocity} />)}
+            {pair("Purchase From:", <select onChange={onChangePurchaseFrom} value={purchaseFrom.value}>{
+                purchaseFromOptions.map(({ label, value }) => <option key={value} value={value}>{label}</option>)
+            }</select>)}
+            {pair("HQ:", <div><input id="is-hq" type="checkbox" onChange={onChangeIsHq} checked={isHq.value} /></div>)}
         </div>
     );
 }

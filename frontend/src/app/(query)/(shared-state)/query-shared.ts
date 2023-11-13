@@ -6,7 +6,7 @@ import { useCount, useIsHq, useLimit, useMinVelocity } from "./query-shared-inpu
 import { useHomeworld } from "@/app/(config)/config-state";
 import { tryParse } from "@/app/(util)/util";
 import { RecursiveStats } from "@/app/(universalis)/analysis";
-import { KeyedTableRow } from "../table";
+import { KeyedTableRow } from "../(table)/table";
 import { atom } from "jotai";
 import { useSignal } from "@/app/(util)/signal";
 

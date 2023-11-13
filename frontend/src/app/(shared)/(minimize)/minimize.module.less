@@ -1,0 +1,26 @@
+@import '../../colors.less';
+
+.minOptions {
+    position: absolute;
+    right: 1em;
+    bottom: calc(-1em - 4px);
+    z-index: 1000;
+
+    background-color: fade(@color-bg-input, 30%);
+    border: 2px solid darken(@color-bg-input, 50%);
+    box-sizing: content-box;
+    width: 1em;
+    height: 1em;
+
+    cursor: pointer;
+}
+
+.triangle {
+    width: 1em;
+    height: 1em;
+    rotate: -90deg;
+
+    &.minimized {
+        rotate: 90deg;
+    }
+}

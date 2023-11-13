@@ -1,5 +1,5 @@
 import { RecursiveStats } from "@/app/(universalis)/analysis";
-import { KeyedTableRow } from "../table";
+import { KeyedTableRow } from "../(table)/table";
 import { allRecursiveStatsOfAsync } from "@/app/(universalis)/analysis-async";
 import { optSub } from "@/app/(util)/option";
 import { maxVelocityOf, selectQuality } from "@/app/(universalis)/statistics";

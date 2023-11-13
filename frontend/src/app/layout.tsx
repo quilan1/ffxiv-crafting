@@ -1,4 +1,5 @@
 import styles from './main.module.css';
+import './global.css';
 
 export const metadata = {
     title: 'FFXIV Crafting',
