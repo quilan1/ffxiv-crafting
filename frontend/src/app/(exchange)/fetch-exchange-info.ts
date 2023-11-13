@@ -16,7 +16,7 @@ export interface ProfitInfo {
     profit: OptionType<number>,
     pricePer: OptionType<number>,
     ratio: OptionType<number>,
-    perWeek: OptionType<number>,
+    perWeeks: OptionType<number>,
     name: string,
 }
 
@@ -121,14 +121,14 @@ const calculatePrice = (cost: ExchangeCost, universalisInfoStats: UniversalisInf
 const calculateProfits = (type: ValidExchangeType, pricePerScrip: number, universalisInfoStats: UniversalisInfoStats): ProfitInfo[] => {
     const { universalisInfo, recStats } = universalisInfoStats;
 
-    interface StatInfo { itemId: number, sell: OptionType<number>, buy: OptionType<number>, perWeek: OptionType<number> };
+    interface StatInfo { itemId: number, sell: OptionType<number>, buy: OptionType<number>, perWeeks: OptionType<number> };
     const statMap: Record<string, StatInfo | undefined> = {};
     for (const { top } of recStats.topProfitStats) {
         const itemInfo = universalisInfo.itemInfo[top.itemId];
         const name = itemInfo.name;
-        const perWeek = recStats.itemStats[top.itemId].velocityWeek.aq;
+        const perWeeks = recStats.itemStats[top.itemId].velocityWeeks.aq;
         const { itemId, sell, buy, craft } = top;
-        statMap[name] = { itemId, sell, buy: optMin(buy, craft), perWeek };
+        statMap[name] = { itemId, sell, buy: optMin(buy, craft), perWeeks };
     }
 
     const results: ProfitInfo[] = [];
@@ -146,7 +146,7 @@ const calculateProfits = (type: ValidExchangeType, pricePerScrip: number, univer
                 profit,
                 pricePer: None<number>(),
                 ratio: None<number>(),
-                perWeek: None<number>(),
+                perWeeks: None<number>(),
                 name: purchase.name,
             });
             continue;
@@ -157,7 +157,7 @@ const calculateProfits = (type: ValidExchangeType, pricePerScrip: number, univer
             profit,
             pricePer: Some(Math.round(itemPricePer)),
             ratio: profit.map(profit => profit / itemPricePer),
-            perWeek: stats.perWeek,
+            perWeeks: stats.perWeeks,
             name: purchase.name,
         });
     }

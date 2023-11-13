@@ -92,14 +92,14 @@ function ExchangeInfo({ info }: { info: ExchangeInfo }) {
             <div style={{ fontWeight: 'bold' }}>Sell</div>
             <div style={{ fontWeight: 'bold' }}>Cost</div>
             <div style={{ fontWeight: 'bold' }}>Ratio</div>
-            <div style={{ fontWeight: 'bold' }}>#/Wk</div>
+            <div style={{ fontWeight: 'bold' }}>#/Day</div>
             <div style={{ fontWeight: 'bold' }}>Name</div>
             {info.profitInfo?.flatMap((info, index) => {
                 return [
                     <div key={`${index}-0`}>{_toFixed0(info.profit)}</div>,
                     <div key={`${index}-1`}>{_toFixed0(info.pricePer)}</div>,
                     <div key={`${index}-2`} style={{ color: color(info) }}>{_toFixed2(info.ratio)}</div>,
-                    <div key={`${index}-3`}>{_toFixed2(info.perWeek)}</div>,
+                    <div key={`${index}-3`}>{_toFixed2(info.perWeeks)}</div>,
                     <div key={`${index}-4`}>{info.name}</div>,
                 ]
             })}

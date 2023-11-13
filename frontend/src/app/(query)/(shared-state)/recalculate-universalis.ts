@@ -80,8 +80,6 @@ function generateTableData(data: QueryShared): KeyedTableRow[] | undefined {
                     hasChildren: info.hasChildren,
                     numListings: selectQuality(stats.numListings, data.isHq),
                     totalNumListings: selectQuality(stats.totalNumListings, data.isHq),
-                    perDay: selectQuality(stats.velocityDay, data.isHq),
-                    perWeek: selectQuality(stats.velocityWeek, data.isHq),
                     perBiWeek: selectQuality(stats.velocityWeeks, data.isHq),
                     count: selectQuality(stats.sellCount, data.isHq),
                     sell: info.sell,

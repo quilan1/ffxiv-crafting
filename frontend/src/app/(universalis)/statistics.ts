@@ -13,8 +13,6 @@ export interface Statistics {
     totalNumListings: Quality<number>,
     sellPrice: Quality<number>,
     sellCount: Quality<number>,
-    velocityDay: Quality<number>,
-    velocityWeek: Quality<number>,
     velocityWeeks: Quality<number>,
 }
 
@@ -24,24 +22,22 @@ export const statisticsOf = (itemInfo: ItemInfo, count: number, homeworld: strin
     const toCount = (listing: Listing) => listing.count;
 
     const length = (values: number[]) => (!values.length) ? None() : Some(values.length);
-    const isWithinDay = isWithinDaysFn(1.0);
-    const isWithinWeek = isWithinDaysFn(7.0);
     const isWithinWeeks = isWithinDaysFn(14.0);
     const stripOutliersOf = stripOutliersOfFn(2.0);
     const _medianOf = medianOfFn(0.3);
     const minForCountOf = minForCountOfFn(count);
+    const velocityOfWeeks = velocityFn(14.0);
+    const homeworldWeeks = (_: Listing) => isHomeworld(_) && isWithinWeeks(_);
 
     const buyPrice = quality(itemInfo.listings, _ => _.apply(minForCountOf));
     const numListings = quality(itemInfo.listings, _ => _.filter(isHomeworld).map(toPrice).apply(stripOutliersOf).apply(length));
     const totalNumListings = quality(itemInfo.listings, _ => _.filter(isHomeworld).map(toPrice).apply(length));
 
-    const sellCount = quality(itemInfo.history, _ => _.filter(isHomeworld).filter(isWithinWeek).map(toCount).apply(meanOf));
-    const sellPrice = quality(itemInfo.history, _ => _.filter(isHomeworld).map(toPrice).apply(stripOutliersOf).apply(meanOf));
-    const velocityDay = quality(itemInfo.history, _ => _.filter(isHomeworld).filter(isWithinDay).apply(velocity));
-    const velocityWeek = quality(itemInfo.history, _ => _.filter(isHomeworld).filter(isWithinWeek).apply(velocity));
-    const velocityWeeks = quality(itemInfo.history, _ => _.filter(isHomeworld).filter(isWithinWeeks).apply(velocity));
+    const sellCount = quality(itemInfo.history, _ => _.filter(homeworldWeeks).map(toCount).apply(meanOf));
+    const sellPrice = quality(itemInfo.history, _ => _.filter(homeworldWeeks).map(toPrice).apply(stripOutliersOf).apply(meanOf));
+    const velocityWeeks = quality(itemInfo.history, _ => _.filter(homeworldWeeks).apply(velocityOfWeeks));
 
-    return { buyPrice, numListings, totalNumListings, sellCount, sellPrice, velocityDay, velocityWeek, velocityWeeks };
+    return { buyPrice, numListings, totalNumListings, sellCount, sellPrice, velocityWeeks };
 }
 
 function quality<T>(listings: Listing[], fn: (listings: SimpleArray<Listing>) => OptionType<T>) {
@@ -57,7 +53,6 @@ function quality<T>(listings: Listing[], fn: (listings: SimpleArray<Listing>) =>
 export const maxVelocityOf = (stats: Statistics, isHq: boolean) => {
 
     const arr = [
-        selectQuality(stats.velocityWeek, isHq).unwrapOr(0),
         selectQuality(stats.velocityWeeks, isHq).unwrapOr(0)
     ].filter(v => v > 0);
 
@@ -143,9 +138,13 @@ const minForCountOfFn = (count: number) => {
     }
 }
 
-function velocity(listings: Listing[]): OptionType<number> {
-    if (listings.length == 0) return None();
-    const totalCount = listings.reduce((prev, item) => prev + item.count, 0);
-    const maxDaysSince = Math.max(...listings.map(item => item.daysSince));
-    return Some(totalCount / maxDaysSince);
+function velocityFn(days: number, useLastSeen?: boolean) {
+    return (listings: Listing[]): OptionType<number> => {
+        if (listings.length == 0) return None();
+        const totalCount = listings.reduce((prev, item) => prev + item.count, 0);
+        const maxDaysSince = useLastSeen
+            ? Math.max(...listings.map(item => item.daysSince))
+            : days;
+        return Some(totalCount / maxDaysSince);
+    }
 }
