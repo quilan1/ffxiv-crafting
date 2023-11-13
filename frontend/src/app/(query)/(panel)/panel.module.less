@@ -1,4 +1,4 @@
-@import '../colors.less';
+@import '../../colors.less';
 
 .queries {
     flex: 0;
@@ -46,32 +46,31 @@
     @media (max-width: 768px) {
         flex: 0;
     }
+}
 
-    >.labelRow {
-        display: flex;
+.labelRow {
+    display: flex;
+    max-width: 100%;
+
+    select,
+    input {
+        width: 100%;
         max-width: 100%;
-
-        select,
-        input {
-            width: 100%;
-            max-width: 100%;
-            min-width: 2em;
-        }
-
-        >label:first-child {
-            flex: 0 5em;
-            min-width: 5em;
-        }
-
-        > :nth-child(2) {
-            flex: 1;
-        }
-
-        >* {
-            flex: 0;
-        }
+        min-width: 2em;
     }
 
+    >label:first-child {
+        flex: 0 5em;
+        min-width: 5em;
+    }
+
+    > :nth-child(2) {
+        flex: 1;
+    }
+
+    >* {
+        flex: 0;
+    }
 }
 
 .queryString {
@@ -81,33 +80,30 @@
 .optionsBlock {
     display: grid;
     gap: 0.5em;
+    grid-template-columns: repeat(10, 1fr);
+
     margin-top: 0.25em;
-    justify-items: stretch;
-    justify-content: stretch;
-    grid-template-columns: repeat(5, 1fr);
 
     @media (max-width: 768px) {
-        grid-template-columns: repeat(auto-fill, minmax(min-content, 11em));
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 7em), 1fr));
+        grid-auto-columns: auto auto;
     }
 
     >div {
-        display: flex;
-        flex-direction: row;
+        display: grid;
+        grid-column: span 2;
+        grid-template-columns: subgrid;
+        gap: 0.5em;
+
         max-width: 100%;
 
-        >* {
-            flex: 0 1 auto;
+        * {
             white-space: nowrap;
-            width: 100%;
-            max-width: 100%;
-            margin-right: 0px;
-            margin-left: 0px;
+            margin-inline: 0;
         }
 
         >:first-child {
-            align-items: center;
             text-align: right;
-            margin-right: 0.5em;
         }
 
         label {
@@ -124,7 +120,6 @@
 
         input[type=checkbox] {
             width: auto;
-            margin: 3px 0 3px 0;
         }
     }
 }

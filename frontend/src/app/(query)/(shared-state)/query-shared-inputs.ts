@@ -1,5 +1,5 @@
 import { useSignal } from "@/app/(util)/signal";
-import { defaultQuery } from "../query-processing";
+import { defaultQuery } from "../(panel)/query-processing";
 import { atom } from "jotai";
 
 const countAtom = atom(defaultQuery.count ?? '');

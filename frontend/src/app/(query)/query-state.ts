@@ -1,7 +1,7 @@
 import { allDataCenters, dataCenterOf, defaultDataCenter } from "../(universalis)/data-center";
 import { ListingStatus, UniversalisRequest } from "../(universalis)/universalis-api";
 import { Signal, useSignal } from "../(util)/signal";
-import { defaultQuery } from "./query-processing";
+import { defaultQuery } from "./(panel)/query-processing";
 import { useQueryShared, updateUniversalisInfo } from "./(shared-state)/query-shared";
 import { useEffect, useMemo } from "react";
 import { useHomeworld } from "../(config)/config-state";
@@ -113,7 +113,7 @@ export const usePurchaseInfo = () => {
     return useMemo(() => {
         const itemInfo = universalisInfo.value?.itemInfo ?? {};
 
-        // build the world info
+        // Build the world info
         const failures: FailureInfo[] = [];
         const purchases: PurchaseWorldInfo = {};
         for (const { itemId, count } of items) {
