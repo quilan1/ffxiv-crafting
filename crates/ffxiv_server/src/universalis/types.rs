@@ -31,11 +31,11 @@ pub enum Output {
         history: ListingsMap,
     },
     #[serde(rename_all = "camelCase")]
-    Failure { failures: Vec<u32> },
+    Failure(Vec<u32>),
     #[serde(rename_all = "camelCase")]
-    DetailedStatus { status: Vec<DetailedStatus> },
+    Status(Vec<DetailedStatus>),
     #[serde(rename_all = "camelCase")]
-    Done {},
+    Done,
 }
 
 #[derive(Serialize)]

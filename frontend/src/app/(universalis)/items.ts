@@ -21,10 +21,13 @@ export interface Listing {
     daysSince: number,
 }
 
-export interface ItemInfo {
+export interface BaseItemInfo {
     itemId: number,
     name: string,
+    recipe?: Recipe,
+}
+
+export type ItemInfo = BaseItemInfo & {
     listings: Listing[],
     history: Listing[],
-    recipe?: Recipe,
 }

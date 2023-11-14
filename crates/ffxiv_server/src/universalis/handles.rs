@@ -166,7 +166,7 @@ impl RequestStream {
             .await
             .map(|packet_result| match packet_result {
                 PacketResult::Success(listings, history) => Output::Success { listings, history },
-                PacketResult::Failure(failures) => Output::Failure { failures },
+                PacketResult::Failure(failures) => Output::Failure(failures),
             })
     }
 
@@ -196,9 +196,7 @@ impl RequestStream {
     async fn send_status_update(&mut self, socket: &mut WebSocket) -> Result<()> {
         self.last_update = Instant::now();
         let values = self.handle.status().values();
-        let output = Output::DetailedStatus {
-            status: values.into_iter().map(DetailedStatus::from).collect(),
-        };
+        let output = Output::Status(values.into_iter().map(DetailedStatus::from).collect());
 
         let message_text = serde_json::to_string(&output)?;
         write_message(socket, message_text, self.is_compressed).await?;

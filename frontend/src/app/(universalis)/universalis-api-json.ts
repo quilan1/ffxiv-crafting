@@ -1,16 +1,12 @@
-import { Id, Listing } from "./items";
+import { BaseItemInfo, Id, Listing } from "./items";
 
 export interface RecipeJson {
-    itemInfo: Record<Id, {
-        itemId: number,
-        name: string,
-    }>,
+    itemInfo: Record<Id, BaseItemInfo>,
     topIds: number[],
 }
 
 export interface MessageRecipe { recipe: RecipeJson };
-export interface MessageDetailedStatus { detailedStatus: MessageDetailedStatusInfo };
-export interface MessageDetailedStatusInfo { status: DetailedStatus[] };
+export interface MessageStatus { status: DetailedStatus[] };
 export type DetailedStatus = DetailedStatusActive | DetailedStatusWarn | DetailedStatusFinished | DetailedStatusQueued;
 export type DetailedStatusActive = 'active';
 export type DetailedStatusWarn = 'warn';
@@ -21,11 +17,10 @@ export interface MessageSuccessInfo {
     listings: Record<number, Listing[] | undefined>,
     history: Record<number, Listing[] | undefined>
 };
-export interface MessageFailure { failure: MessageFailureInfo };
-export interface MessageFailureInfo { failures: number[] };
+export interface MessageFailure { failure: number[] };
 export interface MessageDone { done: object };
 
-export type Message = MessageRecipe | MessageDetailedStatus | MessageSuccess | MessageFailure | MessageDone;
+export type Message = MessageRecipe | MessageStatus | MessageSuccess | MessageFailure | MessageDone;
 
 export class Validate {
     private static isObject(obj: unknown): obj is NonNullable<object> {
@@ -36,8 +31,8 @@ export class Validate {
         return this.isObject(obj) && ("recipe" in obj);
     }
 
-    static isMessageDetailedStatus(obj: unknown): obj is MessageDetailedStatus {
-        return this.isObject(obj) && ("detailedStatus" in obj);
+    static isMessageStatus(obj: unknown): obj is MessageStatus {
+        return this.isObject(obj) && ("status" in obj);
     }
 
     static isMessageSuccess(obj: unknown): obj is MessageSuccess {
@@ -49,27 +44,27 @@ export class Validate {
     }
 
     static isMessageDone(obj: unknown): obj is MessageDone {
-        return this.isObject(obj) && ("done" in obj);
+        return obj === 'done';
     }
 
-    static isDetailedStatusActive(obj: unknown): obj is DetailedStatusActive {
+    static isStatusActive(obj: unknown): obj is DetailedStatusActive {
         return obj === 'active';
     }
 
-    static isDetailedStatusWarn(obj: unknown): obj is DetailedStatusWarn {
+    static isStatusWarn(obj: unknown): obj is DetailedStatusWarn {
         return obj === 'warn';
     }
 
-    static isDetailedStatusFinished(obj: unknown): obj is DetailedStatusFinished {
+    static isStatusFinished(obj: unknown): obj is DetailedStatusFinished {
         return this.isObject(obj) && ("finished" in obj)
     }
 
-    static isDetailedStatusQueued(obj: unknown): obj is DetailedStatusQueued {
+    static isStatusQueued(obj: unknown): obj is DetailedStatusQueued {
         return this.isObject(obj) && ("queued" in obj)
     }
 
     static assertIsMessage(obj: unknown): asserts obj is Message {
-        if (this.isMessageRecipe(obj) || this.isMessageDetailedStatus(obj)
+        if (this.isMessageRecipe(obj) || this.isMessageStatus(obj)
             || this.isMessageSuccess(obj) || this.isMessageFailure(obj)
             || this.isMessageDone(obj)
         )
@@ -78,9 +73,9 @@ export class Validate {
         throw new Error(`Invalid Server Websocket Message: not a Message: ${obj as never}`);
     }
 
-    static assertIsDetailedStatus(obj: unknown): asserts obj is DetailedStatus {
-        if (this.isDetailedStatusActive(obj) || this.isDetailedStatusWarn(obj)
-            || this.isDetailedStatusFinished(obj) || this.isDetailedStatusQueued(obj))
+    static assertIsStatus(obj: unknown): asserts obj is DetailedStatus {
+        if (this.isStatusActive(obj) || this.isStatusWarn(obj)
+            || this.isStatusFinished(obj) || this.isStatusQueued(obj))
             return;
 
         throw new Error(`Invalid Server Websocket Message: invalid DetailedStatus: ${obj as never}`);

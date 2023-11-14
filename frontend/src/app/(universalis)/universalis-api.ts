@@ -1,6 +1,6 @@
 import { decompress, sleep } from "../(util)/util";
 import { Id, ItemInfo } from "./items";
-import { Validate, RecipeJson, MessageDetailedStatusInfo, MessageSuccessInfo, MessageFailureInfo } from "./universalis-api-json";
+import { Validate, RecipeJson, MessageSuccessInfo, DetailedStatus } from "./universalis-api-json";
 
 const WEBSOCKET_IS_COMPRESSED = true;
 
@@ -93,7 +93,7 @@ export class UniversalisRequest {
             return null;
         }
 
-        const universalisInfo = state.recipeJson as UniversalisInfo;
+        const universalisInfo = state.recipeJson as unknown as UniversalisInfo;
         /* eslint-disable @typescript-eslint/no-unnecessary-condition */
         for (const item of Object.values(universalisInfo.itemInfo)) {
             item.listings ??= [];
@@ -135,8 +135,8 @@ export class UniversalisRequest {
                 Validate.assertIsMessage(message);
                 if (Validate.isMessageRecipe(message)) {
                     this.onMessageRecipe(state, message.recipe);
-                } else if (Validate.isMessageDetailedStatus(message)) {
-                    this.onMessageDetailedStatus(state, message.detailedStatus);
+                } else if (Validate.isMessageStatus(message)) {
+                    this.onMessageStatus(state, message.status);
                 } else if (Validate.isMessageSuccess(message)) {
                     this.onMessageSuccess(state, message.success);
                 } else if (Validate.isMessageFailure(message)) {
@@ -154,17 +154,17 @@ export class UniversalisRequest {
         state.recipeJson = recipeJson;
     }
 
-    private onMessageDetailedStatus(state: UniversalisRequestState, statusInfo: MessageDetailedStatusInfo) {
+    private onMessageStatus(state: UniversalisRequestState, statusInfo: DetailedStatus[]) {
         const listings: ListingRequestStatus[] = [];
-        for (const status of statusInfo.status) {
-            Validate.assertIsDetailedStatus(status);
-            if (Validate.isDetailedStatusActive(status)) {
+        for (const status of statusInfo) {
+            Validate.assertIsStatus(status);
+            if (Validate.isStatusActive(status)) {
                 listings.push({ active: true });
-            } else if (Validate.isDetailedStatusWarn(status)) {
+            } else if (Validate.isStatusWarn(status)) {
                 listings.push({ warn: true });
-            } else if (Validate.isDetailedStatusFinished(status)) {
+            } else if (Validate.isStatusFinished(status)) {
                 listings.push({ finished: status.finished });
-            } else if (Validate.isDetailedStatusQueued(status)) {
+            } else if (Validate.isStatusQueued(status)) {
                 listings.push({ queued: status.queued });
             } else { const _: never = status; }
         }
@@ -190,7 +190,7 @@ export class UniversalisRequest {
         }
     }
 
-    private onMessageFailure(state: UniversalisRequestState, _failureInfo: MessageFailureInfo) {
+    private onMessageFailure(state: UniversalisRequestState, _failureInfo: number[]) {
         state.failures += 1;
     }
 
