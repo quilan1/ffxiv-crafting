@@ -15,7 +15,7 @@ Specifies the items & methodology for the client's item request.
 
 | Name | Type | Default | Description |
 |-|-|-|-|
-| **query** | string | | The query string for items that are to be analyzed. See the [query language](README.md#query-language) format below for details. |
+| **query** | string | | The query string for items that are to be analyzed. See [query format](query-format.md) for more details. |
 | **purchaseFrom** | string | | The world from where ingredients will be purchased. Additionally, a region (e.g. 'North America') or a data center (e.g. 'Dynamis') may be used. |
 | **sellTo** | string | | The world, to where goods will be sold. |
 | **retainNumDays** | number | 7.0 | Number of days to retain records for statistics. |
@@ -39,33 +39,33 @@ Messages sent from the server to the client, will be one of the following object
 
 #### RecipeInfo Object
 
-| Name | Type | Default | Description |
-|-|-|-|-|
-| **itemInfo** | { \[integer\]: [ItemInfo](#iteminfo-object)} | | Record of [ItemInfos](#iteminfo-object) indexed by their `itemIds`, for *all* items involved in the query. |
-| **topIds** | \[integer\] | | Array of item IDs for *only* the items that match the query; consumed & included ingredient IDs are not included. |
+| Name | Type | Description |
+|-|-|-|
+| **itemInfo** | { \[integer\]: [ItemInfo](#iteminfo-object) } | Record of [ItemInfos](#iteminfo-object) indexed by their `itemIds`, for *all* items involved in the query. |
+| **topIds** | \[integer\] | Array of item IDs for *only* the items that match the query; consumed & included ingredient IDs are not included. |
 
 #### ItemInfo Object
 
 | Name | Type | Default | Description |
 |-|-|-|-|
 | **itemId** | integer | | The ID of an item in the FFXIV database. |
-| **name** | string | | Item IDs for *only* the items that match the query. Ingredient IDs are not included. |
+| **name** | string | | The name of the item. |
 | **recipe** | [Recipe](#recipe-object) | undefined | The recipe input & output information for crafting the item. |
 
 #### Recipe Object
 
-| Name | Type | Default | Description |
-|-|-|-|-|
-| **inputs** | \[[Ingredient](#ingredient-object)\] | | Array of crafting inputs required to make the recipe. |
-| **outputs** | integer | | The number of items created when crafted. |
-| **level** | integer | | The crafting level of the recipe. |
+| Name | Type | Description |
+|-|-|-|
+| **inputs** | \[[Ingredient](#ingredient-object)\] | Array of crafting inputs required to make the recipe. |
+| **outputs** | integer | The number of items created when crafted. |
+| **level** | integer | The crafting level of the recipe. |
 
 #### Ingredient Object
 
-| Name | Type | Default | Description |
-|-|-|-|-|
-| **itemId** | integer | | ID of the ingredient used in crafting. |
-| **count** | integer | | Number of items consumed when crafting. |
+| Name | Type | Description |
+|-|-|-|
+| **itemId** | integer | ID of the ingredient used in crafting. |
+| **count** | integer | Number of items consumed when crafting. |
 
 ### Status Message
 
@@ -82,7 +82,7 @@ This may be exactly one of the following:
 | **'active'** | 'active' | The fetch request is currently being fetched from Universalis. |
 | **'warn'** | 'warn' | The fetch request is currently being fetched from Universalis and has failed at least once already. |
 | **finished** | boolean | If true, the request was successful, if false the information was unable to be fetched from Universalis. |
-| **queued** | integer | The request is currently queued and will be processed in order. |
+| **queued** | integer | The request is currently queued and will be processed in order. The value is the current position in queue. |
 
 ### Success Message
 
@@ -92,8 +92,8 @@ This may be exactly one of the following:
 
 | Name | Type | Description |
 |-|-|-|
-| **listings** | { \[integer\], \[Listing\] } | The listings currently on the market board. These are what are currently available. |
-| **history** | { \[integer\], \[Listing\] } | The historical sales results for the market board. These are what have been sold in the past. |
+| **listings** | { \[integer\], \[[Listing](#listing-object)\] } | Record of listings currently on the market board, indexed by `itemId`. These are what are currently available. |
+| **history** | { \[integer\], \[[Listing](#listing-object)\] } | Record of historical sales results on the market board, indexed by `itemId`. These are what have been sold in the past. |
 
 #### Listing Object
 
@@ -105,7 +105,7 @@ Listings are used for both current market listings and prior sales of an item.
 | **count** | integer | | The stack size of the item for a listing or sale. |
 | **isHq** | boolean | | The listing or sale is of a high quality item. |
 | **daysSince** | number | | Number of days since a listing was placed, or an item was sold. |
-| **world** | integer | *listings only* | What world the item is listed. |
+| **world** | integer | *listings only* | The world in which the item is listed. |
 | **name** | string | *listings only* | The name of the retainer selling an item. |
 
 ### Failure Message

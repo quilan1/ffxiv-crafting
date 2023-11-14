@@ -70,14 +70,18 @@
     font-size: smaller;
 }
 
-// specificity hack
-.leftBorder.leftBorder {
-    border-left: 1px solid black;
+.leftBorder {
+    && {
+        // specificity hack
+        border-left: 1px solid black;
+    }
 }
 
-// specificity hack
-.rightBorder.rightBorder {
-    border-right: 1px solid black;
+.rightBorder {
+    && {
+        // specificity hack
+        border-right: 1px solid black;
+    }
 }
 
 .childIcon {
