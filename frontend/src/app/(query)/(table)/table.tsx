@@ -152,7 +152,7 @@ const columnHeaders = {
     craft: [styles.costs, styles.rightBorder],
     numListings: [],
     count: [],
-    perBiWeek: [styles.velocity, styles.leftBorder, styles.rightBorder],
+    perBiWeek: [styles.velocity, styles.leftBorder],
 };
 
 const columnHeaderDescriptions = {
