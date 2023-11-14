@@ -72,17 +72,19 @@ function Table() {
 
 function TableHeader() {
     const classNames = (classes: string[]) => [styles.rowItem, ...classes].join(' ');
+    const desc = columnHeaderDescriptions;
+
     return (
         <tr className={`${styles.tableRow} ${styles.heading}`}>
-            <th className={classNames(columnHeaders.checked)}>☑</th>
-            <th className={classNames(columnHeaders.name)}>Name</th>
-            <th className={classNames(columnHeaders.profit)}>Profit</th>
-            <th className={classNames(columnHeaders.sell)}>Sell</th>
-            <th className={classNames(columnHeaders.buy)}>Buy</th>
-            <th className={classNames(columnHeaders.craft)}>Craft</th>
-            <th className={classNames(columnHeaders.numListings)}>Lists</th>
-            <th className={classNames(columnHeaders.count)}>#/List</th>
-            <th className={classNames(columnHeaders.perBiWeek)}>#/Day</th>
+            <th className={classNames(columnHeaders.checked)} title={desc.checked}>☑</th>
+            <th className={classNames(columnHeaders.name)} title={desc.name}>Name</th>
+            <th className={classNames(columnHeaders.profit)} title={desc.profit}>Profit</th>
+            <th className={classNames(columnHeaders.sell)} title={desc.sell}>Sell</th>
+            <th className={classNames(columnHeaders.buy)} title={desc.buy}>Buy</th>
+            <th className={classNames(columnHeaders.craft)} title={desc.craft}>Craft</th>
+            <th className={classNames(columnHeaders.numListings)} title={desc.numListings}>Lists</th>
+            <th className={classNames(columnHeaders.count)} title={desc.count}>#/List</th>
+            <th className={classNames(columnHeaders.perBiWeek)} title={desc.perBiWeek}>#/Day</th>
         </tr>
     );
 }
@@ -152,3 +154,16 @@ const columnHeaders = {
     count: [],
     perBiWeek: [styles.velocity, styles.leftBorder, styles.rightBorder],
 };
+
+const columnHeaderDescriptions = {
+    checked: "Checked ingredients will be included in the purchase table",
+    name: "The item name",
+    profit: "Gil profit made if you buy/craft [count] number of the item, then sell them",
+    sell: "Gross gil revenue made if you sell [count] number of the item",
+    buy: "Rough gil cost of purchasing [count] number of the item",
+    craft: "Rough gil cost of crafting [count] number of the item",
+    numListings: "Number of live market board listings for this item",
+    count: "Avg stack size of each listing for this item",
+    perBiWeek: "Avg count of item sold on the market each day, for the past two weeks",
+};
+

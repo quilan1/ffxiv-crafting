@@ -103,17 +103,21 @@ function OptionsInputs() {
     const onChangeMinVelocity = (e: ChangeEvent<HTMLInputElement>) => { minVelocity.value = e.target.value; updateUniversalis({ minVelocity: e.target.value }); };
     const onChangeIsHq = (e: ChangeEvent<HTMLInputElement>) => { isHq.value = e.target.checked; updateUniversalis({ isHq: e.target.checked }); }
 
-    const pair = (first: React.ReactNode, second: React.ReactNode) => <div><label>{first}</label>{second}</div>;
+    const pair = (first: React.ReactNode, second: React.ReactNode, pairAsRow?: boolean) => {
+        const style = [styles.inputPair, pairAsRow ? styles.pairAsRow : ''].filter(s => s.length > 0).join(' ');
+        return <div className={style}><label>{first}</label>{second}</div>;
+    }
+    const desc = inputDescriptions;
 
     return (
         <div className={styles.optionsBlock}>
-            {pair("Count:", <input type="number" value={count.value} onChange={onChangeCount} />)}
-            {pair("Limit:", <input type="number" value={limit.value} onChange={onChangeLimit} />)}
-            {pair("Min Velocity:", <input type="number" value={minVelocity.value} onChange={onChangeMinVelocity} />)}
-            {pair("Purchase From:", <select onChange={onChangePurchaseFrom} value={purchaseFrom.value}>{
+            {pair("Buy From:", <select onChange={onChangePurchaseFrom} value={purchaseFrom.value} title={desc.purchaseFrom}>{
                 purchaseFromOptions.map(({ label, value }) => <option key={value} value={value}>{label}</option>)
             }</select>)}
-            {pair("HQ:", <div><input id="is-hq" type="checkbox" onChange={onChangeIsHq} checked={isHq.value} /></div>)}
+            {pair("Limit:", <input type="number" value={limit.value} onChange={onChangeLimit} title={desc.limit} />)}
+            {pair("Min #/Day:", <input type="number" value={minVelocity.value} onChange={onChangeMinVelocity} title={desc.minVelocity} />)}
+            {pair("Count:", <input type="number" value={count.value} onChange={onChangeCount} title={desc.count} />)}
+            {pair("HQ:", <input type="checkbox" onChange={onChangeIsHq} checked={isHq.value} title={desc.isHq} />, true)}
         </div>
     );
 }
@@ -127,4 +131,12 @@ function FetchButton() {
             {isFetching.value ? 'Cancel' : 'Fetch'}
         </button>
     );
+}
+
+const inputDescriptions = {
+    purchaseFrom: 'The world / DC / region from which item listing data will be fetched',
+    limit: 'The maxmimum number of items shown in the market results table',
+    minVelocity: 'The minimum velocity (#/Day) required to include an item on the market results table',
+    count: 'The number of each item to craft/buy/sell',
+    isHq: 'Attempts to isolate buying/selling HQ versions only',
 }

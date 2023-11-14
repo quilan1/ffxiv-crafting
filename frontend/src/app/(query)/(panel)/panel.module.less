@@ -1,6 +1,6 @@
 @import '../../colors.less';
 
-@small-width: ~'(max-width: 56em)';
+@small-width: ~'(max-width: 26em)';
 
 .queries {
     flex: 0;
@@ -21,14 +21,6 @@
     select,
     button {
         background-color: @color-bg-input
-    }
-
-    > :first-child {
-        margin-left: 0;
-    }
-
-    > :last-child {
-        margin-right: 0px;
     }
 
     @media @small-width {
@@ -52,10 +44,9 @@
 
 .labelRow {
     display: flex;
-    max-width: 100%;
 
     >label:first-child {
-        flex: 0 5em;
+        flex: 0;
         min-width: 5em;
     }
 
@@ -75,35 +66,45 @@
 .optionsBlock {
     display: grid;
     gap: 0.5em;
-    grid-template-columns: repeat(10, 1fr);
+    grid-template-columns: repeat(5, 1fr);
 
     margin-top: 0.25em;
 
     @media @small-width {
-        grid-template-columns: repeat(auto-fill, minmax(min(100%, 6em), 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 4.4em), 1fr));
         grid-auto-columns: auto auto;
     }
+}
 
-    >div {
-        display: grid;
-        grid-column: span 2;
-        grid-template-columns: subgrid;
-        gap: 0.5em;
+.inputPair {
+    display: grid;
+    grid-row: span 2;
+    grid-template-rows: subgrid;
+    gap: 0.5em;
 
-        max-width: 100%;
+    max-width: 100%;
 
-        * {
-            white-space: nowrap;
-            margin-inline: 0;
-        }
+    &.pairAsRow {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
 
         >:first-child {
             text-align: right;
         }
+    }
 
-        label {
-            color: @color-fg-label
-        }
+    * {
+        white-space: nowrap;
+        margin-inline: 0;
+    }
+
+    label {
+        color: @color-fg-label
+    }
+
+    input:not([type='checkbox']) {
+        max-width: 4em;
     }
 }
 
