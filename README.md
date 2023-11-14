@@ -6,7 +6,7 @@ This program is designed as a custom interface to Universalis, and the market in
 
 ## Setup
 
-The only real requirement is Docker Compose. For windows, this may be found by installing Docker Desktop. Once installed, hosting the server & frontend may be done with the command (in this repo):
+The only real requirement is Docker Compose. For windows, this may be found by installing Docker Desktop. Once installed, hosting the server & frontend may be done with the command (in the root directory of this repo):
 
 > docker-compose up -d
 
@@ -17,7 +17,7 @@ This will take some time for the rust server to compile the project (running tes
 To access the webpage, simply navigate on your browser to:
 [http://localhost](http://localhost).
 
-As an example of usage, where the 'Filters:' dropdown sits, choose 'Level 90 Crafting Mats' as an example, and click 'Refresh'. This should, after a brief communication, fill the table with crafting information.
+As an example of usage, where the 'Examples:' dropdown sits, choose 'Level 90 Crafting Mats' as an example, and click 'Fetch'. This should, after a brief communication with Universalis, fill the table with crafting information.
 
 ## Project Organization
 

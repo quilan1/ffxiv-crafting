@@ -17,7 +17,7 @@ use super::{write_message, DetailedStatus, Input, Output};
 ////////////////////////////////////////////////////////////
 
 const DUR_MIN_WAIT: Duration = Duration::from_millis(10);
-const DUR_TIMEOUT: Duration = Duration::from_millis(10000);
+const DUR_TIMEOUT: Duration = Duration::from_millis(5000);
 
 pub async fn wait_for_universalis<F: FileDownloader>(
     socket: &mut WebSocket,

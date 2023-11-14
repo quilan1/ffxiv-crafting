@@ -1,4 +1,4 @@
-# API overview
+# Websocket API overview
 
 When connecting to the server's websocket, a stream of messages are sent to/from the server. The general flow of information is as follows:
 

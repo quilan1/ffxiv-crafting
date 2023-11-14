@@ -1,14 +1,14 @@
 @import '../colors.less';
 
-@small-width: ~'(max-width: 36em)';
+@small-width: ~'(max-width: 36rem)';
 
 .statusHeader {
     flex: 0;
     display: flex;
     flex-direction: row;
 
-    padding: 0.5em;
-    column-gap: 0.5em;
+    padding: 0.5rem;
+    column-gap: 0.5rem;
 
     background-color: @color-bg-content;
 
@@ -27,13 +27,13 @@
 
         >div {
             flex-direction: row;
-            column-gap: 0.5em;
+            column-gap: 0.5rem;
         }
     }
 }
 
 .nothingLoaded {
-    padding: 0.5em;
+    padding: 0.5rem;
     min-height: 0;
     max-height: 100%;
     height: 100%;
@@ -46,7 +46,7 @@
 
     max-height: 100%;
     height: 100%;
-    padding: 0.5em;
+    padding: 0.5rem;
 
     background-color: @color-bg-table;
     border: 1px solid black;
@@ -55,7 +55,7 @@
 .allScrips {
     min-height: 0;
     max-height: 100%;
-    padding: 0.5em;
+    padding: 0.5rem;
 
     background-color: @color-bg-content;
 }
@@ -64,10 +64,10 @@
     overflow: auto;
     display: flex;
     flex-direction: column;
-    row-gap: 0.5em;
+    row-gap: 0.5rem;
 
     max-height: 100%;
-    padding: 0.5em;
+    padding: 0.5rem;
 
     background-color: @color-bg-table;
     border: 1px solid black;
@@ -77,24 +77,24 @@
     display: flex;
     flex-direction: row;
     font-weight: bold;
-    gap: 1em;
+    gap: 1rem;
 
     >* {
         white-space: nowrap;
     }
 
     .scripType {
-        width: 16.5em;
+        width: 16.5rem;
     }
 }
 
 .scripTable {
     display: grid;
     grid-template-columns: repeat(4, min-content) max-content;
-    gap: 0.2em 1em;
+    gap: 0.2rem 1rem;
 
     width: fit-content;
-    padding: 0.5em;
+    padding: 0.5rem;
 
     border: 1px solid @color-fg-border;
 
