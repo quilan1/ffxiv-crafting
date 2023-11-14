@@ -92,8 +92,8 @@ This may be exactly one of the following:
 
 | Name | Type | Description |
 |-|-|-|
-| **listings** | { \[integer\], \[[Listing](#listing-object)\] } | Record of listings currently on the market board, indexed by `itemId`. These are what are currently available. |
-| **history** | { \[integer\], \[[Listing](#listing-object)\] } | Record of historical sales results on the market board, indexed by `itemId`. These are what have been sold in the past. |
+| **listings** | { \[integer\]: \[[Listing](#listing-object)\] } | Record of listings currently on the market board, indexed by `itemId`. These are what are currently available. |
+| **history** | { \[integer\]: \[[Listing](#listing-object)\] } | Record of historical sales results on the market board, indexed by `itemId`. These are what have been sold in the past. |
 
 #### Listing Object
 
