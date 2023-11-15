@@ -29,10 +29,12 @@ export function WorldInformation() {
     return (
         <div className={styles.worldInfo}>
             <div className={styles.purchasesContainer}>
-                {(purchaseInfo.failures.length > 0) && <DataCenterFailures failures={purchaseInfo.failures} />}
-                {entriesOf(purchaseInfo.purchases).map(([dataCenter, worldsInfo]) => {
-                    return <DataCenterPurchaseInfo key={dataCenter} dataCenter={dataCenter} worldsInfo={worldsInfo} />
-                })}
+                <div>
+                    {(purchaseInfo.failures.length > 0) && <DataCenterFailures failures={purchaseInfo.failures} />}
+                    {entriesOf(purchaseInfo.purchases).map(([dataCenter, worldsInfo]) => {
+                        return <DataCenterPurchaseInfo key={dataCenter} dataCenter={dataCenter} worldsInfo={worldsInfo} />
+                    })}
+                </div>
             </div>
         </div>
     );

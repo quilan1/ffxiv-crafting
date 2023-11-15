@@ -86,14 +86,14 @@ function ExchangeInfo({ info }: { info: ExchangeInfo }) {
     return <>
         <div className={styles.scripHeading}>
             <div className={styles.scripType}>{info.name}</div>
-            <div>{info.exchangeName}</div>
+            <div className={styles.exchangeName}>{info.exchangeName}</div>
         </div>
         <div className={styles.scripTable}>
-            <div style={{ fontWeight: 'bold' }}>Sell</div>
-            <div style={{ fontWeight: 'bold' }}>Cost</div>
-            <div style={{ fontWeight: 'bold' }}>Ratio</div>
-            <div style={{ fontWeight: 'bold' }}>#/Day</div>
-            <div style={{ fontWeight: 'bold' }}>Name</div>
+            <div className={styles.upperRow} style={{ fontWeight: 'bold' }}>Sell</div>
+            <div className={styles.upperRow} style={{ fontWeight: 'bold' }}>Cost</div>
+            <div className={styles.upperRow} style={{ fontWeight: 'bold' }}>Ratio</div>
+            <div className={styles.upperRow} style={{ fontWeight: 'bold' }}>#/Day</div>
+            <div className={styles.upperRow} style={{ fontWeight: 'bold' }}>Name</div>
             {info.profitInfo?.flatMap((info, index) => {
                 return [
                     <div key={`${index}-0`}>{_toFixed0(info.profit)}</div>,

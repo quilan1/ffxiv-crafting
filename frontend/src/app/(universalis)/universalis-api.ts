@@ -2,7 +2,7 @@ import { decompress, sleep } from "../(util)/util";
 import { Id, ItemInfo } from "./items";
 import { Validate, RecipeJson, MessageSuccessInfo, DetailedStatus } from "./universalis-api-json";
 
-const WEBSOCKET_IS_COMPRESSED = true;
+const WEBSOCKET_IS_COMPRESSED = false;
 
 export class CancelError extends Error {
     constructor(message?: string, options?: ErrorOptions) {
