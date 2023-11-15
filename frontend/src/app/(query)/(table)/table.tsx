@@ -149,8 +149,8 @@ const columnHeaders = {
     profit: [styles.profit],
     sell: [styles.costs, styles.leftBorder],
     buy: [styles.costs],
-    craft: [styles.costs, styles.rightBorder],
-    numListings: [],
+    craft: [styles.costs],
+    numListings: [styles.leftBorder],
     count: [],
     perBiWeek: [styles.velocity, styles.leftBorder],
 };

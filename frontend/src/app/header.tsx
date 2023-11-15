@@ -1,5 +1,5 @@
 import React from 'react';
-import style from './main.module.css';
+import styles from './main.module.css';
 
 export enum MarketForm {
     CONFIG,
@@ -21,7 +21,7 @@ export function Header(
     }
 
     return (
-        <div className={style.header}>
+        <div className={styles.header}>
             {headersInfo.map(info => {
                 return (
                     <HeaderSegment
@@ -43,5 +43,7 @@ interface HeaderSegmentProps {
 };
 
 function HeaderSegment({ title, isSelected, setSelection }: HeaderSegmentProps) {
-    return isSelected ? <div data-selected>{title}</div> : <div onClick={setSelection}>{title}</div>
+    const style = isSelected ? styles.dataSelected : undefined;
+    const onClick = isSelected ? undefined : setSelection;
+    return <div className={style} onClick={onClick}><label>{title}</label></div>;
 }

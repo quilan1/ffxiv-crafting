@@ -80,7 +80,6 @@ export const exchangeProfits: ExchangeProfits[] = [
     { type: 'skybuildersScrips', scrips: 800, name: "Paissa Brat" },
     { type: 'skybuildersScrips', scrips: 800, name: "Hunting Hawk" },
     { type: 'skybuildersScrips', scrips: 800, name: "Baby Brachiosaur" },
-    { type: 'skybuildersScrips', scrips: 800, name: "Pegasus Colt" },
     { type: 'skybuildersScrips', scrips: 1200, name: "Machinist Barding" },
     { type: 'skybuildersScrips', scrips: 1200, name: "Safety in Numbers Orchestrion Roll" },
     { type: 'skybuildersScrips', scrips: 1200, name: "The Mendicant's Relish Orchestrion Roll" },

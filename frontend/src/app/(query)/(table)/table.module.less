@@ -1,20 +1,15 @@
-@import '../../colors.less';
+@import '../../mixins';
 
 .marketInfo {
+    .dark-content();
     position: relative;
     flex: 1;
 
     padding: 0.5rem;
     min-height: 0;
 
-    background-color: @color-bg-content;
-
     &.minimized {
         flex: 0;
-    }
-
-    label {
-        color: @color-fg-label
     }
 }
 
@@ -73,14 +68,11 @@
 .leftBorder {
     && {
         // specificity hack
-        border-left: 1px solid black;
+        border-left: 2px solid black;
     }
-}
 
-.rightBorder {
-    && {
-        // specificity hack
-        border-right: 1px solid black;
+    td:not(&&) {
+        border-left: 1px dotted black;
     }
 }
 

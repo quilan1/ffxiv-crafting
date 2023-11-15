@@ -48,7 +48,7 @@ function ExchangeStatus() {
     return (
         <div className={styles.statusHeader}>
             <button type="button" onClick={fetchInfo} disabled={isFetching.value}>Fetch</button>
-            {listingStatuses.map((listings, i) => <ExchangeFetchStatus key={i} listings={listings} />)}
+            {listingStatuses.length > 0 && listingStatuses.map((listings, i) => <ExchangeFetchStatus key={i} listings={listings} />)}
         </div>
     );
 }

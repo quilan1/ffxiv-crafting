@@ -1,31 +1,17 @@
-@import '../../colors.less';
+@import '../../mixins';
 
-@small-width: ~'(max-width: 26rem)';
+@small-width: ~'(max-width: 39rem)';
 
 .queries {
+    .dark-content();
+    .flex-row(@gap: 0.5rem);
     flex: 0;
-    display: flex;
-    flex-direction: row;
     position: relative;
-    gap: 0.5rem;
 
     padding: 0.5rem;
 
-    background-color: @color-bg-content;
-
-    label {
-        color: @color-fg-label
-    }
-
-    input,
-    select,
-    button {
-        background-color: @color-bg-input
-    }
-
     @media @small-width {
-        flex-direction: column;
-        align-content: stretch;
+        .flex-col(@gap: 0.5rem);
     }
 }
 
@@ -43,7 +29,7 @@
 }
 
 .labelRow {
-    display: flex;
+    .flex-row(@align: center);
 
     >label:first-child {
         flex: 0;
@@ -64,33 +50,27 @@
 }
 
 .optionsBlock {
-    display: grid;
-    gap: 0.5rem;
-    grid-template-columns: repeat(5, 1fr);
+    .grid(@columns: repeat(5, 1fr));
 
     margin-top: 0.25rem;
 
     @media @small-width {
         grid-template-columns: repeat(auto-fill, minmax(min(100%, 4.4rem), 1fr));
-        grid-auto-columns: auto auto;
     }
 }
 
 .inputPair {
-    display: grid;
+    .grid(@gap: 0.5rem, @rows: subgrid);
     grid-row: span 2;
-    grid-template-rows: subgrid;
-    gap: 0 0.5rem;
 
     max-width: 100%;
 
     &.pairAsRow {
-        display: flex;
-        flex-direction: row;
-        align-items: flex-start;
+        .flex-row(@align: center);
 
         >:first-child {
             text-align: right;
+            vertical-align: middle;
         }
     }
 
@@ -109,15 +89,9 @@
 }
 
 .fetch {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    column-gap: 0.5rem;
     flex: 0;
 
-    @media @small-width {
-        align-content: center;
-    }
+    .flex-row(@gap: normal 0.5rem);
 }
 
 .fetchButton {

@@ -1,83 +1,69 @@
-@import '../colors.less';
+@import '../mixins';
 
 @small-width: ~'(max-width: 36rem)';
 
 .statusHeader {
+    .flex-row(@gap: 0.5rem);
+    .dark-content();
     flex: 0;
-    display: flex;
-    flex-direction: row;
 
     padding: 0.5rem;
-    column-gap: 0.5rem;
-
-    background-color: @color-bg-content;
-
-    label {
-        color: white;
-    }
 
     >div {
+        .flex-col();
         flex: 1;
-        display: flex;
-        flex-direction: column;
     }
 
     @media @small-width {
-        flex-direction: column;
+        .flex-col();
 
         >div {
-            flex-direction: row;
+            .flex-row();
             column-gap: 0.5rem;
         }
     }
 }
 
 .nothingLoaded {
+    .dark-content();
     padding: 0.5rem;
     min-height: 0;
     max-height: 100%;
     height: 100%;
-
-    background-color: @color-bg-content;
 }
 
 .nothingLoadedContainer {
+    .light-content();
     overflow: auto;
 
     max-height: 100%;
     height: 100%;
     padding: 0.5rem;
 
-    background-color: @color-bg-table;
     border: 1px solid black;
 }
 
 .allScrips {
+    .dark-content();
     min-height: 0;
     max-height: 100%;
     padding: 0.5rem;
-
-    background-color: @color-bg-content;
 }
 
 .allScripsContainer {
+    .flex-col(@gap: 0.5rem);
+    .light-content();
     overflow: auto;
-    display: flex;
-    flex-direction: column;
-    row-gap: 0.5rem;
 
     max-height: 100%;
     padding: 0.5rem;
 
-    background-color: @color-bg-table;
     border: 1px solid black;
 }
 
 .scripHeading {
-    display: flex;
-    flex-direction: row;
+    .flex-row(@gap: 1rem);
     font-weight: bold;
-    gap: 1rem;
 
     >* {
         white-space: nowrap;
@@ -89,9 +75,7 @@
 }
 
 .scripTable {
-    display: grid;
-    grid-template-columns: repeat(4, min-content) max-content;
-    gap: 0.2rem 1rem;
+    .grid(@gap: 0.2rem 1rem, @columns: repeat(4, min-content) max-content);
 
     width: fit-content;
     padding: 0.5rem;

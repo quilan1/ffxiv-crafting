@@ -1,4 +1,4 @@
-@import '../../colors.less';
+@import '../../mixins';
 
 .fetchStatus {
     flex: 1 1 content;
@@ -6,8 +6,8 @@
     min-width: 10rem;
 
     >div {
+        .flex-row(@gap: normal);
         width: 100%;
-        display: flex;
 
         >div:first-of-type {
             border-left: 1px solid black;
